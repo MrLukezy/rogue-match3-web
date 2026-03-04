@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rogue Match-3</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="panel">
+        <h1>Rogue Match-3</h1>
+        <p class="sub">随机道具肉鸽 · 纯三消爬塔</p>
+
+        <section class="stats">
+          <div class="row"><span>楼层</span><strong id="floor">1/7</strong></div>
+          <div class="row"><span>词缀</span><strong id="modifier">-</strong></div>
+          <div class="row"><span>目标分数</span><strong id="targetScore">0</strong></div>
+          <div class="row"><span>剩余步数</span><strong id="movesLeft">0</strong></div>
+          <div class="row"><span>当前层得分</span><strong id="floorScore">0</strong></div>
+          <div class="row"><span>总分</span><strong id="score">0</strong></div>
+          <div class="row"><span>历史最高层</span><strong id="bestFloor">0</strong></div>
+          <div class="row"><span>历史最高分</span><strong id="bestScore">0</strong></div>
+          <div class="momentum">
+            <span>Momentum</span>
+            <div class="bar"><i id="momentumBar"></i></div>
+            <strong id="feverTurns">Fever 0</strong>
+          </div>
+        </section>
+
+        <section class="toolbox">
+          <h2>道具</h2>
+          <div id="itemWrap" class="btn-grid"></div>
+        </section>
+
+        <button id="restartBtn" class="btn danger">重新开局</button>
+        <div id="modeText" class="mode">模式：普通交换</div>
+        <div id="message" class="message">交换相邻宝石，形成三消并击败敌人。</div>
+      </aside>
+
+      <main class="board-wrap" id="boardWrap">
+        <div id="board" class="board" aria-label="match3 board"></div>
+        <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+      </main>
+    </div>
+
+    <div id="overlay" class="overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal">
+        <h3 id="overlayTitle">选择道具</h3>
+        <p id="overlayDesc">过关后获得随机三消道具或系统强化。</p>
+        <div id="choiceWrap" class="choices"></div>
+      </div>
+    </div>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
