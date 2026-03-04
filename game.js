@@ -2,8 +2,10 @@
   const SIZE = 8;
   const COLORS = 6;
   const TOTAL_FLOORS = 7;
-  const META_KEY = "rogue_match3_meta_v4";
+  const META_KEY = "rogue_match3_meta_v5";
   const MOMENTUM_MAX = 100;
+  const MAX_SKILL_CHAIN = 2;
+  const MAX_ACTIVE_SHARDS = 260;
 
   const FLOOR_CONFIG = [
     { target: 280, moves: 16, obstacles: 0 },
@@ -23,12 +25,51 @@
     shuffle: { name: "洗牌", desc: "重排宝石", amount: 1, target: false },
   };
 
+  const GEM_ICON_BY_COLOR = {
+    0: "local_fire_department",
+    1: "water_drop",
+    2: "eco",
+    3: "flash_on",
+    4: "auto_awesome",
+    5: "radioactive",
+  };
+
   const MODIFIERS = [
     { id: "glass", name: "Glass", desc: "初始生成玻璃层", apply: (s) => (s.modGlass = 8) },
     { id: "heavy", name: "Heavy", desc: "步数-2，连锁加成提高", apply: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 2); s.chainBonus += 0.2; } },
     { id: "color_tax", name: "Color Tax", desc: "一种颜色分值降低", apply: (s) => { s.taxColor = randColor(); } },
     { id: "lucky", name: "Lucky Drop", desc: "道具掉率提高", apply: (s) => { s.dropBoost += 0.12; } },
   ];
+
+  const PERK_DEFS = {
+    combo_forge: {
+      title: "Combo Forge",
+      desc: "4连额外有概率升级为爆裂宝石",
+      apply: (s) => { s.perks.combo_forge = true; },
+    },
+    fever_loop: {
+      title: "Fever Loop",
+      desc: "Fever 回合 +1",
+      apply: (s) => { s.perks.fever_loop = true; },
+    },
+    relic_magnet: {
+      title: "Relic Magnet",
+      desc: "道具掉率提高",
+      apply: (s) => { s.perks.relic_magnet = true; },
+    },
+    blast_core: {
+      title: "Blast Core",
+      desc: "爆炸/技能触发得分提高",
+      apply: (s) => { s.perks.blast_core = true; },
+    },
+    glass_breaker: {
+      title: "Glass Breaker",
+      desc: "击碎玻璃时额外得分",
+      apply: (s) => { s.perks.glass_breaker = true; },
+    },
+  };
+
+  const BOSS_SKILLS = ["glass_storm", "hex_lock", "color_shift"];
 
   const floorEl = document.getElementById("floor");
   const modifierEl = document.getElementById("modifier");
@@ -40,12 +81,15 @@
   const bestScoreEl = document.getElementById("bestScore");
   const momentumBarEl = document.getElementById("momentumBar");
   const feverTurnsEl = document.getElementById("feverTurns");
+  const bossBarEl = document.getElementById("bossBar");
+  const bossSkillHintEl = document.getElementById("bossSkillHint");
   const modeTextEl = document.getElementById("modeText");
   const boardWrapEl = document.getElementById("boardWrap");
   const boardEl = document.getElementById("board");
   const fxLayerEl = document.getElementById("fxLayer");
   const messageEl = document.getElementById("message");
   const restartBtn = document.getElementById("restartBtn");
+  const codexBtn = document.getElementById("codexBtn");
 
   const itemWrapEl = document.getElementById("itemWrap");
   const overlayEl = document.getElementById("overlay");
@@ -53,12 +97,17 @@
   const overlayDescEl = document.getElementById("overlayDesc");
   const choiceWrapEl = document.getElementById("choiceWrap");
 
+  const codexModalEl = document.getElementById("codexModal");
+  const codexContentEl = document.getElementById("codexContent");
+  const codexCloseBtn = document.getElementById("codexCloseBtn");
+
   let meta = loadMeta();
   let state = createInitialState();
   let selected = null;
   let inputLocked = false;
   let clearAnim = new Set();
   let fallAnim = new Set();
+  let activeShards = 0;
 
   bindEvents();
   startRun();
@@ -80,24 +129,63 @@
       chainBonus: 0,
       momentum: 0,
       feverTurns: 0,
+      perks: {
+        combo_forge: false,
+        fever_loop: false,
+        relic_magnet: false,
+        blast_core: false,
+        glass_breaker: false,
+      },
+      boss: { charge: 0, max: 7, hint: "待机", elite: false },
+      eventCurseFloors: 0,
+      nextFloorMovePenalty: 0,
+      nextFloorMoveBonus: 0,
       gameOver: false,
       victory: false,
+    };
+  }
+
+  function defaultCodex() {
+    return {
+      itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0 },
+      specialTrigger: { line_h: 0, line_v: 0, bomb: 0, rainbow: 0 },
+      bossSeen: { glass_storm: 0, hex_lock: 0, color_shift: 0 },
+      maxChain: 0,
+      runs: 0,
     };
   }
 
   function loadMeta() {
     try {
       const raw = localStorage.getItem(META_KEY);
-      if (!raw) return { bestFloor: 0, bestScore: 0 };
+      if (!raw) return { bestFloor: 0, bestScore: 0, codex: defaultCodex() };
       const parsed = JSON.parse(raw);
-      return { bestFloor: Number(parsed.bestFloor || 0), bestScore: Number(parsed.bestScore || 0) };
+      return {
+        bestFloor: Number(parsed.bestFloor || 0),
+        bestScore: Number(parsed.bestScore || 0),
+        codex: {
+          ...defaultCodex(),
+          ...(parsed.codex || {}),
+          itemUse: { ...defaultCodex().itemUse, ...((parsed.codex || {}).itemUse || {}) },
+          specialTrigger: { ...defaultCodex().specialTrigger, ...((parsed.codex || {}).specialTrigger || {}) },
+          bossSeen: { ...defaultCodex().bossSeen, ...((parsed.codex || {}).bossSeen || {}) },
+        },
+      };
     } catch {
-      return { bestFloor: 0, bestScore: 0 };
+      return { bestFloor: 0, bestScore: 0, codex: defaultCodex() };
     }
   }
 
   function saveMeta() {
     localStorage.setItem(META_KEY, JSON.stringify(meta));
+  }
+
+  function recordCodex(group, key, delta = 1) {
+    if (!meta.codex[group]) return;
+    if (typeof meta.codex[group] === "object") {
+      meta.codex[group][key] = Number(meta.codex[group][key] || 0) + delta;
+    }
+    saveMeta();
   }
 
   function bindEvents() {
@@ -106,6 +194,47 @@
     });
     boardEl.addEventListener("click", onBoardClick);
     itemWrapEl.addEventListener("click", onItemClick);
+
+    if (codexBtn) codexBtn.addEventListener("click", openCodex);
+    if (codexCloseBtn) codexCloseBtn.addEventListener("click", () => codexModalEl.classList.add("hidden"));
+    if (codexModalEl) {
+      codexModalEl.addEventListener("click", (e) => {
+        if (e.target === codexModalEl) codexModalEl.classList.add("hidden");
+      });
+    }
+  }
+
+  function openCodex() {
+    renderCodex();
+    codexModalEl.classList.remove("hidden");
+  }
+
+  function renderCodex() {
+    const c = meta.codex;
+    codexContentEl.innerHTML = "";
+
+    const rows = [
+      ["总局数", c.runs],
+      ["最高连锁", c.maxChain],
+      ["锤子使用", c.itemUse.hammer],
+      ["横扫使用", c.itemUse.row],
+      ["十字使用", c.itemUse.cross],
+      ["染色炸弹使用", c.itemUse.color],
+      ["洗牌使用", c.itemUse.shuffle],
+      ["线消触发", c.specialTrigger.line_h + c.specialTrigger.line_v],
+      ["爆裂触发", c.specialTrigger.bomb],
+      ["彩虹触发", c.specialTrigger.rainbow],
+      ["Boss: Glass Storm", c.bossSeen.glass_storm],
+      ["Boss: Hex Lock", c.bossSeen.hex_lock],
+      ["Boss: Color Shift", c.bossSeen.color_shift],
+    ];
+
+    for (const [k, v] of rows) {
+      const div = document.createElement("div");
+      div.className = "row";
+      div.innerHTML = `<span>${k}</span><strong>${v}</strong>`;
+      codexContentEl.appendChild(div);
+    }
   }
 
   function startRun() {
@@ -115,6 +244,9 @@
     clearAnim = new Set();
     fallAnim = new Set();
     overlayEl.classList.add("hidden");
+    codexModalEl.classList.add("hidden");
+    meta.codex.runs += 1;
+    saveMeta();
     startFloor(1);
     notify("新的一局开始。", "ok");
   }
@@ -135,11 +267,33 @@
     state.chainBonus = 0;
     selected = null;
 
+    if (state.nextFloorMovePenalty > 0) {
+      state.movesLeft = Math.max(7, state.movesLeft - state.nextFloorMovePenalty);
+      state.nextFloorMovePenalty = 0;
+    }
+    if (state.nextFloorMoveBonus > 0) {
+      state.movesLeft += state.nextFloorMoveBonus;
+      state.nextFloorMoveBonus = 0;
+    }
+
     state.board = createBoard();
     resolveAutoBoard();
     placeObstacles(cfg.obstacles);
     state.modifier.apply(state);
+
+    if (state.eventCurseFloors > 0) {
+      state.eventCurseFloors -= 1;
+      state.dropBoost += 0.08;
+      state.chainBonus += 0.1;
+    }
+
     if (state.modGlass > 0) placeGlass(state.modGlass);
+
+    const isElite = state.floor === 3 || state.floor === 5 || state.floor === 7;
+    state.boss.elite = isElite;
+    state.boss.charge = 0;
+    state.boss.max = isElite ? 5 : 7;
+    state.boss.hint = isElite ? "Elite Boss 就绪" : "Boss 待机";
 
     overlayEl.classList.add("hidden");
     clearAnim.clear();
@@ -178,6 +332,7 @@
       inputLocked = true;
       consumeMove();
       state.items[item] -= 1;
+      recordCodex("itemUse", item);
       useShuffle();
       return;
     }
@@ -219,6 +374,7 @@
     const ca = state.board[a];
     const cb = state.board[b];
     if (!isGem(ca) || !isGem(cb)) return notify("障碍格不可交换。", "warn");
+    if (ca.lockedTurns > 0 || cb.lockedTurns > 0) return notify("该宝石被锁定，无法交换。", "warn");
 
     inputLocked = true;
     await playSwapAnimation(a, b);
@@ -257,6 +413,7 @@
     consumeMove();
     state.items[item] -= 1;
     state.mode = { type: "normal", item: null };
+    recordCodex("itemUse", item);
 
     await playItemCastAnimation(item, idx);
     await resolveAction(targets, item);
@@ -274,6 +431,7 @@
     if (item === "color") {
       const cell = state.board[idx];
       if (!isGem(cell)) return [];
+      if (cell.lockedTurns > 0) return [];
       return collectIndices((x) => isGem(x) && x.color === cell.color);
     }
     return [];
@@ -300,9 +458,75 @@
   }
 
   function consumePostAction() {
+    decayLocks();
     if (state.feverTurns > 0) state.feverTurns -= 1;
+    tickBoss();
     checkFloorState();
     renderAll();
+  }
+
+  function decayLocks() {
+    for (let i = 0; i < state.board.length; i += 1) {
+      const cell = state.board[i];
+      if (isGem(cell) && cell.lockedTurns > 0) cell.lockedTurns -= 1;
+    }
+  }
+
+  function tickBoss() {
+    if (state.gameOver || state.victory) return;
+    const gain = state.boss.elite ? 2 : 1;
+    state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
+    if (state.boss.charge < state.boss.max) return;
+
+    state.boss.charge = 0;
+    const skill = randomPick(BOSS_SKILLS);
+    castBossSkill(skill);
+  }
+
+  function castBossSkill(skill) {
+    recordCodex("bossSeen", skill);
+
+    if (skill === "glass_storm") {
+      const amount = state.boss.elite ? 10 : 7;
+      placeGlass(amount);
+      state.boss.hint = `Glass Storm：+${amount} 玻璃`;
+      notify("Boss 释放 Glass Storm！", "warn");
+      spawnFloatText("Boss: Glass Storm", Math.floor((SIZE * SIZE) / 2));
+      shakeBoard(1.2);
+      renderAll();
+      return;
+    }
+
+    if (skill === "hex_lock") {
+      const gems = collectIndices((x) => isGem(x) && x.lockedTurns <= 0);
+      shuffle(gems);
+      const lockCount = Math.min(gems.length, state.boss.elite ? 4 : 3);
+      for (let i = 0; i < lockCount; i += 1) {
+        state.board[gems[i]].lockedTurns = 1;
+      }
+      state.boss.hint = `Hex Lock：锁定 ${lockCount} 格`;
+      notify("Boss 释放 Hex Lock！", "warn");
+      spawnFloatText("Boss: Hex Lock", Math.floor((SIZE * SIZE) / 2));
+      shakeBoard(1.1);
+      renderAll();
+      return;
+    }
+
+    if (skill === "color_shift") {
+      const from = randColor();
+      let to = randColor();
+      if (to === from) to = (to + 1) % COLORS;
+      const candidates = collectIndices((x) => isGem(x) && x.color === from && x.lockedTurns <= 0);
+      shuffle(candidates);
+      const cap = state.boss.elite ? 14 : 10;
+      const count = Math.min(cap, candidates.length);
+      for (let i = 0; i < count; i += 1) state.board[candidates[i]].color = to;
+      state.boss.hint = "Color Shift：版面变色";
+      notify("Boss 释放 Color Shift！", "warn");
+      spawnFloatText("Boss: Color Shift", Math.floor((SIZE * SIZE) / 2));
+      shakeBoard(1.15);
+      renderAll();
+    }
   }
 
   async function resolveAction(initialTargets, source, spawnMap = null, preferSpawnIndex = null) {
@@ -311,20 +535,31 @@
     let localSpawnMap = spawnMap;
 
     while (current.length > 0) {
-      const expanded = expandWithSpecialTriggers(current);
-      const valid = expanded.filter((idx) => state.board[idx] !== null);
+      const expandedInfo = expandWithSpecialTriggers(current, MAX_SKILL_CHAIN);
+      const valid = expandedInfo.targets.filter((idx) => state.board[idx] !== null);
       if (valid.length === 0) break;
+
+      if (expandedInfo.chainCount > 1) {
+        spawnFloatText(`Chain Skill x${expandedInfo.chainCount}`, valid[0]);
+      }
 
       clearAnim = new Set(valid);
       spawnShatterFX(valid);
-      shakeBoard();
+      if (expandedInfo.chainCount > 1) shakeBoard(1.25);
+      else shakeBoard(1);
       renderAll();
       await sleep(180);
 
       const gemTargets = valid.filter((i) => isGem(state.board[i]));
       const obstacles = valid.filter((i) => isObstacle(state.board[i])).length;
 
-      let gain = calcGain(gemTargets.length, obstacles, chain, source);
+      let glassBroken = 0;
+      for (const idx of valid) {
+        const cell = state.board[idx];
+        if (isGem(cell) && cell.glass) glassBroken += 1;
+      }
+
+      let gain = calcGain(gemTargets.length, obstacles, chain, source, expandedInfo.chainCount, glassBroken);
       state.floorScore += gain;
       state.score += gain;
       updateMomentum(gemTargets.length, chain);
@@ -343,8 +578,8 @@
       if (chain === 1 && localSpawnMap && localSpawnMap.size > 0) {
         const spawnIndex = pickSpawnIndex(localSpawnMap, preferSpawnIndex);
         if (spawnIndex !== null && state.board[spawnIndex] === null) {
-          state.board[spawnIndex] = { kind: "gem", color: randColor(), special: localSpawnMap.get(spawnIndex), glass: false };
-          spawnShockwaveFX(spawnIndex);
+          state.board[spawnIndex] = { kind: "gem", color: randColor(), special: localSpawnMap.get(spawnIndex), glass: false, lockedTurns: 0 };
+          spawnShockwaveFX(spawnIndex, true);
         }
       }
 
@@ -360,6 +595,9 @@
       fallAnim.clear();
 
       maybeDropItem(chain);
+
+      meta.codex.maxChain = Math.max(meta.codex.maxChain, chain);
+      saveMeta();
 
       chain += 1;
       const next = analyzeMatches();
@@ -400,8 +638,12 @@
     }
 
     for (const g of groups) {
-      if (g.len >= 5) spawnMap.set(g.indices[2], "rainbow");
-      else if (g.len === 4 && !spawnMap.has(g.indices[1])) spawnMap.set(g.indices[1], g.dir === "h" ? "line_h" : "line_v");
+      if (g.len >= 5) {
+        spawnMap.set(g.indices[2], "rainbow");
+      } else if (g.len === 4 && !spawnMap.has(g.indices[1])) {
+        if (state.perks.combo_forge && Math.random() < 0.4) spawnMap.set(g.indices[1], "bomb");
+        else spawnMap.set(g.indices[1], g.dir === "h" ? "line_h" : "line_v");
+      }
     }
 
     return { clear: [...clearSet], spawnMap };
@@ -449,15 +691,34 @@
     return arr;
   }
 
-  function expandWithSpecialTriggers(indices) {
+  function expandWithSpecialTriggers(indices, maxDepth) {
     const set = new Set(indices);
-    for (const idx of indices) {
+    const queue = indices.map((idx) => ({ idx, depth: 0 }));
+    let chainCount = 1;
+
+    while (queue.length > 0) {
+      const { idx, depth } = queue.shift();
       const cell = state.board[idx];
       if (!isGem(cell) || !cell.special) continue;
-      for (const extra of specialTargets(idx, cell.special)) set.add(extra);
-      spawnShockwaveFX(idx);
+
+      if (cell.special in meta.codex.specialTrigger) recordCodex("specialTrigger", cell.special);
+      spawnShockwaveFX(idx, true);
+
+      if (depth >= maxDepth) continue;
+
+      const extra = specialTargets(idx, cell.special);
+      let spawned = 0;
+      for (const e of extra) {
+        if (!set.has(e)) {
+          set.add(e);
+          queue.push({ idx: e, depth: depth + 1 });
+          spawned += 1;
+        }
+      }
+      if (spawned > 0) chainCount = Math.max(chainCount, depth + 2);
     }
-    return [...set];
+
+    return { targets: [...set], chainCount: Math.min(chainCount, maxDepth + 1) };
   }
 
   function specialTargets(idx, special) {
@@ -499,7 +760,7 @@
     return [...set];
   }
 
-  function calcGain(gemCount, obstacleCount, chain, source) {
+  function calcGain(gemCount, obstacleCount, chain, source, skillChainDepth = 1, glassBroken = 0) {
     let base = gemCount * 10 + obstacleCount * 14;
     let chainMul = 1 + (0.25 + state.chainBonus) * (chain - 1);
 
@@ -515,6 +776,10 @@
     if (source === "color") base += state.feverTurns > 0 ? 40 : 28;
     if (source === "combo") base += 45;
 
+    if (skillChainDepth > 1) base += skillChainDepth * 12;
+    if (state.perks.blast_core && (source !== "normal" || skillChainDepth > 1)) base = Math.floor(base * 1.22);
+    if (state.perks.glass_breaker && glassBroken > 0) base += glassBroken * 10;
+
     return Math.max(0, Math.floor(base * chainMul));
   }
 
@@ -529,7 +794,7 @@
     state.momentum = Math.min(MOMENTUM_MAX, state.momentum + gain);
     if (state.momentum >= MOMENTUM_MAX) {
       state.momentum = 0;
-      state.feverTurns = 3;
+      state.feverTurns = state.perks.fever_loop ? 4 : 3;
       spawnFloatText("FEVER!", Math.floor((SIZE * SIZE) / 2));
       notify("进入 FEVER：分数与掉落提升！", "ok");
     }
@@ -539,7 +804,8 @@
     if (chain < 2) return;
     let chance = 0.16 - (state.floor - 1) * 0.012 + state.dropBoost;
     if (state.feverTurns > 0) chance += 0.1;
-    chance = Math.max(0.08, Math.min(0.45, chance));
+    if (state.perks.relic_magnet) chance += 0.1;
+    chance = Math.max(0.08, Math.min(0.5, chance));
     if (Math.random() >= chance) return;
 
     const drops = ["hammer", "row", "cross", "color", "shuffle"];
@@ -570,6 +836,7 @@
 
   function onFloorCleared() {
     if (state.floor >= TOTAL_FLOORS) return onVictory();
+    if ([2, 4, 6].includes(state.floor)) return showEventNode();
     showRewardChoices();
   }
 
@@ -593,10 +860,61 @@
     overlayEl.classList.remove("hidden");
   }
 
+  function showEventNode() {
+    overlayTitleEl.textContent = `事件节点（第 ${state.floor} 层后）`;
+    overlayDescEl.textContent = "选择一条路线，影响下一层。";
+    choiceWrapEl.innerHTML = "";
+
+    const events = [
+      {
+        title: "诅咒契约",
+        desc: "下两层更危险，但掉落与连锁收益提高，并获得十字+1",
+        apply: () => {
+          state.eventCurseFloors = 2;
+          state.items.cross += 1;
+          notify("你签下了诅咒契约。", "warn");
+        },
+      },
+      {
+        title: "修复工坊",
+        desc: "下层额外 +2 步，并清空 Boss 蓄力",
+        apply: () => {
+          state.nextFloorMoveBonus += 2;
+          state.boss.charge = 0;
+          notify("工坊修复完成，下层更稳。", "ok");
+        },
+      },
+      {
+        title: "贪婪祭坛",
+        desc: "立刻 +180 分，但下层步数 -2",
+        apply: () => {
+          state.score += 180;
+          state.floorScore += 40;
+          state.nextFloorMovePenalty += 2;
+          notify("贪婪祭坛生效：高收益高压力。", "warn");
+        },
+      },
+    ];
+
+    for (const ev of events) {
+      const btn = document.createElement("button");
+      btn.className = "choice";
+      btn.innerHTML = `<strong>${ev.title}</strong><small>${ev.desc}</small>`;
+      btn.addEventListener("click", () => {
+        ev.apply();
+        overlayEl.classList.add("hidden");
+        startFloor(state.floor + 1);
+      });
+      choiceWrapEl.appendChild(btn);
+    }
+
+    overlayEl.classList.remove("hidden");
+  }
+
   function showRewardChoices() {
     const choices = buildRewardChoices();
     overlayTitleEl.textContent = `第 ${state.floor} 层完成`;
-    overlayDescEl.textContent = "选择一个奖励：道具或临时增强";
+    overlayDescEl.textContent = "选择一个奖励：道具、系统强化或构筑天赋";
     choiceWrapEl.innerHTML = "";
 
     for (const reward of choices) {
@@ -621,11 +939,24 @@
       { title: "十字 +1", desc: "行列爆破", apply: () => (state.items.cross += 1) },
       { title: "染色炸弹 +1", desc: "清同色", apply: () => (state.items.color += 1) },
       { title: "洗牌 +1", desc: "坏盘翻盘", apply: () => (state.items.shuffle += 1) },
-      { title: "额外步数 +2", desc: "本层压力降低", apply: () => (state.movesLeft += 2) },
+      { title: "额外步数 +2", desc: "下层压力降低", apply: () => (state.nextFloorMoveBonus += 2) },
       { title: "Momentum 注入", desc: "进度 +40", apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
     ];
+
+    const missingPerks = Object.entries(PERK_DEFS)
+      .filter(([k]) => !state.perks[k])
+      .map(([k, def]) => ({
+        title: `天赋：${def.title}`,
+        desc: def.desc,
+        apply: () => def.apply(state),
+      }));
+
+    const result = [];
+    if (missingPerks.length > 0) result.push(randomPick(missingPerks));
+
     shuffle(pool);
-    return pool.slice(0, 3);
+    while (result.length < 3 && pool.length > 0) result.push(pool.pop());
+    return result;
   }
 
   function consumeMove() {
@@ -684,33 +1015,87 @@
   }
 
   function spawnShatterFX(indices) {
-    for (const idx of indices.slice(0, 12)) {
+    const capped = indices.slice(0, 16);
+    const shardBudget = Math.max(0, MAX_ACTIVE_SHARDS - activeShards);
+    if (shardBudget <= 0) return;
+
+    let useBudget = shardBudget;
+    for (const idx of capped) {
+      if (useBudget <= 0) break;
       const cell = boardEl.querySelector(`.cell[data-index="${idx}"]`);
       if (!cell) continue;
-      const r = cell.getBoundingClientRect();
-      for (let i = 0; i < 6; i += 1) {
+      const rect = cell.getBoundingClientRect();
+      const source = state.board[idx];
+      const specialBoost = isGem(source) && source.special ? 1.45 : 1;
+      const pieces = Math.min(useBudget, Math.floor((10 + Math.random() * 6) * specialBoost));
+      useBudget -= pieces;
+
+      for (let i = 0; i < pieces; i += 1) {
         const p = document.createElement("i");
         p.className = "fx-shard";
-        p.style.left = `${r.left + r.width / 2}px`;
-        p.style.top = `${r.top + r.height / 2}px`;
-        p.style.setProperty("--dx", `${(Math.random() - 0.5) * 60}px`);
-        p.style.setProperty("--dy", `${(Math.random() - 0.5) * 60}px`);
+        p.style.left = `${rect.left + rect.width / 2}px`;
+        p.style.top = `${rect.top + rect.height / 2}px`;
+
+        const ang = Math.random() * Math.PI * 2;
+        const speed = 26 + Math.random() * 62;
+        const dx = Math.cos(ang) * speed;
+        const dy = Math.sin(ang) * speed + 16;
+        const rot = `${(Math.random() - 0.5) * 520}deg`;
+
+        p.style.width = `${3 + Math.random() * 5}px`;
+        p.style.height = `${2 + Math.random() * 4}px`;
+        p.style.background = isGem(source) ? `var(--gem-color-${source.color}, #dce8ff)` : "#dce8ff";
+        p.style.setProperty("--dx", `${dx}px`);
+        p.style.setProperty("--dy", `${dy}px`);
+        p.style.setProperty("--rot", rot);
+
         fxLayerEl.appendChild(p);
-        setTimeout(() => p.remove(), 360);
+        activeShards += 1;
+        setTimeout(() => {
+          p.remove();
+          activeShards = Math.max(0, activeShards - 1);
+        }, 460);
       }
     }
   }
 
-  function spawnShockwaveFX(index) {
+  function spawnShockwaveFX(index, strong = false) {
     const cell = boardEl.querySelector(`.cell[data-index="${index}"]`);
     if (!cell) return;
     const r = cell.getBoundingClientRect();
-    const wave = document.createElement("i");
-    wave.className = "fx-wave";
-    wave.style.left = `${r.left + r.width / 2}px`;
-    wave.style.top = `${r.top + r.height / 2}px`;
-    fxLayerEl.appendChild(wave);
-    setTimeout(() => wave.remove(), 320);
+
+    const spawnWave = (size, border, life, alpha = 0.9) => {
+      const wave = document.createElement("i");
+      wave.className = "fx-wave";
+      wave.style.left = `${r.left + r.width / 2}px`;
+      wave.style.top = `${r.top + r.height / 2}px`;
+      wave.style.width = `${size}px`;
+      wave.style.height = `${size}px`;
+      wave.style.marginLeft = `${-size / 2}px`;
+      wave.style.marginTop = `${-size / 2}px`;
+      wave.style.borderWidth = `${border}px`;
+      wave.style.borderColor = `rgba(255,255,255,${alpha})`;
+      fxLayerEl.appendChild(wave);
+      setTimeout(() => wave.remove(), life);
+    };
+
+    spawnWave(12, 2, 320, strong ? 0.95 : 0.85);
+    if (strong) {
+      spawnWave(18, 2, 360, 0.55);
+      const flash = document.createElement("i");
+      flash.style.position = "fixed";
+      flash.style.left = `${r.left + r.width / 2}px`;
+      flash.style.top = `${r.top + r.height / 2}px`;
+      flash.style.width = "20px";
+      flash.style.height = "20px";
+      flash.style.marginLeft = "-10px";
+      flash.style.marginTop = "-10px";
+      flash.style.borderRadius = "50%";
+      flash.style.background = "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.15) 65%, rgba(255,255,255,0) 100%)";
+      flash.style.animation = "waveExpand 240ms ease forwards";
+      fxLayerEl.appendChild(flash);
+      setTimeout(() => flash.remove(), 260);
+    }
   }
 
   function spawnFloatText(text, index) {
@@ -726,8 +1111,9 @@
     setTimeout(() => el.remove(), 540);
   }
 
-  function shakeBoard() {
+  function shakeBoard(power = 1) {
     boardWrapEl.classList.remove("shake");
+    boardWrapEl.style.setProperty("--shake-power", String(power));
     boardWrapEl.offsetWidth;
     boardWrapEl.classList.add("shake");
   }
@@ -740,7 +1126,7 @@
 
   function createBoard() {
     const arr = Array(SIZE * SIZE).fill(null);
-    for (let i = 0; i < arr.length; i += 1) arr[i] = { kind: "gem", color: randColor(), special: null, glass: false };
+    for (let i = 0; i < arr.length; i += 1) arr[i] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
     return arr;
   }
 
@@ -779,7 +1165,7 @@
     const born = [];
     for (let i = 0; i < state.board.length; i += 1) {
       if (state.board[i] === null) {
-        state.board[i] = { kind: "gem", color: randColor(), special: null, glass: false };
+        state.board[i] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
         born.push(i);
       }
     }
@@ -835,6 +1221,10 @@
     momentumBarEl.style.width = `${(state.momentum / MOMENTUM_MAX) * 100}%`;
     feverTurnsEl.textContent = `Fever ${state.feverTurns}`;
 
+    const bossPct = Math.max(0, Math.min(100, (state.boss.charge / state.boss.max) * 100));
+    if (bossBarEl) bossBarEl.style.width = `${bossPct}%`;
+    if (bossSkillHintEl) bossSkillHintEl.textContent = state.boss.hint;
+
     if (state.mode.type === "normal") modeTextEl.textContent = "模式：普通交换";
     if (state.mode.type === "target_item") modeTextEl.textContent = `模式：道具选点（${ITEM_DEFS[state.mode.item].name}）`;
   }
@@ -876,8 +1266,15 @@
         gem.className = `gem g-${value.color}`;
         if (value.special) gem.classList.add(`sp-${value.special}`);
         if (value.glass) gem.classList.add("glass");
+        if (value.lockedTurns > 0) gem.classList.add("locked");
         if (clearAnim.has(i)) gem.classList.add("clear-pop");
         if (fallAnim.has(i)) gem.classList.add("fall-in");
+
+        const icon = document.createElement("span");
+        icon.className = "material-symbols-outlined gem-icon";
+        icon.textContent = GEM_ICON_BY_COLOR[value.color] || "diamond";
+        gem.appendChild(icon);
+
         cell.appendChild(gem);
       }
 

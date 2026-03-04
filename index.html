@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rogue Match-3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,700,1,0" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -26,6 +29,11 @@
             <div class="bar"><i id="momentumBar"></i></div>
             <strong id="feverTurns">Fever 0</strong>
           </div>
+          <div class="momentum boss">
+            <span>Boss Charge</span>
+            <div class="bar"><i id="bossBar"></i></div>
+            <strong id="bossSkillHint">-</strong>
+          </div>
         </section>
 
         <section class="toolbox">
@@ -33,7 +41,10 @@
           <div id="itemWrap" class="btn-grid"></div>
         </section>
 
-        <button id="restartBtn" class="btn danger">重新开局</button>
+        <div class="actions-row">
+          <button id="restartBtn" class="btn danger">重新开局</button>
+          <button id="codexBtn" class="btn">图鉴</button>
+        </div>
         <div id="modeText" class="mode">模式：普通交换</div>
         <div id="message" class="message">交换相邻宝石，形成三消并击败敌人。</div>
       </aside>
@@ -49,6 +60,17 @@
         <h3 id="overlayTitle">选择道具</h3>
         <p id="overlayDesc">过关后获得随机三消道具或系统强化。</p>
         <div id="choiceWrap" class="choices"></div>
+      </div>
+    </div>
+
+    <div id="codexModal" class="overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal">
+        <h3>图鉴统计</h3>
+        <p>记录你在所有对局中的触发与使用数据。</p>
+        <div id="codexContent" class="codex"></div>
+        <div class="actions-row" style="margin-top:10px;">
+          <button id="codexCloseBtn" class="btn">关闭</button>
+        </div>
       </div>
     </div>
 

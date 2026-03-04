@@ -6,6 +6,12 @@
   --text: #eef2ff;
   --muted: #aeb7dc;
   --danger: #ff6f91;
+  --gem-color-0: #ff6b6b;
+  --gem-color-1: #4d96ff;
+  --gem-color-2: #52d273;
+  --gem-color-3: #ffd166;
+  --gem-color-4: #c77dff;
+  --gem-color-5: #ff8b3d;
 }
 
 * { box-sizing: border-box; }
@@ -71,6 +77,7 @@ h1 { margin: 0; font-size: 28px; }
   transition: width 160ms ease;
 }
 .momentum strong { display: block; margin-top: 4px; color: #ffd166; font-size: 12px; }
+.momentum.boss strong { color: #ff9eb3; }
 
 .toolbox h2 { margin: 6px 0; font-size: 14px; }
 .btn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -87,6 +94,25 @@ h1 { margin: 0; font-size: 28px; }
 }
 
 .btn.danger { background: linear-gradient(180deg, #ff7c9c 0%, #e35d80 100%); }
+
+.actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.codex {
+  max-height: 320px;
+  overflow: auto;
+  background: #121938;
+  border: 1px solid #33457c;
+  border-radius: 10px;
+  padding: 10px;
+}
+.codex .row {
+  font-size: 13px;
+  margin: 6px 0;
+}
 
 .ability small { display: block; color: var(--muted); font-size: 12px; }
 .ability.active { outline: 2px solid #9ec1ff; }
@@ -160,6 +186,17 @@ h1 { margin: 0; font-size: 28px; }
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.2);
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gem-icon {
+  font-size: clamp(18px, 2.1vw, 24px);
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  line-height: 1;
+  user-select: none;
 }
 
 .gem.glass::after {
@@ -169,6 +206,15 @@ h1 { margin: 0; font-size: 28px; }
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.65);
   background: linear-gradient(135deg, rgba(255,255,255,0.36), rgba(255,255,255,0.05));
+}
+
+.gem.locked::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 7px;
+  border: 2px dashed rgba(255, 138, 138, 0.9);
+  box-shadow: 0 0 0 2px rgba(100, 16, 16, 0.45) inset;
 }
 
 .sp-line_h::before,
@@ -186,12 +232,12 @@ h1 { margin: 0; font-size: 28px; }
 .sp-bomb::before { border-radius: 50%; }
 .sp-rainbow::before { border-color: #fff; box-shadow: 0 0 0 2px #ffd166 inset; }
 
-.g-0 { background: #ff6b6b; }
-.g-1 { background: #4d96ff; }
-.g-2 { background: #52d273; }
-.g-3 { background: #ffd166; }
-.g-4 { background: #c77dff; }
-.g-5 { background: #ff8b3d; }
+.g-0 { background: var(--gem-color-0); }
+.g-1 { background: var(--gem-color-1); }
+.g-2 { background: var(--gem-color-2); }
+.g-3 { background: var(--gem-color-3); }
+.g-4 { background: var(--gem-color-4); }
+.g-5 { background: var(--gem-color-5); }
 
 .obstacle {
   width: 84%;
@@ -221,9 +267,9 @@ h1 { margin: 0; font-size: 28px; }
 
 @keyframes boardShake {
   0% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  50% { transform: translateX(4px); }
-  75% { transform: translateX(-3px); }
+  25% { transform: translateX(calc(-5px * var(--shake-power, 1))); }
+  50% { transform: translateX(calc(4px * var(--shake-power, 1))); }
+  75% { transform: translateX(calc(-3px * var(--shake-power, 1))); }
   100% { transform: translateX(0); }
 }
 
@@ -237,13 +283,14 @@ h1 { margin: 0; font-size: 28px; }
 .fx-shard {
   width: 6px;
   height: 6px;
-  border-radius: 2px;
+  border-radius: 1px;
   background: #dce8ff;
-  animation: shardFly 340ms ease forwards;
+  animation: shardFly 420ms cubic-bezier(.13,.72,.33,.99) forwards;
 }
 @keyframes shardFly {
-  0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  70% { transform: translate(calc(var(--dx) * 0.8), calc(var(--dy) * 0.8)) rotate(var(--rot)) scale(0.8); opacity: 0.85; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(calc(var(--rot) * 1.4)) scale(0.2); opacity: 0; }
 }
 
 .fx-wave {
