@@ -511,6 +511,7 @@
     fx.textContent = name;
     fxLayerEl.appendChild(fx);
 
+    spawnScreenPulse(theme === "screen" ? "skill-screen" : "skill-rainbow", 520);
     boardWrapEl.classList.add("boss-cast");
     shakeBoard(theme === "screen" ? 1.45 : 1.35);
     await sleep(120);
@@ -566,6 +567,7 @@
   async function castBossSkill(skill) {
     recordCodex("bossSeen", skill);
     boardWrapEl.classList.add("boss-cast");
+    spawnScreenPulse("boss", 520);
 
     if (skill === "glass_storm") {
       const amount = state.boss.elite ? 14 : 9;
@@ -575,6 +577,7 @@
       spawnFloatText("Boss: Glass Storm", Math.floor((SIZE * SIZE) / 2));
       for (let i = 0; i < 8; i += 1) spawnShockwaveFX(Math.floor(Math.random() * SIZE * SIZE), true);
       shakeBoard(1.45);
+      applyBossPressure(skill);
       renderAll();
       await sleep(220);
       boardWrapEl.classList.remove("boss-cast");
@@ -592,6 +595,7 @@
       notify("Boss 释放 Hex Lock！", "warn");
       spawnFloatText("Boss: Hex Lock", Math.floor((SIZE * SIZE) / 2));
       shakeBoard(1.35);
+      applyBossPressure(skill);
       renderAll();
       await sleep(180);
       boardWrapEl.classList.remove("boss-cast");
@@ -612,9 +616,23 @@
       spawnFloatText("Boss: Color Shift", Math.floor((SIZE * SIZE) / 2));
       for (let i = 0; i < 5; i += 1) spawnShockwaveFX(Math.floor(Math.random() * SIZE * SIZE), true);
       shakeBoard(1.4);
+      applyBossPressure(skill);
       renderAll();
       await sleep(200);
       boardWrapEl.classList.remove("boss-cast");
+    }
+  }
+
+  function applyBossPressure(skill) {
+    if (skill === "glass_storm") {
+      state.movesLeft = Math.max(0, state.movesLeft - 1);
+      spawnFloatText("-1 Move", Math.floor((SIZE * SIZE) / 2));
+      return;
+    }
+    if (skill === "color_shift") {
+      const loss = state.boss.elite ? 2 : 1;
+      state.movesLeft = Math.max(0, state.movesLeft - loss);
+      spawnFloatText(`-${loss} Move`, Math.floor((SIZE * SIZE) / 2));
     }
   }
 
@@ -1206,6 +1224,13 @@
     el.style.top = `${r.top + r.height / 2}px`;
     fxLayerEl.appendChild(el);
     setTimeout(() => el.remove(), 540);
+  }
+
+  function spawnScreenPulse(theme = "boss", duration = 420) {
+    const el = document.createElement("i");
+    el.className = `fx-screen-pulse ${theme}`;
+    fxLayerEl.appendChild(el);
+    setTimeout(() => el.remove(), duration);
   }
 
   function shakeBoard(power = 1) {

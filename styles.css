@@ -340,12 +340,29 @@ h1 { margin: 0; font-size: 28px; }
   100% { transform: translateX(0); }
 }
 
-.fx-shard,
-.fx-wave,
-.fx-text {
+.fx-screen-pulse {
   position: fixed;
+  inset: 0;
   pointer-events: none;
+  z-index: 38;
+  animation: screenPulse 480ms ease forwards;
 }
+.fx-screen-pulse.boss {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 85, 120, 0.28), rgba(30, 0, 10, 0.55));
+}
+.fx-screen-pulse.skill-screen {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 243, 176, 0.35), rgba(120, 32, 62, 0.38));
+}
+.fx-screen-pulse.skill-rainbow {
+  background: conic-gradient(from 90deg, rgba(255, 99, 120, 0.28), rgba(255, 209, 102, 0.22), rgba(82, 210, 115, 0.22), rgba(77, 150, 255, 0.24), rgba(199, 125, 255, 0.24), rgba(255, 99, 120, 0.28));
+}
+
+@keyframes screenPulse {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 
 .fx-shard {
   width: 6px;
