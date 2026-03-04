@@ -1,5 +1,5 @@
 (() => {
-  const SIZE = 8;
+  const SIZE = 10;
   const COLORS = 6;
   const TOTAL_FLOORS = 7;
   const META_KEY = "rogue_match3_meta_v5";
@@ -8,13 +8,13 @@
   const MAX_ACTIVE_SHARDS = 260;
 
   const FLOOR_CONFIG = [
-    { target: 280, moves: 16, obstacles: 0 },
-    { target: 390, moves: 16, obstacles: 0 },
-    { target: 560, moves: 15, obstacles: 1 },
-    { target: 760, moves: 15, obstacles: 2 },
-    { target: 980, moves: 14, obstacles: 3 },
-    { target: 1220, moves: 14, obstacles: 4 },
-    { target: 1500, moves: 13, obstacles: 5 },
+    { target: 420, moves: 17, obstacles: 0 },
+    { target: 580, moves: 17, obstacles: 0 },
+    { target: 820, moves: 16, obstacles: 1 },
+    { target: 1080, moves: 16, obstacles: 2 },
+    { target: 1380, moves: 15, obstacles: 3 },
+    { target: 1720, moves: 15, obstacles: 4 },
+    { target: 2100, moves: 14, obstacles: 5 },
   ];
 
   const ITEM_DEFS = {
@@ -23,6 +23,8 @@
     cross: { name: "十字", desc: "清除行+列", amount: 1, target: true },
     color: { name: "染色炸弹", desc: "清除目标颜色", amount: 1, target: true },
     shuffle: { name: "洗牌", desc: "重排宝石", amount: 1, target: false },
+    screen_wipe: { name: "清屏脉冲", desc: "瞬间清除全盘宝石", amount: 1, target: false },
+    rainbow_burst: { name: "彩虹风暴", desc: "随机两色全清并引爆", amount: 1, target: false },
   };
 
   const GEM_ICON_BY_COLOR = {
@@ -81,6 +83,7 @@
   const bestScoreEl = document.getElementById("bestScore");
   const momentumBarEl = document.getElementById("momentumBar");
   const feverTurnsEl = document.getElementById("feverTurns");
+  const bossMeterEl = document.getElementById("bossMeter");
   const bossBarEl = document.getElementById("bossBar");
   const bossSkillHintEl = document.getElementById("bossSkillHint");
   const modeTextEl = document.getElementById("modeText");
@@ -121,7 +124,7 @@
       movesLeft: 0,
       board: [],
       mode: { type: "normal", item: null },
-      items: { hammer: 2, row: 0, cross: 0, color: 0, shuffle: 1 },
+      items: { hammer: 2, row: 0, cross: 0, color: 0, shuffle: 1, screen_wipe: 0, rainbow_burst: 0 },
       modifier: null,
       modGlass: 0,
       taxColor: null,
@@ -136,7 +139,7 @@
         blast_core: false,
         glass_breaker: false,
       },
-      boss: { charge: 0, max: 7, hint: "待机", elite: false },
+      boss: { charge: 0, max: 7, hint: "待机", elite: false, phase: "charging", casting: false },
       eventCurseFloors: 0,
       nextFloorMovePenalty: 0,
       nextFloorMoveBonus: 0,
@@ -147,9 +150,11 @@
 
   function defaultCodex() {
     return {
-      itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0 },
+      itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0, screen_wipe: 0, rainbow_burst: 0 },
       specialTrigger: { line_h: 0, line_v: 0, bomb: 0, rainbow: 0 },
       bossSeen: { glass_storm: 0, hex_lock: 0, color_shift: 0 },
+      skillUse: { screen_wipe: 0, rainbow_burst: 0 },
+      maxSingleClear: 0,
       maxChain: 0,
       runs: 0,
     };
@@ -169,6 +174,7 @@
           itemUse: { ...defaultCodex().itemUse, ...((parsed.codex || {}).itemUse || {}) },
           specialTrigger: { ...defaultCodex().specialTrigger, ...((parsed.codex || {}).specialTrigger || {}) },
           bossSeen: { ...defaultCodex().bossSeen, ...((parsed.codex || {}).bossSeen || {}) },
+          skillUse: { ...defaultCodex().skillUse, ...((parsed.codex || {}).skillUse || {}) },
         },
       };
     } catch {
@@ -227,6 +233,9 @@
       ["Boss: Glass Storm", c.bossSeen.glass_storm],
       ["Boss: Hex Lock", c.bossSeen.hex_lock],
       ["Boss: Color Shift", c.bossSeen.color_shift],
+      ["技能：清屏脉冲", c.skillUse.screen_wipe],
+      ["技能：彩虹风暴", c.skillUse.rainbow_burst],
+      ["单次最高清除", c.maxSingleClear],
     ];
 
     for (const [k, v] of rows) {
@@ -294,6 +303,8 @@
     state.boss.charge = 0;
     state.boss.max = isElite ? 5 : 7;
     state.boss.hint = isElite ? "Elite Boss 就绪" : "Boss 待机";
+    state.boss.phase = "charging";
+    state.boss.casting = false;
 
     overlayEl.classList.add("hidden");
     clearAnim.clear();
@@ -333,7 +344,11 @@
       consumeMove();
       state.items[item] -= 1;
       recordCodex("itemUse", item);
-      useShuffle();
+      if (item === "shuffle") {
+        useShuffle();
+      } else {
+        useLegendSkill(item);
+      }
       return;
     }
 
@@ -384,7 +399,7 @@
       consumeMove();
       const comboTargets = specialComboTargets(a, b, ca.special, cb.special);
       await resolveAction(comboTargets, "combo");
-      consumePostAction();
+      await consumePostAction();
       return (inputLocked = false);
     }
 
@@ -400,7 +415,7 @@
 
     consumeMove();
     await resolveAction(analysis.clear, "normal", analysis.spawnMap, b);
-    consumePostAction();
+    await consumePostAction();
     inputLocked = false;
   }
 
@@ -417,7 +432,7 @@
 
     await playItemCastAnimation(item, idx);
     await resolveAction(targets, item);
-    consumePostAction();
+    await consumePostAction();
     inputLocked = false;
   }
 
@@ -452,15 +467,67 @@
     fallAnim.clear();
     resolveAutoBoard();
     renderAll();
-    consumePostAction();
+    await consumePostAction();
     inputLocked = false;
     notify("使用道具：洗牌", "ok");
   }
 
-  function consumePostAction() {
+  async function useLegendSkill(skill) {
+    if (skill === "screen_wipe") {
+      await playSkillShowcase("清屏脉冲", "screen");
+      const targets = collectIndices((x) => isGem(x));
+      recordCodex("skillUse", "screen_wipe");
+      meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, targets.length);
+      saveMeta();
+      await resolveAction(targets, "legend");
+      await consumePostAction();
+      inputLocked = false;
+      return;
+    }
+
+    if (skill === "rainbow_burst") {
+      await playSkillShowcase("彩虹风暴", "rainbow");
+      const first = randColor();
+      let second = randColor();
+      if (second === first) second = (second + 1) % COLORS;
+      const targets = collectIndices((x) => isGem(x) && (x.color === first || x.color === second));
+      const extra = collectIndices((x) => isGem(x) && x.special).slice(0, 10);
+      const merged = [...new Set([...targets, ...extra])];
+      recordCodex("skillUse", "rainbow_burst");
+      meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, merged.length);
+      saveMeta();
+      await resolveAction(merged, "legend");
+      await consumePostAction();
+      inputLocked = false;
+      return;
+    }
+
+    inputLocked = false;
+  }
+
+  async function playSkillShowcase(name, theme = "screen") {
+    const fx = document.createElement("div");
+    fx.className = `skill-showcase ${theme}`;
+    fx.textContent = name;
+    fxLayerEl.appendChild(fx);
+
+    boardWrapEl.classList.add("boss-cast");
+    shakeBoard(theme === "screen" ? 1.45 : 1.35);
+    await sleep(120);
+
+    for (let i = 0; i < 6; i += 1) {
+      spawnShockwaveFX(Math.floor(Math.random() * SIZE * SIZE), true);
+    }
+    await sleep(320);
+
+    fx.remove();
+    boardWrapEl.classList.remove("boss-cast");
+  }
+
+  async function consumePostAction() {
     decayLocks();
     if (state.feverTurns > 0) state.feverTurns -= 1;
-    tickBoss();
+    await tickBoss();
     checkFloorState();
     renderAll();
   }
@@ -472,43 +539,62 @@
     }
   }
 
-  function tickBoss() {
-    if (state.gameOver || state.victory) return;
+  async function tickBoss() {
+    if (state.gameOver || state.victory || state.boss.casting) return;
     const gain = state.boss.elite ? 2 : 1;
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
+    state.boss.phase = state.boss.charge >= state.boss.max ? "ready" : "charging";
     if (state.boss.charge < state.boss.max) return;
 
-    state.boss.charge = 0;
+    state.boss.casting = true;
+    state.boss.phase = "ready";
+    state.boss.hint = "Boss 技能蓄满！";
+    notify("Boss 即将释放技能！", "warn");
+    boardWrapEl.classList.add("boss-telegraph");
+    renderAll();
+    await sleep(360);
+
     const skill = randomPick(BOSS_SKILLS);
-    castBossSkill(skill);
+    await castBossSkill(skill);
+
+    boardWrapEl.classList.remove("boss-telegraph");
+    state.boss.charge = 0;
+    state.boss.phase = "charging";
+    state.boss.casting = false;
   }
 
-  function castBossSkill(skill) {
+  async function castBossSkill(skill) {
     recordCodex("bossSeen", skill);
+    boardWrapEl.classList.add("boss-cast");
 
     if (skill === "glass_storm") {
-      const amount = state.boss.elite ? 10 : 7;
+      const amount = state.boss.elite ? 14 : 9;
       placeGlass(amount);
       state.boss.hint = `Glass Storm：+${amount} 玻璃`;
       notify("Boss 释放 Glass Storm！", "warn");
       spawnFloatText("Boss: Glass Storm", Math.floor((SIZE * SIZE) / 2));
-      shakeBoard(1.2);
+      for (let i = 0; i < 8; i += 1) spawnShockwaveFX(Math.floor(Math.random() * SIZE * SIZE), true);
+      shakeBoard(1.45);
       renderAll();
+      await sleep(220);
+      boardWrapEl.classList.remove("boss-cast");
       return;
     }
 
     if (skill === "hex_lock") {
       const gems = collectIndices((x) => isGem(x) && x.lockedTurns <= 0);
       shuffle(gems);
-      const lockCount = Math.min(gems.length, state.boss.elite ? 4 : 3);
+      const lockCount = Math.min(gems.length, state.boss.elite ? 7 : 5);
       for (let i = 0; i < lockCount; i += 1) {
-        state.board[gems[i]].lockedTurns = 1;
+        state.board[gems[i]].lockedTurns = 2;
       }
       state.boss.hint = `Hex Lock：锁定 ${lockCount} 格`;
       notify("Boss 释放 Hex Lock！", "warn");
       spawnFloatText("Boss: Hex Lock", Math.floor((SIZE * SIZE) / 2));
-      shakeBoard(1.1);
+      shakeBoard(1.35);
       renderAll();
+      await sleep(180);
+      boardWrapEl.classList.remove("boss-cast");
       return;
     }
 
@@ -518,14 +604,17 @@
       if (to === from) to = (to + 1) % COLORS;
       const candidates = collectIndices((x) => isGem(x) && x.color === from && x.lockedTurns <= 0);
       shuffle(candidates);
-      const cap = state.boss.elite ? 14 : 10;
+      const cap = state.boss.elite ? 22 : 16;
       const count = Math.min(cap, candidates.length);
       for (let i = 0; i < count; i += 1) state.board[candidates[i]].color = to;
       state.boss.hint = "Color Shift：版面变色";
       notify("Boss 释放 Color Shift！", "warn");
       spawnFloatText("Boss: Color Shift", Math.floor((SIZE * SIZE) / 2));
-      shakeBoard(1.15);
+      for (let i = 0; i < 5; i += 1) spawnShockwaveFX(Math.floor(Math.random() * SIZE * SIZE), true);
+      shakeBoard(1.4);
       renderAll();
+      await sleep(200);
+      boardWrapEl.classList.remove("boss-cast");
     }
   }
 
@@ -560,6 +649,7 @@
       }
 
       let gain = calcGain(gemTargets.length, obstacles, chain, source, expandedInfo.chainCount, glassBroken);
+      if (source === "legend") gain = Math.floor(gain * 1.3);
       state.floorScore += gain;
       state.score += gain;
       updateMomentum(gemTargets.length, chain);
@@ -941,6 +1031,8 @@
       { title: "洗牌 +1", desc: "坏盘翻盘", apply: () => (state.items.shuffle += 1) },
       { title: "额外步数 +2", desc: "下层压力降低", apply: () => (state.nextFloorMoveBonus += 2) },
       { title: "Momentum 注入", desc: "进度 +40", apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
+      { title: "传奇技能：清屏脉冲", desc: "立刻获得 1 次全盘清屏", apply: () => (state.items.screen_wipe += 1), legend: true },
+      { title: "传奇技能：彩虹风暴", desc: "立刻获得 1 次双属性清场", apply: () => (state.items.rainbow_burst += 1), legend: true },
     ];
 
     const missingPerks = Object.entries(PERK_DEFS)
@@ -955,8 +1047,13 @@
     if (missingPerks.length > 0) result.push(randomPick(missingPerks));
 
     shuffle(pool);
-    while (result.length < 3 && pool.length > 0) result.push(pool.pop());
-    return result;
+    const nonLegend = pool.filter((x) => !x.legend);
+    const legend = pool.filter((x) => x.legend);
+
+    if (legend.length > 0 && Math.random() < 0.35) result.push(legend.pop());
+    while (result.length < 3 && nonLegend.length > 0) result.push(nonLegend.pop());
+    while (result.length < 3 && legend.length > 0) result.push(legend.pop());
+    return result.slice(0, 3);
   }
 
   function consumeMove() {
@@ -1206,6 +1303,7 @@
     renderHUD();
     renderItems();
     renderBoard();
+    boardEl.style.setProperty("--board-size", String(SIZE));
   }
 
   function renderHUD() {
@@ -1224,6 +1322,12 @@
     const bossPct = Math.max(0, Math.min(100, (state.boss.charge / state.boss.max) * 100));
     if (bossBarEl) bossBarEl.style.width = `${bossPct}%`;
     if (bossSkillHintEl) bossSkillHintEl.textContent = state.boss.hint;
+    if (bossMeterEl) {
+      bossMeterEl.classList.remove("charging", "ready", "casting");
+      if (state.boss.casting) bossMeterEl.classList.add("casting");
+      else if (state.boss.phase === "ready") bossMeterEl.classList.add("ready");
+      else bossMeterEl.classList.add("charging");
+    }
 
     if (state.mode.type === "normal") modeTextEl.textContent = "模式：普通交换";
     if (state.mode.type === "target_item") modeTextEl.textContent = `模式：道具选点（${ITEM_DEFS[state.mode.item].name}）`;
@@ -1231,7 +1335,7 @@
 
   function renderItems() {
     itemWrapEl.innerHTML = "";
-    const itemOrder = ["hammer", "row", "cross", "color", "shuffle"];
+    const itemOrder = ["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst"];
     for (const id of itemOrder) {
       const btn = document.createElement("button");
       btn.type = "button";
