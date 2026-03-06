@@ -17,6 +17,16 @@
     { target: 2100, moves: 14, obstacles: 5 },
   ];
 
+  const FLOOR_DIFFICULTY = [
+    { label: "热身", targetMul: 1, movesDelta: 0, obstacleBonus: 0, glassBonus: 0, bossGain: 1, bossMaxDelta: 0, pressure: 0 },
+    { label: "加压", targetMul: 1.08, movesDelta: 0, obstacleBonus: 1, glassBonus: 0, bossGain: 1, bossMaxDelta: -1, pressure: 0 },
+    { label: "危险", targetMul: 1.2, movesDelta: -1, obstacleBonus: 1, glassBonus: 1, bossGain: 2, bossMaxDelta: -1, pressure: 1 },
+    { label: "高压", targetMul: 1.33, movesDelta: -1, obstacleBonus: 2, glassBonus: 1, bossGain: 2, bossMaxDelta: -1, pressure: 1 },
+    { label: "噩梦", targetMul: 1.48, movesDelta: -2, obstacleBonus: 2, glassBonus: 2, bossGain: 2, bossMaxDelta: -2, pressure: 2 },
+    { label: "炼狱", targetMul: 1.64, movesDelta: -2, obstacleBonus: 3, glassBonus: 2, bossGain: 3, bossMaxDelta: -2, pressure: 2 },
+    { label: "终局", targetMul: 1.85, movesDelta: -3, obstacleBonus: 4, glassBonus: 3, bossGain: 3, bossMaxDelta: -2, pressure: 3 },
+  ];
+
   const ITEM_DEFS = {
     hammer: { name: "锤子", desc: "敲掉单格", amount: 1, target: true },
     row: { name: "横扫", desc: "清除一整行", amount: 1, target: true },
@@ -143,6 +153,7 @@
       eventCurseFloors: 0,
       nextFloorMovePenalty: 0,
       nextFloorMoveBonus: 0,
+      floorThreat: { label: "热身", bossGain: 1, pressure: 0 },
       gameOver: false,
       victory: false,
     };
@@ -265,8 +276,11 @@
     if (state.floor > TOTAL_FLOORS) return onVictory();
 
     const cfg = FLOOR_CONFIG[state.floor - 1];
-    state.targetScore = cfg.target;
-    state.movesLeft = cfg.moves;
+    const threat = getFloorThreat(state.floor);
+    state.floorThreat = { label: threat.label, bossGain: threat.bossGain, pressure: threat.pressure };
+
+    state.targetScore = Math.floor(cfg.target * threat.targetMul);
+    state.movesLeft = Math.max(8, cfg.moves + threat.movesDelta);
     state.floorScore = 0;
     state.mode = { type: "normal", item: null };
     state.modifier = randomPick(MODIFIERS);
@@ -287,7 +301,7 @@
 
     state.board = createBoard();
     resolveAutoBoard();
-    placeObstacles(cfg.obstacles);
+    placeObstacles(cfg.obstacles + threat.obstacleBonus);
     state.modifier.apply(state);
 
     if (state.eventCurseFloors > 0) {
@@ -296,13 +310,13 @@
       state.chainBonus += 0.1;
     }
 
-    if (state.modGlass > 0) placeGlass(state.modGlass);
+    if (state.modGlass > 0) placeGlass(state.modGlass + threat.glassBonus);
 
     const isElite = state.floor === 3 || state.floor === 5 || state.floor === 7;
     state.boss.elite = isElite;
     state.boss.charge = 0;
-    state.boss.max = isElite ? 5 : 7;
-    state.boss.hint = isElite ? "Elite Boss 就绪" : "Boss 待机";
+    state.boss.max = Math.max(3, (isElite ? 5 : 7) + threat.bossMaxDelta);
+    state.boss.hint = isElite ? `Elite Boss 就绪 · ${threat.label}` : `Boss 待机 · ${threat.label}`;
     state.boss.phase = "charging";
     state.boss.casting = false;
 
@@ -311,7 +325,23 @@
     fallAnim.clear();
 
     renderAll();
-    notify(`第 ${state.floor} 层开始：${state.modifier.name}。`, "ok");
+    showFloorIntro(threat);
+    notify(`第 ${state.floor} 层开始：${state.modifier.name} · 难度 ${threat.label}。`, "ok");
+  }
+
+  function getFloorThreat(floor) {
+    return FLOOR_DIFFICULTY[Math.max(0, Math.min(FLOOR_DIFFICULTY.length - 1, floor - 1))];
+  }
+
+  function showFloorIntro(threat) {
+    const fx = document.createElement("div");
+    fx.className = "floor-intro";
+    fx.innerHTML = `<strong>第 ${state.floor} 层</strong><small>${threat.label} · ${state.modifier.name}</small>`;
+    fxLayerEl.appendChild(fx);
+
+    spawnScreenPulse("floor", 620);
+    shakeBoard(1.08);
+    setTimeout(() => fx.remove(), 760);
   }
 
   function placeObstacles(count) {
@@ -542,7 +572,7 @@
 
   async function tickBoss() {
     if (state.gameOver || state.victory || state.boss.casting) return;
-    const gain = state.boss.elite ? 2 : 1;
+    const gain = state.floorThreat.bossGain + (state.boss.elite ? 1 : 0);
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
     state.boss.phase = state.boss.charge >= state.boss.max ? "ready" : "charging";
     if (state.boss.charge < state.boss.max) return;
@@ -624,13 +654,15 @@
   }
 
   function applyBossPressure(skill) {
+    const pressure = state.floorThreat.pressure || 0;
     if (skill === "glass_storm") {
-      state.movesLeft = Math.max(0, state.movesLeft - 1);
-      spawnFloatText("-1 Move", Math.floor((SIZE * SIZE) / 2));
+      const loss = 1 + Math.min(1, pressure);
+      state.movesLeft = Math.max(0, state.movesLeft - loss);
+      spawnFloatText(`-${loss} Move`, Math.floor((SIZE * SIZE) / 2));
       return;
     }
     if (skill === "color_shift") {
-      const loss = state.boss.elite ? 2 : 1;
+      const loss = (state.boss.elite ? 2 : 1) + pressure;
       state.movesLeft = Math.max(0, state.movesLeft - loss);
       spawnFloatText(`-${loss} Move`, Math.floor((SIZE * SIZE) / 2));
     }
