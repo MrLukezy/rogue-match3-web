@@ -41,6 +41,17 @@
     boss_breaker: { name: "Boss Breaker", desc: "Smash charge and shatter a wide section of the board", amount: 1, target: false },
   };
 
+  const GUIDE_DEFS = {
+    gem_basic: { title: "Element Gem", icon: "diamond", desc: "Match 3 or more gems of the same color to score and charge momentum." },
+    obstacle: { title: "Obstacle Block", icon: "construction", desc: "Cannot be swapped. Clear adjacent gems or use items to break it." },
+    glass: { title: "Glass Layer", icon: "glass_cup", desc: "The first clear removes the glass, the second clear removes the gem itself." },
+    locked: { title: "Locked Gem", icon: "lock", desc: "Locked gems stay in place and cannot be swapped until the lock expires." },
+    line_h: { title: "Row Gem", icon: "swap_horiz", desc: "Clears a full horizontal lane when triggered." },
+    line_v: { title: "Column Gem", icon: "swap_vert", desc: "Clears a full vertical lane when triggered." },
+    bomb: { title: "Bomb Gem", icon: "bomb", desc: "Explodes the surrounding 3x3 area." },
+    rainbow: { title: "Rainbow Gem", icon: "colorize", desc: "Detonates every gem of the chosen color when activated." },
+  };
+
   const GEM_ICON_BY_COLOR = {
     0: "local_fire_department",
     1: "water_drop",
@@ -109,7 +120,6 @@
 
   const floorEl = document.getElementById("floor");
   const modifierEl = document.getElementById("modifier");
-  const targetScoreEl = document.getElementById("targetScore");
   const movesLeftEl = document.getElementById("movesLeft");
   const floorScoreEl = document.getElementById("floorScore");
   const scoreEl = document.getElementById("score");
@@ -133,16 +143,24 @@
   const messageEl = document.getElementById("message");
   const restartBtn = document.getElementById("restartBtn");
   const codexBtn = document.getElementById("codexBtn");
+  const guideBtn = document.getElementById("guideBtn");
 
   const itemWrapEl = document.getElementById("itemWrap");
+  const guideListEl = document.getElementById("guideList");
   const overlayEl = document.getElementById("overlay");
   const overlayTitleEl = document.getElementById("overlayTitle");
   const overlayDescEl = document.getElementById("overlayDesc");
   const choiceWrapEl = document.getElementById("choiceWrap");
+  const overlayActionsEl = document.getElementById("overlayActions");
 
   const codexModalEl = document.getElementById("codexModal");
   const codexContentEl = document.getElementById("codexContent");
   const codexCloseBtn = document.getElementById("codexCloseBtn");
+  const guideModalEl = document.getElementById("guideModal");
+  const guideModalTitleEl = document.getElementById("guideModalTitle");
+  const guideModalDescEl = document.getElementById("guideModalDesc");
+  const guideModalContentEl = document.getElementById("guideModalContent");
+  const guideCloseBtn = document.getElementById("guideCloseBtn");
 
   let meta = loadMeta();
   let state = createInitialState();
@@ -152,6 +170,8 @@
   let fallAnim = new Set();
   let activeShards = 0;
   let boardSize = MIN_BOARD_SIZE;
+  let guideQueue = [];
+  let guideActive = false;
 
   bindEvents();
   startRun();
@@ -204,6 +224,7 @@
       maxSingleClear: 0,
       maxChain: 0,
       runs: 0,
+      guideSeen: {},
     };
   }
 
@@ -222,6 +243,7 @@
           specialTrigger: { ...defaultCodex().specialTrigger, ...((parsed.codex || {}).specialTrigger || {}) },
           bossSeen: { ...defaultCodex().bossSeen, ...((parsed.codex || {}).bossSeen || {}) },
           skillUse: { ...defaultCodex().skillUse, ...((parsed.codex || {}).skillUse || {}) },
+          guideSeen: { ...defaultCodex().guideSeen, ...((parsed.codex || {}).guideSeen || {}) },
         },
       };
     } catch {
@@ -249,10 +271,17 @@
     itemWrapEl.addEventListener("click", onItemClick);
 
     if (codexBtn) codexBtn.addEventListener("click", openCodex);
+    if (guideBtn) guideBtn.addEventListener("click", openGuidePanel);
     if (codexCloseBtn) codexCloseBtn.addEventListener("click", () => codexModalEl.classList.add("hidden"));
+    if (guideCloseBtn) guideCloseBtn.addEventListener("click", closeGuideModal);
     if (codexModalEl) {
       codexModalEl.addEventListener("click", (e) => {
         if (e.target === codexModalEl) codexModalEl.classList.add("hidden");
+      });
+    }
+    if (guideModalEl) {
+      guideModalEl.addEventListener("click", (e) => {
+        if (e.target === guideModalEl) closeGuideModal();
       });
     }
   }
@@ -260,6 +289,87 @@
   function openCodex() {
     renderCodex();
     codexModalEl.classList.remove("hidden");
+  }
+
+  function openGuidePanel(entryId = null) {
+    renderGuideList(entryId);
+    guideModalTitleEl.textContent = entryId && GUIDE_DEFS[entryId] ? GUIDE_DEFS[entryId].title : "Tile Guide";
+    guideModalDescEl.textContent = entryId && GUIDE_DEFS[entryId]
+      ? "This tile type has appeared for the first time in your current run."
+      : "Every tile type, board condition, and special gem is listed here.";
+    guideModalEl.classList.remove("hidden");
+  }
+
+  function closeGuideModal() {
+    guideModalEl.classList.add("hidden");
+    guideActive = false;
+    maybeShowNextGuide();
+  }
+
+  function renderGuideList(highlightId = null) {
+    const entries = Object.entries(GUIDE_DEFS);
+    guideListEl.innerHTML = "";
+    guideModalContentEl.innerHTML = "";
+
+    for (const [id, def] of entries) {
+      const compact = document.createElement("div");
+      compact.className = `guide-item${highlightId === id ? " highlighted" : ""}`;
+      compact.innerHTML = `<span class="material-symbols-outlined">${def.icon}</span><div><strong>${def.title}</strong><small>${def.desc}</small></div>`;
+      compact.addEventListener("click", () => openGuidePanel(id));
+      guideListEl.appendChild(compact);
+
+      const detail = compact.cloneNode(true);
+      detail.className = `guide-item modal-item${highlightId === id ? " highlighted" : ""}`;
+      detail.addEventListener("click", () => {});
+      guideModalContentEl.appendChild(detail);
+    }
+  }
+
+  function queueGuideIfNew(id) {
+    if (!GUIDE_DEFS[id]) return;
+    if (meta.codex.guideSeen[id]) return;
+    meta.codex.guideSeen[id] = 1;
+    saveMeta();
+    guideQueue.push(id);
+  }
+
+  function scanGuideDiscoveries() {
+    let hasGlass = false;
+    let hasLocked = false;
+    let hasObstacle = false;
+    const specials = new Set();
+
+    for (const cell of state.board) {
+      if (isObstacle(cell)) hasObstacle = true;
+      if (!isGem(cell)) continue;
+      if (cell.glass) hasGlass = true;
+      if (cell.lockedTurns > 0) hasLocked = true;
+      if (cell.special) specials.add(cell.special);
+    }
+
+    if (hasObstacle) queueGuideIfNew("obstacle");
+    if (hasGlass) queueGuideIfNew("glass");
+    if (hasLocked) queueGuideIfNew("locked");
+    if (state.floor === 1) queueGuideIfNew("gem_basic");
+    for (const special of specials) queueGuideIfNew(special);
+    maybeShowNextGuide();
+  }
+
+  function maybeShowNextGuide() {
+    if (guideActive || overlayEl.classList.contains("hidden") === false) return;
+    const next = guideQueue.shift();
+    if (!next) return;
+    guideActive = true;
+    openGuidePanel(next);
+  }
+
+  function bindOverlayActions() {
+    const buttons = overlayActionsEl.querySelectorAll("[data-action]");
+    for (const btn of buttons) {
+      btn.addEventListener("click", () => {
+        if (btn.dataset.action === "restart-run") startRun();
+      });
+    }
   }
 
   function renderCodex() {
@@ -301,8 +411,11 @@
     inputLocked = false;
     clearAnim = new Set();
     fallAnim = new Set();
+    guideQueue = [];
+    guideActive = false;
     overlayEl.classList.add("hidden");
     codexModalEl.classList.add("hidden");
+    guideModalEl.classList.add("hidden");
     meta.codex.runs += 1;
     saveMeta();
     startFloor(1);
@@ -365,12 +478,14 @@
     state.boss.casting = false;
 
     overlayEl.classList.add("hidden");
+    if (overlayActionsEl) overlayActionsEl.innerHTML = "";
     clearAnim.clear();
     fallAnim.clear();
 
     renderAll();
     showFloorIntro(threat);
     notify(`Floor ${state.floor} begins: ${state.modifier.name} - ${threat.label}.`, "ok");
+    scanGuideDiscoveries();
   }
 
   function getFloorThreat(floor) {
@@ -639,6 +754,7 @@
     await tickBoss();
     checkFloorState();
     renderAll();
+    scanGuideDiscoveries();
   }
 
   function decayLocks() {
@@ -1069,6 +1185,8 @@
     overlayTitleEl.textContent = "Victory!";
     overlayDescEl.textContent = `You cleared all ${TOTAL_FLOORS} floors with a final score of ${state.score}.`;
     choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = `<button type="button" class="btn danger overlay-btn" data-action="restart-run">Start New Run</button>`;
+    bindOverlayActions();
     overlayEl.classList.remove("hidden");
   }
 
@@ -1079,6 +1197,8 @@
     overlayTitleEl.textContent = "Run Failed";
     overlayDescEl.textContent = `Floor ${state.floor} ended below the target score. Final score: ${state.score}.`;
     choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = `<button type="button" class="btn danger overlay-btn" data-action="restart-run">Restart Now</button>`;
+    bindOverlayActions();
     overlayEl.classList.remove("hidden");
   }
 
@@ -1086,6 +1206,7 @@
     overlayTitleEl.textContent = `Event Node (after Floor ${state.floor})`;
     overlayDescEl.textContent = "Choose one route to shape the next floor.";
     choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = "";
 
     const events = [
       {
@@ -1138,6 +1259,7 @@
     overlayTitleEl.textContent = `Floor ${state.floor} Cleared`;
     overlayDescEl.textContent = "Choose one reward: item, system boost, or build perk.";
     choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = "";
 
     for (const reward of choices) {
       const btn = document.createElement("button");
@@ -1443,6 +1565,7 @@
   function renderAll() {
     renderHUD();
     renderItems();
+    renderGuideList();
     renderBoard();
     boardEl.style.setProperty("--board-size", String(boardSize));
   }
@@ -1450,7 +1573,6 @@
   function renderHUD() {
     floorEl.textContent = `${state.floor}/${TOTAL_FLOORS}`;
     modifierEl.textContent = state.modifier ? state.modifier.name : "-";
-    targetScoreEl.textContent = String(state.targetScore);
     if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.targetScore);
     movesLeftEl.textContent = String(state.movesLeft);
     floorScoreEl.textContent = String(state.floorScore);

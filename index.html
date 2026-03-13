@@ -22,7 +22,6 @@
           </div>
           <div class="row"><span>Floor</span><strong id="floor">1/7</strong></div>
           <div class="row"><span>Modifier</span><strong id="modifier">-</strong></div>
-          <div class="row"><span>Target Score</span><strong id="targetScore">0</strong></div>
           <div class="row"><span>Floor Score</span><strong id="floorScore">0</strong></div>
           <div class="row"><span>Best Floor</span><strong id="bestFloor">0</strong></div>
           <div class="row"><span>Best Score</span><strong id="bestScore">0</strong></div>
@@ -38,6 +37,14 @@
           <div id="itemWrap" class="btn-grid"></div>
         </section>
 
+        <section class="glossary-panel">
+          <div class="section-head">
+            <h2>Tile Guide</h2>
+            <button id="guideBtn" class="mini-btn" type="button">Open Guide</button>
+          </div>
+          <div id="guideList" class="guide-list"></div>
+        </section>
+
         <div class="actions-row">
           <button id="restartBtn" class="btn danger">Restart Run</button>
           <button id="codexBtn" class="btn">Codex</button>
@@ -48,13 +55,13 @@
 
       <main class="board-wrap" id="boardWrap">
         <div class="board-topbar">
-          <div class="board-chip">
-            <span>Target</span>
-            <strong id="boardTargetScore">0</strong>
-          </div>
           <div class="score-banner">
             <span>Total Score</span>
             <strong id="score">0</strong>
+          </div>
+          <div class="board-chip target-chip">
+            <span>Target</span>
+            <strong id="boardTargetScore">0</strong>
           </div>
           <div class="board-chip accent">
             <span>Floor Score</span>
@@ -93,6 +100,21 @@
               <strong id="bossPattern">Storm / Lock / Shift</strong>
             </div>
           </div>
+          <div class="boss-skillbook">
+            <h3>Boss Attacks</h3>
+            <div class="boss-skill-entry">
+              <strong>Glass Storm</strong>
+              <small>Seeds fresh glass across the board and can cut your move budget.</small>
+            </div>
+            <div class="boss-skill-entry">
+              <strong>Hex Lock</strong>
+              <small>Locks active gems so they cannot be swapped until the lock fades.</small>
+            </div>
+            <div class="boss-skill-entry">
+              <strong>Color Shift</strong>
+              <small>Recolors large parts of the board and spikes pressure on elite floors.</small>
+            </div>
+          </div>
           <p class="boss-copy">Watch the charge on the right side and plan around incoming boss skills.</p>
         </div>
       </aside>
@@ -103,6 +125,18 @@
         <h3 id="overlayTitle">Choose a reward</h3>
         <p id="overlayDesc">Clear floors to gain items, perks, and run-defining boosts.</p>
         <div id="choiceWrap" class="choices"></div>
+        <div id="overlayActions" class="overlay-actions"></div>
+      </div>
+    </div>
+
+    <div id="guideModal" class="overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal guide-modal">
+        <h3 id="guideModalTitle">Tile Guide</h3>
+        <p id="guideModalDesc">Every tile type and board condition is listed here.</p>
+        <div id="guideModalContent" class="guide-modal-content"></div>
+        <div class="actions-row" style="margin-top:10px;">
+          <button id="guideCloseBtn" class="btn">Close</button>
+        </div>
       </div>
     </div>
 
