@@ -188,7 +188,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 
 .guide-item {
   display: grid;
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: 52px 1fr;
   gap: 10px;
   padding: 10px;
   border-radius: 14px;
@@ -202,9 +202,31 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   box-shadow: 0 0 0 1px rgba(244, 207, 117, 0.2) inset;
 }
 
-.guide-item .material-symbols-outlined {
-  font-size: 20px;
-  color: #d3f3ec;
+.guide-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guide-preview-frame {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 165, 160, 0.22);
+  background: linear-gradient(180deg, #102028 0%, #162a31 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.guide-preview-frame .gem,
+.guide-preview-frame .obstacle {
+  width: 32px;
+  height: 32px;
+}
+
+.guide-preview-frame .gem-icon {
+  font-size: 18px;
 }
 
 .guide-item strong,

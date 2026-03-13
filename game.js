@@ -42,14 +42,14 @@
   };
 
   const GUIDE_DEFS = {
-    gem_basic: { title: "Element Gem", icon: "diamond", desc: "Match 3 or more gems of the same color to score and charge momentum." },
-    obstacle: { title: "Obstacle Block", icon: "construction", desc: "Cannot be swapped. Clear adjacent gems or use items to break it." },
-    glass: { title: "Glass Layer", icon: "glass_cup", desc: "The first clear removes the glass, the second clear removes the gem itself." },
-    locked: { title: "Locked Gem", icon: "lock", desc: "Locked gems stay in place and cannot be swapped until the lock expires." },
-    line_h: { title: "Row Gem", icon: "swap_horiz", desc: "Clears a full horizontal lane when triggered." },
-    line_v: { title: "Column Gem", icon: "swap_vert", desc: "Clears a full vertical lane when triggered." },
-    bomb: { title: "Bomb Gem", icon: "bomb", desc: "Explodes the surrounding 3x3 area." },
-    rainbow: { title: "Rainbow Gem", icon: "colorize", desc: "Detonates every gem of the chosen color when activated." },
+    gem_basic: { title: "Element Gem", desc: "Match 3 or more gems of the same color to score and charge momentum.", preview: { kind: "gem", color: 0 } },
+    obstacle: { title: "Obstacle Block", desc: "Cannot be swapped. Clear adjacent gems or use items to break it.", preview: { kind: "obstacle" } },
+    glass: { title: "Glass Layer", desc: "The first clear removes the glass, the second clear removes the gem itself.", preview: { kind: "gem", color: 1, glass: true } },
+    locked: { title: "Locked Gem", desc: "Locked gems stay in place and cannot be swapped until the lock expires.", preview: { kind: "gem", color: 2, locked: true } },
+    line_h: { title: "Row Gem", desc: "Clears a full horizontal lane when triggered.", preview: { kind: "gem", color: 3, special: "line_h" } },
+    line_v: { title: "Column Gem", desc: "Clears a full vertical lane when triggered.", preview: { kind: "gem", color: 3, special: "line_v" } },
+    bomb: { title: "Bomb Gem", desc: "Explodes the surrounding 3x3 area.", preview: { kind: "gem", color: 5, special: "bomb" } },
+    rainbow: { title: "Rainbow Gem", desc: "Detonates every gem of the chosen color when activated.", preview: { kind: "gem", color: 4, special: "rainbow" } },
   };
 
   const GEM_ICON_BY_COLOR = {
@@ -312,17 +312,56 @@
     guideModalContentEl.innerHTML = "";
 
     for (const [id, def] of entries) {
-      const compact = document.createElement("div");
-      compact.className = `guide-item${highlightId === id ? " highlighted" : ""}`;
-      compact.innerHTML = `<span class="material-symbols-outlined">${def.icon}</span><div><strong>${def.title}</strong><small>${def.desc}</small></div>`;
+      const compact = createGuideEntry(id, def, highlightId === id);
       compact.addEventListener("click", () => openGuidePanel(id));
       guideListEl.appendChild(compact);
 
-      const detail = compact.cloneNode(true);
-      detail.className = `guide-item modal-item${highlightId === id ? " highlighted" : ""}`;
+      const detail = createGuideEntry(id, def, highlightId === id, true);
       detail.addEventListener("click", () => {});
       guideModalContentEl.appendChild(detail);
     }
+  }
+
+  function createGuideEntry(id, def, highlighted = false, detailed = false) {
+    const entry = document.createElement("div");
+    entry.className = `guide-item${detailed ? " modal-item" : ""}${highlighted ? " highlighted" : ""}`;
+
+    const preview = document.createElement("div");
+    preview.className = "guide-preview";
+    preview.appendChild(createGuidePreview(def.preview));
+
+    const text = document.createElement("div");
+    text.innerHTML = `<strong>${def.title}</strong><small>${def.desc}</small>`;
+
+    entry.appendChild(preview);
+    entry.appendChild(text);
+    entry.dataset.guide = id;
+    return entry;
+  }
+
+  function createGuidePreview(preview) {
+    const frame = document.createElement("div");
+    frame.className = "guide-preview-frame";
+
+    if (!preview || preview.kind === "obstacle") {
+      const obstacle = document.createElement("div");
+      obstacle.className = "obstacle";
+      frame.appendChild(obstacle);
+      return frame;
+    }
+
+    const gem = document.createElement("div");
+    gem.className = `gem g-${preview.color ?? 0}`;
+    if (preview.special) gem.classList.add(`sp-${preview.special}`);
+    if (preview.glass) gem.classList.add("glass");
+    if (preview.locked) gem.classList.add("locked");
+
+    const icon = document.createElement("span");
+    icon.className = "material-symbols-outlined gem-icon";
+    icon.textContent = GEM_ICON_BY_COLOR[preview.color ?? 0] || "diamond";
+    gem.appendChild(icon);
+    frame.appendChild(gem);
+    return frame;
   }
 
   function queueGuideIfNew(id) {
