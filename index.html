@@ -11,65 +11,108 @@
   </head>
   <body>
     <div class="app">
-      <aside class="panel">
+      <aside class="panel left-panel">
         <h1>Rogue Match-3</h1>
-        <p class="sub">随机道具肉鸽 · 纯三消爬塔</p>
+        <p class="sub">Roguelite relic drafting meets fast match-3 tower climbing.</p>
 
         <section class="stats">
-          <div class="row"><span>楼层</span><strong id="floor">1/7</strong></div>
-          <div class="row"><span>词缀</span><strong id="modifier">-</strong></div>
-          <div class="row"><span>目标分数</span><strong id="targetScore">0</strong></div>
-          <div class="row"><span>剩余步数</span><strong id="movesLeft">0</strong></div>
-          <div class="row"><span>当前层得分</span><strong id="floorScore">0</strong></div>
-          <div class="row"><span>总分</span><strong id="score">0</strong></div>
-          <div class="row"><span>历史最高层</span><strong id="bestFloor">0</strong></div>
-          <div class="row"><span>历史最高分</span><strong id="bestScore">0</strong></div>
+          <div class="hero-stat">
+            <span>Moves Left</span>
+            <strong id="movesLeft">0</strong>
+          </div>
+          <div class="row"><span>Floor</span><strong id="floor">1/7</strong></div>
+          <div class="row"><span>Modifier</span><strong id="modifier">-</strong></div>
+          <div class="row"><span>Target Score</span><strong id="targetScore">0</strong></div>
+          <div class="row"><span>Floor Score</span><strong id="floorScore">0</strong></div>
+          <div class="row"><span>Best Floor</span><strong id="bestFloor">0</strong></div>
+          <div class="row"><span>Best Score</span><strong id="bestScore">0</strong></div>
           <div class="momentum">
             <span>Momentum</span>
             <div class="bar"><i id="momentumBar"></i></div>
             <strong id="feverTurns">Fever 0</strong>
           </div>
-          <div id="bossMeter" class="momentum boss">
-            <span>Boss Charge</span>
-            <div class="bar"><i id="bossBar"></i></div>
-            <strong id="bossSkillHint">-</strong>
-          </div>
         </section>
 
         <section class="toolbox">
-          <h2>道具</h2>
+          <h2>Items</h2>
           <div id="itemWrap" class="btn-grid"></div>
         </section>
 
         <div class="actions-row">
-          <button id="restartBtn" class="btn danger">重新开局</button>
-          <button id="codexBtn" class="btn">图鉴</button>
+          <button id="restartBtn" class="btn danger">Restart Run</button>
+          <button id="codexBtn" class="btn">Codex</button>
         </div>
-        <div id="modeText" class="mode">模式：普通交换</div>
-        <div id="message" class="message">交换相邻宝石，形成三消并击败敌人。</div>
+        <div id="modeText" class="mode">Mode: Standard swap</div>
+        <div id="message" class="message">Swap neighboring gems, create matches, and outpace the boss.</div>
       </aside>
 
       <main class="board-wrap" id="boardWrap">
+        <div class="board-topbar">
+          <div class="board-chip">
+            <span>Target</span>
+            <strong id="boardTargetScore">0</strong>
+          </div>
+          <div class="score-banner">
+            <span>Total Score</span>
+            <strong id="score">0</strong>
+          </div>
+          <div class="board-chip accent">
+            <span>Floor Score</span>
+            <strong id="boardFloorScore">0</strong>
+          </div>
+        </div>
         <div id="board" class="board" aria-label="match3 board"></div>
         <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
       </main>
+
+      <aside class="panel boss-panel">
+        <div class="boss-card">
+          <p class="eyebrow">Boss Pressure</p>
+          <h2>Encounter Gauge</h2>
+          <div class="boss-crest">
+            <div class="boss-sigil">
+              <span class="material-symbols-outlined">skull</span>
+            </div>
+            <div>
+              <strong id="bossTitle">Warden of the Deep</strong>
+              <small id="bossState">Studying your board...</small>
+            </div>
+          </div>
+          <div id="bossMeter" class="momentum boss">
+            <span>Charge</span>
+            <div class="bar"><i id="bossBar"></i></div>
+            <strong id="bossSkillHint">-</strong>
+          </div>
+          <div class="boss-mini-grid">
+            <div class="boss-mini-card">
+              <span>Threat</span>
+              <strong id="bossThreat">Low</strong>
+            </div>
+            <div class="boss-mini-card">
+              <span>Pattern</span>
+              <strong id="bossPattern">Storm / Lock / Shift</strong>
+            </div>
+          </div>
+          <p class="boss-copy">Watch the charge on the right side and plan around incoming boss skills.</p>
+        </div>
+      </aside>
     </div>
 
     <div id="overlay" class="overlay hidden" role="dialog" aria-modal="true">
       <div class="modal">
-        <h3 id="overlayTitle">选择道具</h3>
-        <p id="overlayDesc">过关后获得随机三消道具或系统强化。</p>
+        <h3 id="overlayTitle">Choose a reward</h3>
+        <p id="overlayDesc">Clear floors to gain items, perks, and run-defining boosts.</p>
         <div id="choiceWrap" class="choices"></div>
       </div>
     </div>
 
     <div id="codexModal" class="overlay hidden" role="dialog" aria-modal="true">
       <div class="modal">
-        <h3>图鉴统计</h3>
-        <p>记录你在所有对局中的触发与使用数据。</p>
+        <h3>Codex Stats</h3>
+        <p>Track your triggers, item usage, and best run moments across all sessions.</p>
         <div id="codexContent" class="codex"></div>
         <div class="actions-row" style="margin-top:10px;">
-          <button id="codexCloseBtn" class="btn">关闭</button>
+          <button id="codexCloseBtn" class="btn">Close</button>
         </div>
       </div>
     </div>

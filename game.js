@@ -1,5 +1,7 @@
 (() => {
-  const SIZE = 10;
+  const MIN_BOARD_SIZE = 6;
+  const MAX_BOARD_SIZE = 15;
+  const BOARD_SIZE_BY_FLOOR = [6, 8, 10, 11, 13, 14, 15];
   const COLORS = 6;
   const TOTAL_FLOORS = 7;
   const META_KEY = "rogue_match3_meta_v5";
@@ -18,23 +20,25 @@
   ];
 
   const FLOOR_DIFFICULTY = [
-    { label: "热身", targetMul: 1, movesDelta: 0, obstacleBonus: 0, glassBonus: 0, bossGain: 1, bossMaxDelta: 0, pressure: 0 },
-    { label: "加压", targetMul: 1.08, movesDelta: 0, obstacleBonus: 1, glassBonus: 0, bossGain: 1, bossMaxDelta: -1, pressure: 0 },
-    { label: "危险", targetMul: 1.2, movesDelta: -1, obstacleBonus: 1, glassBonus: 1, bossGain: 2, bossMaxDelta: -1, pressure: 1 },
-    { label: "高压", targetMul: 1.33, movesDelta: -1, obstacleBonus: 2, glassBonus: 1, bossGain: 2, bossMaxDelta: -1, pressure: 1 },
-    { label: "噩梦", targetMul: 1.48, movesDelta: -2, obstacleBonus: 2, glassBonus: 2, bossGain: 2, bossMaxDelta: -2, pressure: 2 },
-    { label: "炼狱", targetMul: 1.64, movesDelta: -2, obstacleBonus: 3, glassBonus: 2, bossGain: 3, bossMaxDelta: -2, pressure: 2 },
-    { label: "终局", targetMul: 1.85, movesDelta: -3, obstacleBonus: 4, glassBonus: 3, bossGain: 3, bossMaxDelta: -2, pressure: 3 },
+    { label: "Warm-Up", targetMul: 1, movesDelta: 0, obstacleBonus: 0, glassBonus: 0, bossGain: 1, bossMaxDelta: 0, pressure: 0 },
+    { label: "Pressure", targetMul: 1.08, movesDelta: 0, obstacleBonus: 1, glassBonus: 0, bossGain: 1, bossMaxDelta: -1, pressure: 0 },
+    { label: "Danger", targetMul: 1.2, movesDelta: -1, obstacleBonus: 1, glassBonus: 1, bossGain: 2, bossMaxDelta: -1, pressure: 1 },
+    { label: "High Risk", targetMul: 1.33, movesDelta: -1, obstacleBonus: 2, glassBonus: 1, bossGain: 2, bossMaxDelta: -1, pressure: 1 },
+    { label: "Nightmare", targetMul: 1.48, movesDelta: -2, obstacleBonus: 2, glassBonus: 2, bossGain: 2, bossMaxDelta: -2, pressure: 2 },
+    { label: "Inferno", targetMul: 1.64, movesDelta: -2, obstacleBonus: 3, glassBonus: 2, bossGain: 3, bossMaxDelta: -2, pressure: 2 },
+    { label: "Final Stand", targetMul: 1.85, movesDelta: -3, obstacleBonus: 4, glassBonus: 3, bossGain: 3, bossMaxDelta: -2, pressure: 3 },
   ];
 
   const ITEM_DEFS = {
-    hammer: { name: "锤子", desc: "敲掉单格", amount: 1, target: true },
-    row: { name: "横扫", desc: "清除一整行", amount: 1, target: true },
-    cross: { name: "十字", desc: "清除行+列", amount: 1, target: true },
-    color: { name: "染色炸弹", desc: "清除目标颜色", amount: 1, target: true },
-    shuffle: { name: "洗牌", desc: "重排宝石", amount: 1, target: false },
-    screen_wipe: { name: "清屏脉冲", desc: "瞬间清除全盘宝石", amount: 1, target: false },
-    rainbow_burst: { name: "彩虹风暴", desc: "随机两色全清并引爆", amount: 1, target: false },
+    hammer: { name: "Hammer", desc: "Break a single tile", amount: 1, target: true },
+    row: { name: "Row Sweep", desc: "Clear one full row", amount: 1, target: true },
+    cross: { name: "Cross Burst", desc: "Clear row and column", amount: 1, target: true },
+    color: { name: "Color Bomb", desc: "Clear the chosen color", amount: 1, target: true },
+    shuffle: { name: "Shuffle", desc: "Re-roll the board", amount: 1, target: false },
+    screen_wipe: { name: "Screen Pulse", desc: "Instantly clear every gem", amount: 1, target: false },
+    rainbow_burst: { name: "Rainbow Burst", desc: "Clear two random colors and trigger specials", amount: 1, target: false },
+    time_freeze: { name: "Time Freeze", desc: "Gain moves, unlock gems, and stabilize momentum", amount: 1, target: false },
+    boss_breaker: { name: "Boss Breaker", desc: "Smash charge and shatter a wide section of the board", amount: 1, target: false },
   };
 
   const GEM_ICON_BY_COLOR = {
@@ -42,42 +46,62 @@
     1: "water_drop",
     2: "eco",
     3: "flash_on",
-    4: "auto_awesome",
-    5: "radioactive",
+    4: "stars",
+    5: "science",
   };
 
   const MODIFIERS = [
-    { id: "glass", name: "Glass", desc: "初始生成玻璃层", apply: (s) => (s.modGlass = 8) },
-    { id: "heavy", name: "Heavy", desc: "步数-2，连锁加成提高", apply: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 2); s.chainBonus += 0.2; } },
-    { id: "color_tax", name: "Color Tax", desc: "一种颜色分值降低", apply: (s) => { s.taxColor = randColor(); } },
-    { id: "lucky", name: "Lucky Drop", desc: "道具掉率提高", apply: (s) => { s.dropBoost += 0.12; } },
+    { id: "glass", name: "Glass", desc: "Start with extra glass layers", apply: (s) => (s.modGlass = 8) },
+    { id: "heavy", name: "Heavy", desc: "Lose 2 moves, gain stronger chains", apply: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 2); s.chainBonus += 0.2; } },
+    { id: "color_tax", name: "Color Tax", desc: "One color scores less", apply: (s) => { s.taxColor = randColor(); } },
+    { id: "lucky", name: "Lucky Drop", desc: "Item drop chance is higher", apply: (s) => { s.dropBoost += 0.12; } },
   ];
 
   const PERK_DEFS = {
     combo_forge: {
       title: "Combo Forge",
-      desc: "4连额外有概率升级为爆裂宝石",
+      desc: "4-matches can upgrade into bomb gems",
       apply: (s) => { s.perks.combo_forge = true; },
     },
     fever_loop: {
       title: "Fever Loop",
-      desc: "Fever 回合 +1",
+      desc: "Fever lasts +1 turn",
       apply: (s) => { s.perks.fever_loop = true; },
     },
     relic_magnet: {
       title: "Relic Magnet",
-      desc: "道具掉率提高",
+      desc: "Item drop chance is higher",
       apply: (s) => { s.perks.relic_magnet = true; },
     },
     blast_core: {
       title: "Blast Core",
-      desc: "爆炸/技能触发得分提高",
+      desc: "Specials and blasts score more",
       apply: (s) => { s.perks.blast_core = true; },
     },
     glass_breaker: {
       title: "Glass Breaker",
-      desc: "击碎玻璃时额外得分",
+      desc: "Breaking glass grants bonus points",
       apply: (s) => { s.perks.glass_breaker = true; },
+    },
+    overcharge: {
+      title: "Overcharge",
+      desc: "Each floor begins with bonus momentum",
+      apply: (s) => { s.perks.overcharge = true; },
+    },
+    pressure_valve: {
+      title: "Pressure Valve",
+      desc: "Boss pressure removes fewer moves",
+      apply: (s) => { s.perks.pressure_valve = true; },
+    },
+    arcane_stockpile: {
+      title: "Arcane Stockpile",
+      desc: "Item drops can include legendary skills",
+      apply: (s) => { s.perks.arcane_stockpile = true; },
+    },
+    score_bloom: {
+      title: "Score Bloom",
+      desc: "Every gem cleared grants bonus score",
+      apply: (s) => { s.perks.score_bloom = true; },
     },
   };
 
@@ -89,6 +113,8 @@
   const movesLeftEl = document.getElementById("movesLeft");
   const floorScoreEl = document.getElementById("floorScore");
   const scoreEl = document.getElementById("score");
+  const boardTargetScoreEl = document.getElementById("boardTargetScore");
+  const boardFloorScoreEl = document.getElementById("boardFloorScore");
   const bestFloorEl = document.getElementById("bestFloor");
   const bestScoreEl = document.getElementById("bestScore");
   const momentumBarEl = document.getElementById("momentumBar");
@@ -96,6 +122,10 @@
   const bossMeterEl = document.getElementById("bossMeter");
   const bossBarEl = document.getElementById("bossBar");
   const bossSkillHintEl = document.getElementById("bossSkillHint");
+  const bossTitleEl = document.getElementById("bossTitle");
+  const bossStateEl = document.getElementById("bossState");
+  const bossThreatEl = document.getElementById("bossThreat");
+  const bossPatternEl = document.getElementById("bossPattern");
   const modeTextEl = document.getElementById("modeText");
   const boardWrapEl = document.getElementById("boardWrap");
   const boardEl = document.getElementById("board");
@@ -121,6 +151,7 @@
   let clearAnim = new Set();
   let fallAnim = new Set();
   let activeShards = 0;
+  let boardSize = MIN_BOARD_SIZE;
 
   bindEvents();
   startRun();
@@ -132,9 +163,10 @@
       floorScore: 0,
       targetScore: 0,
       movesLeft: 0,
+      boardSize: MIN_BOARD_SIZE,
       board: [],
       mode: { type: "normal", item: null },
-      items: { hammer: 2, row: 0, cross: 0, color: 0, shuffle: 1, screen_wipe: 0, rainbow_burst: 0 },
+      items: { hammer: 2, row: 0, cross: 0, color: 0, shuffle: 1, screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
       modifier: null,
       modGlass: 0,
       taxColor: null,
@@ -148,12 +180,16 @@
         relic_magnet: false,
         blast_core: false,
         glass_breaker: false,
+        overcharge: false,
+        pressure_valve: false,
+        arcane_stockpile: false,
+        score_bloom: false,
       },
-      boss: { charge: 0, max: 7, hint: "待机", elite: false, phase: "charging", casting: false },
+      boss: { charge: 0, max: 7, hint: "Idle", elite: false, phase: "charging", casting: false },
       eventCurseFloors: 0,
       nextFloorMovePenalty: 0,
       nextFloorMoveBonus: 0,
-      floorThreat: { label: "热身", bossGain: 1, pressure: 0 },
+      floorThreat: { label: "Warm-Up", bossGain: 1, pressure: 0 },
       gameOver: false,
       victory: false,
     };
@@ -161,10 +197,10 @@
 
   function defaultCodex() {
     return {
-      itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0, screen_wipe: 0, rainbow_burst: 0 },
+      itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0, screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
       specialTrigger: { line_h: 0, line_v: 0, bomb: 0, rainbow: 0 },
       bossSeen: { glass_storm: 0, hex_lock: 0, color_shift: 0 },
-      skillUse: { screen_wipe: 0, rainbow_burst: 0 },
+      skillUse: { screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
       maxSingleClear: 0,
       maxChain: 0,
       runs: 0,
@@ -207,7 +243,7 @@
 
   function bindEvents() {
     restartBtn.addEventListener("click", () => {
-      if (window.confirm("确定重新开局吗？")) startRun();
+      if (window.confirm("Restart the run?")) startRun();
     });
     boardEl.addEventListener("click", onBoardClick);
     itemWrapEl.addEventListener("click", onItemClick);
@@ -231,22 +267,24 @@
     codexContentEl.innerHTML = "";
 
     const rows = [
-      ["总局数", c.runs],
-      ["最高连锁", c.maxChain],
-      ["锤子使用", c.itemUse.hammer],
-      ["横扫使用", c.itemUse.row],
-      ["十字使用", c.itemUse.cross],
-      ["染色炸弹使用", c.itemUse.color],
-      ["洗牌使用", c.itemUse.shuffle],
-      ["线消触发", c.specialTrigger.line_h + c.specialTrigger.line_v],
-      ["爆裂触发", c.specialTrigger.bomb],
-      ["彩虹触发", c.specialTrigger.rainbow],
+      ["Runs", c.runs],
+      ["Best Chain", c.maxChain],
+      ["Hammer Uses", c.itemUse.hammer],
+      ["Row Sweep Uses", c.itemUse.row],
+      ["Cross Burst Uses", c.itemUse.cross],
+      ["Color Bomb Uses", c.itemUse.color],
+      ["Shuffle Uses", c.itemUse.shuffle],
+      ["Line Triggers", c.specialTrigger.line_h + c.specialTrigger.line_v],
+      ["Bomb Triggers", c.specialTrigger.bomb],
+      ["Rainbow Triggers", c.specialTrigger.rainbow],
       ["Boss: Glass Storm", c.bossSeen.glass_storm],
       ["Boss: Hex Lock", c.bossSeen.hex_lock],
       ["Boss: Color Shift", c.bossSeen.color_shift],
-      ["技能：清屏脉冲", c.skillUse.screen_wipe],
-      ["技能：彩虹风暴", c.skillUse.rainbow_burst],
-      ["单次最高清除", c.maxSingleClear],
+      ["Screen Pulse Uses", c.skillUse.screen_wipe],
+      ["Rainbow Burst Uses", c.skillUse.rainbow_burst],
+      ["Time Freeze Uses", c.skillUse.time_freeze],
+      ["Boss Breaker Uses", c.skillUse.boss_breaker],
+      ["Best Single Clear", c.maxSingleClear],
     ];
 
     for (const [k, v] of rows) {
@@ -268,7 +306,7 @@
     meta.codex.runs += 1;
     saveMeta();
     startFloor(1);
-    notify("新的一局开始。", "ok");
+    notify("A new run begins.", "ok");
   }
 
   function startFloor(floor) {
@@ -277,6 +315,8 @@
 
     const cfg = FLOOR_CONFIG[state.floor - 1];
     const threat = getFloorThreat(state.floor);
+    boardSize = getBoardSizeForFloor(state.floor);
+    state.boardSize = boardSize;
     state.floorThreat = { label: threat.label, bossGain: threat.bossGain, pressure: threat.pressure };
 
     state.targetScore = Math.floor(cfg.target * threat.targetMul);
@@ -299,6 +339,10 @@
       state.nextFloorMoveBonus = 0;
     }
 
+    if (state.perks.overcharge) {
+      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 28);
+    }
+
     state.board = createBoard();
     resolveAutoBoard();
     placeObstacles(cfg.obstacles + threat.obstacleBonus);
@@ -316,7 +360,7 @@
     state.boss.elite = isElite;
     state.boss.charge = 0;
     state.boss.max = Math.max(3, (isElite ? 5 : 7) + threat.bossMaxDelta);
-    state.boss.hint = isElite ? `Elite Boss 就绪 · ${threat.label}` : `Boss 待机 · ${threat.label}`;
+    state.boss.hint = isElite ? `Elite boss ready - ${threat.label}` : `Boss idle - ${threat.label}`;
     state.boss.phase = "charging";
     state.boss.casting = false;
 
@@ -326,17 +370,22 @@
 
     renderAll();
     showFloorIntro(threat);
-    notify(`第 ${state.floor} 层开始：${state.modifier.name} · 难度 ${threat.label}。`, "ok");
+    notify(`Floor ${state.floor} begins: ${state.modifier.name} - ${threat.label}.`, "ok");
   }
 
   function getFloorThreat(floor) {
     return FLOOR_DIFFICULTY[Math.max(0, Math.min(FLOOR_DIFFICULTY.length - 1, floor - 1))];
   }
 
+  function getBoardSizeForFloor(floor) {
+    const size = BOARD_SIZE_BY_FLOOR[Math.max(0, Math.min(BOARD_SIZE_BY_FLOOR.length - 1, floor - 1))] || MIN_BOARD_SIZE;
+    return Math.max(MIN_BOARD_SIZE, Math.min(MAX_BOARD_SIZE, size));
+  }
+
   function showFloorIntro(threat) {
     const fx = document.createElement("div");
     fx.className = "floor-intro";
-    fx.innerHTML = `<strong>第 ${state.floor} 层</strong><small>${threat.label} · ${state.modifier.name}</small>`;
+    fx.innerHTML = `<strong>Floor ${state.floor}</strong><small>${threat.label} - ${state.modifier.name}</small>`;
     fxLayerEl.appendChild(fx);
 
     spawnScreenPulse("floor", 620);
@@ -371,7 +420,6 @@
 
     if (!ITEM_DEFS[item].target) {
       inputLocked = true;
-      consumeMove();
       state.items[item] -= 1;
       recordCodex("itemUse", item);
       if (item === "shuffle") {
@@ -418,8 +466,8 @@
   async function attemptSwap(a, b) {
     const ca = state.board[a];
     const cb = state.board[b];
-    if (!isGem(ca) || !isGem(cb)) return notify("障碍格不可交换。", "warn");
-    if (ca.lockedTurns > 0 || cb.lockedTurns > 0) return notify("该宝石被锁定，无法交换。", "warn");
+    if (!isGem(ca) || !isGem(cb)) return notify("Obstacle tiles cannot be swapped.", "warn");
+    if (ca.lockedTurns > 0 || cb.lockedTurns > 0) return notify("A locked gem cannot be swapped.", "warn");
 
     inputLocked = true;
     await playSwapAnimation(a, b);
@@ -440,7 +488,7 @@
       await playSwapAnimation(a, b);
       inputLocked = false;
       renderAll();
-      return notify("无效交换：未形成消除。", "warn");
+      return notify("Invalid swap: no match formed.", "warn");
     }
 
     consumeMove();
@@ -452,10 +500,9 @@
   async function useTargetItem(item, idx) {
     if (state.items[item] <= 0) return;
     const targets = getItemTargets(item, idx);
-    if (targets.length === 0) return notify("该道具在此处无法使用。", "warn");
+    if (targets.length === 0) return notify("That item cannot be used there.", "warn");
 
     inputLocked = true;
-    consumeMove();
     state.items[item] -= 1;
     state.mode = { type: "normal", item: null };
     recordCodex("itemUse", item);
@@ -499,12 +546,12 @@
     renderAll();
     await consumePostAction();
     inputLocked = false;
-    notify("使用道具：洗牌", "ok");
+    notify("Item used: Shuffle", "ok");
   }
 
   async function useLegendSkill(skill) {
     if (skill === "screen_wipe") {
-      await playSkillShowcase("清屏脉冲", "screen");
+      await playSkillShowcase("Screen Pulse", "screen");
       const targets = collectIndices((x) => isGem(x));
       recordCodex("skillUse", "screen_wipe");
       meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, targets.length);
@@ -516,7 +563,7 @@
     }
 
     if (skill === "rainbow_burst") {
-      await playSkillShowcase("彩虹风暴", "rainbow");
+      await playSkillShowcase("Rainbow Burst", "rainbow");
       const first = randColor();
       let second = randColor();
       if (second === first) second = (second + 1) % COLORS;
@@ -527,6 +574,37 @@
       meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, merged.length);
       saveMeta();
       await resolveAction(merged, "legend");
+      await consumePostAction();
+      inputLocked = false;
+      return;
+    }
+
+    if (skill === "time_freeze") {
+      await playSkillShowcase("Time Freeze", "screen");
+      state.movesLeft += 3;
+      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 22);
+      for (let i = 0; i < state.board.length; i += 1) {
+        if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
+      }
+      recordCodex("skillUse", "time_freeze");
+      notify("Time Freeze grants +3 moves and removes all locks.", "ok");
+      renderAll();
+      await consumePostAction();
+      inputLocked = false;
+      return;
+    }
+
+    if (skill === "boss_breaker") {
+      await playSkillShowcase("Boss Breaker", "rainbow");
+      const targets = collectIndices((x) => isGem(x));
+      shuffle(targets);
+      const chosen = targets.slice(0, Math.min(14, targets.length));
+      state.boss.charge = Math.max(0, state.boss.charge - Math.ceil(state.boss.max * 0.6));
+      state.boss.hint = "Boss Breaker: charge shattered";
+      recordCodex("skillUse", "boss_breaker");
+      meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, chosen.length);
+      saveMeta();
+      await resolveAction(chosen, "legend");
       await consumePostAction();
       inputLocked = false;
       return;
@@ -547,7 +625,7 @@
     await sleep(120);
 
     for (let i = 0; i < 6; i += 1) {
-      spawnShockwaveFX(Math.floor(Math.random() * SIZE * SIZE), true);
+      spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
     }
     await sleep(320);
 
@@ -579,8 +657,8 @@
 
     state.boss.casting = true;
     state.boss.phase = "ready";
-    state.boss.hint = "Boss 技能蓄满！";
-    notify("Boss 即将释放技能！", "warn");
+    state.boss.hint = "Boss skill fully charged!";
+    notify("Boss is about to cast!", "warn");
     boardWrapEl.classList.add("boss-telegraph");
     renderAll();
     await sleep(360);
@@ -602,10 +680,10 @@
     if (skill === "glass_storm") {
       const amount = state.boss.elite ? 14 : 9;
       placeGlass(amount);
-      state.boss.hint = `Glass Storm：+${amount} 玻璃`;
-      notify("Boss 释放 Glass Storm！", "warn");
-      spawnFloatText("Boss: Glass Storm", Math.floor((SIZE * SIZE) / 2));
-      for (let i = 0; i < 8; i += 1) spawnShockwaveFX(Math.floor(Math.random() * SIZE * SIZE), true);
+      state.boss.hint = `Glass Storm: +${amount} glass`;
+      notify("Boss casts Glass Storm!", "warn");
+      spawnFloatText("Boss: Glass Storm", Math.floor((boardSize * boardSize) / 2));
+      for (let i = 0; i < 8; i += 1) spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
       shakeBoard(1.45);
       applyBossPressure(skill);
       renderAll();
@@ -621,9 +699,9 @@
       for (let i = 0; i < lockCount; i += 1) {
         state.board[gems[i]].lockedTurns = 2;
       }
-      state.boss.hint = `Hex Lock：锁定 ${lockCount} 格`;
-      notify("Boss 释放 Hex Lock！", "warn");
-      spawnFloatText("Boss: Hex Lock", Math.floor((SIZE * SIZE) / 2));
+      state.boss.hint = `Hex Lock: ${lockCount} tiles locked`;
+      notify("Boss casts Hex Lock!", "warn");
+      spawnFloatText("Boss: Hex Lock", Math.floor((boardSize * boardSize) / 2));
       shakeBoard(1.35);
       applyBossPressure(skill);
       renderAll();
@@ -641,10 +719,10 @@
       const cap = state.boss.elite ? 22 : 16;
       const count = Math.min(cap, candidates.length);
       for (let i = 0; i < count; i += 1) state.board[candidates[i]].color = to;
-      state.boss.hint = "Color Shift：版面变色";
-      notify("Boss 释放 Color Shift！", "warn");
-      spawnFloatText("Boss: Color Shift", Math.floor((SIZE * SIZE) / 2));
-      for (let i = 0; i < 5; i += 1) spawnShockwaveFX(Math.floor(Math.random() * SIZE * SIZE), true);
+      state.boss.hint = "Color Shift: board recolored";
+      notify("Boss casts Color Shift!", "warn");
+      spawnFloatText("Boss: Color Shift", Math.floor((boardSize * boardSize) / 2));
+      for (let i = 0; i < 5; i += 1) spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
       shakeBoard(1.4);
       applyBossPressure(skill);
       renderAll();
@@ -656,15 +734,17 @@
   function applyBossPressure(skill) {
     const pressure = state.floorThreat.pressure || 0;
     if (skill === "glass_storm") {
-      const loss = 1 + Math.min(1, pressure);
+      const reduction = state.perks.pressure_valve ? 1 : 0;
+      const loss = Math.max(0, 1 + Math.min(1, pressure) - reduction);
       state.movesLeft = Math.max(0, state.movesLeft - loss);
-      spawnFloatText(`-${loss} Move`, Math.floor((SIZE * SIZE) / 2));
+      if (loss > 0) spawnFloatText(`-${loss} Move`, Math.floor((boardSize * boardSize) / 2));
       return;
     }
     if (skill === "color_shift") {
-      const loss = (state.boss.elite ? 2 : 1) + pressure;
+      const reduction = state.perks.pressure_valve ? 1 : 0;
+      const loss = Math.max(0, (state.boss.elite ? 2 : 1) + pressure - reduction);
       state.movesLeft = Math.max(0, state.movesLeft - loss);
-      spawnFloatText(`-${loss} Move`, Math.floor((SIZE * SIZE) / 2));
+      if (loss > 0) spawnFloatText(`-${loss} Move`, Math.floor((boardSize * boardSize) / 2));
     }
   }
 
@@ -791,27 +871,27 @@
 
   function findMatchGroups() {
     const groups = [];
-    for (let r = 0; r < SIZE; r += 1) {
+    for (let r = 0; r < boardSize; r += 1) {
       let c = 0;
-      while (c < SIZE) {
-        const idx = r * SIZE + c;
+      while (c < boardSize) {
+        const idx = r * boardSize + c;
         const cell = state.board[idx];
         if (!isGem(cell) || cell.special === "rainbow") { c += 1; continue; }
         let len = 1;
-        while (c + len < SIZE && sameColor(idx, r * SIZE + c + len)) len += 1;
+        while (c + len < boardSize && sameColor(idx, r * boardSize + c + len)) len += 1;
         if (len >= 3) groups.push({ dir: "h", len, indices: rangeIndices(r, c, len, "h") });
         c += len;
       }
     }
 
-    for (let c = 0; c < SIZE; c += 1) {
+    for (let c = 0; c < boardSize; c += 1) {
       let r = 0;
-      while (r < SIZE) {
-        const idx = r * SIZE + c;
+      while (r < boardSize) {
+        const idx = r * boardSize + c;
         const cell = state.board[idx];
         if (!isGem(cell) || cell.special === "rainbow") { r += 1; continue; }
         let len = 1;
-        while (r + len < SIZE && sameColor(idx, (r + len) * SIZE + c)) len += 1;
+        while (r + len < boardSize && sameColor(idx, (r + len) * boardSize + c)) len += 1;
         if (len >= 3) groups.push({ dir: "v", len, indices: rangeIndices(r, c, len, "v") });
         r += len;
       }
@@ -827,7 +907,7 @@
 
   function rangeIndices(r, c, len, dir) {
     const arr = [];
-    for (let k = 0; k < len; k += 1) arr.push(dir === "h" ? r * SIZE + (c + k) : (r + k) * SIZE + c);
+    for (let k = 0; k < len; k += 1) arr.push(dir === "h" ? r * boardSize + (c + k) : (r + k) * boardSize + c);
     return arr;
   }
 
@@ -868,7 +948,7 @@
     if (special === "line_v") return indicesInCol(c);
     if (special === "bomb") {
       const arr = [];
-      for (let rr = r - 1; rr <= r + 1; rr += 1) for (let cc = c - 1; cc <= c + 1; cc += 1) if (inside(rr, cc)) arr.push(rr * SIZE + cc);
+      for (let rr = r - 1; rr <= r + 1; rr += 1) for (let cc = c - 1; cc <= c + 1; cc += 1) if (inside(rr, cc)) arr.push(rr * boardSize + cc);
       return arr;
     }
     if (special === "rainbow") {
@@ -919,6 +999,7 @@
     if (skillChainDepth > 1) base += skillChainDepth * 12;
     if (state.perks.blast_core && (source !== "normal" || skillChainDepth > 1)) base = Math.floor(base * 1.22);
     if (state.perks.glass_breaker && glassBroken > 0) base += glassBroken * 10;
+    if (state.perks.score_bloom && gemCount > 0) base += gemCount * 5;
 
     return Math.max(0, Math.floor(base * chainMul));
   }
@@ -935,8 +1016,8 @@
     if (state.momentum >= MOMENTUM_MAX) {
       state.momentum = 0;
       state.feverTurns = state.perks.fever_loop ? 4 : 3;
-      spawnFloatText("FEVER!", Math.floor((SIZE * SIZE) / 2));
-      notify("进入 FEVER：分数与掉落提升！", "ok");
+      spawnFloatText("FEVER!", Math.floor((boardSize * boardSize) / 2));
+      notify("FEVER started: score and drops are boosted!", "ok");
     }
   }
 
@@ -949,9 +1030,10 @@
     if (Math.random() >= chance) return;
 
     const drops = ["hammer", "row", "cross", "color", "shuffle"];
+    if (state.perks.arcane_stockpile && Math.random() < 0.35) drops.push("screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker");
     const picked = randomPick(drops);
     state.items[picked] += 1;
-    spawnFloatText(`+${ITEM_DEFS[picked].name}`, Math.floor(Math.random() * SIZE * SIZE));
+    spawnFloatText(`+${ITEM_DEFS[picked].name}`, Math.floor(Math.random() * boardSize * boardSize));
   }
 
   function breakAdjacentObstacles(gemIndices) {
@@ -962,7 +1044,7 @@
       const neighbors = [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
       for (const [nr, nc] of neighbors) {
         if (!inside(nr, nc)) continue;
-        const ni = nr * SIZE + nc;
+        const ni = nr * boardSize + nc;
         if (isObstacle(state.board[ni])) broken.add(ni);
       }
     }
@@ -984,8 +1066,8 @@
     state.victory = true;
     updateMeta();
     renderAll();
-    overlayTitleEl.textContent = "你通关了！";
-    overlayDescEl.textContent = `完成 ${TOTAL_FLOORS} 层，最终总分 ${state.score}。`;
+    overlayTitleEl.textContent = "Victory!";
+    overlayDescEl.textContent = `You cleared all ${TOTAL_FLOORS} floors with a final score of ${state.score}.`;
     choiceWrapEl.innerHTML = "";
     overlayEl.classList.remove("hidden");
   }
@@ -994,44 +1076,44 @@
     state.gameOver = true;
     updateMeta();
     renderAll();
-    overlayTitleEl.textContent = "挑战失败";
-    overlayDescEl.textContent = `第 ${state.floor} 层未达成目标分。最终总分 ${state.score}。`;
+    overlayTitleEl.textContent = "Run Failed";
+    overlayDescEl.textContent = `Floor ${state.floor} ended below the target score. Final score: ${state.score}.`;
     choiceWrapEl.innerHTML = "";
     overlayEl.classList.remove("hidden");
   }
 
   function showEventNode() {
-    overlayTitleEl.textContent = `事件节点（第 ${state.floor} 层后）`;
-    overlayDescEl.textContent = "选择一条路线，影响下一层。";
+    overlayTitleEl.textContent = `Event Node (after Floor ${state.floor})`;
+    overlayDescEl.textContent = "Choose one route to shape the next floor.";
     choiceWrapEl.innerHTML = "";
 
     const events = [
       {
-        title: "诅咒契约",
-        desc: "下两层更危险，但掉落与连锁收益提高，并获得十字+1",
+        title: "Cursed Pact",
+        desc: "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Burst",
         apply: () => {
           state.eventCurseFloors = 2;
           state.items.cross += 1;
-          notify("你签下了诅咒契约。", "warn");
+          notify("You signed the Cursed Pact.", "warn");
         },
       },
       {
-        title: "修复工坊",
-        desc: "下层额外 +2 步，并清空 Boss 蓄力",
+        title: "Repair Forge",
+        desc: "Gain +2 moves next floor and reset the boss charge",
         apply: () => {
           state.nextFloorMoveBonus += 2;
           state.boss.charge = 0;
-          notify("工坊修复完成，下层更稳。", "ok");
+          notify("The forge stabilizes the next floor.", "ok");
         },
       },
       {
-        title: "贪婪祭坛",
-        desc: "立刻 +180 分，但下层步数 -2",
+        title: "Greed Altar",
+        desc: "Gain +180 score now, but lose 2 moves next floor",
         apply: () => {
           state.score += 180;
           state.floorScore += 40;
           state.nextFloorMovePenalty += 2;
-          notify("贪婪祭坛生效：高收益高压力。", "warn");
+          notify("Greed Altar activated: high reward, high pressure.", "warn");
         },
       },
     ];
@@ -1053,8 +1135,8 @@
 
   function showRewardChoices() {
     const choices = buildRewardChoices();
-    overlayTitleEl.textContent = `第 ${state.floor} 层完成`;
-    overlayDescEl.textContent = "选择一个奖励：道具、系统强化或构筑天赋";
+    overlayTitleEl.textContent = `Floor ${state.floor} Cleared`;
+    overlayDescEl.textContent = "Choose one reward: item, system boost, or build perk.";
     choiceWrapEl.innerHTML = "";
 
     for (const reward of choices) {
@@ -1074,21 +1156,23 @@
 
   function buildRewardChoices() {
     const pool = [
-      { title: "锤子 +2", desc: "单点拆除", apply: () => (state.items.hammer += 2) },
-      { title: "横扫 +1", desc: "清除一整行", apply: () => (state.items.row += 1) },
-      { title: "十字 +1", desc: "行列爆破", apply: () => (state.items.cross += 1) },
-      { title: "染色炸弹 +1", desc: "清同色", apply: () => (state.items.color += 1) },
-      { title: "洗牌 +1", desc: "坏盘翻盘", apply: () => (state.items.shuffle += 1) },
-      { title: "额外步数 +2", desc: "下层压力降低", apply: () => (state.nextFloorMoveBonus += 2) },
-      { title: "Momentum 注入", desc: "进度 +40", apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
-      { title: "传奇技能：清屏脉冲", desc: "立刻获得 1 次全盘清屏", apply: () => (state.items.screen_wipe += 1), legend: true },
-      { title: "传奇技能：彩虹风暴", desc: "立刻获得 1 次双属性清场", apply: () => (state.items.rainbow_burst += 1), legend: true },
+      { title: "Hammer +2", desc: "Precise single-tile removal", apply: () => (state.items.hammer += 2) },
+      { title: "Row Sweep +1", desc: "Clear one full row", apply: () => (state.items.row += 1) },
+      { title: "Cross Burst +1", desc: "Blast row and column", apply: () => (state.items.cross += 1) },
+      { title: "Color Bomb +1", desc: "Erase one chosen color", apply: () => (state.items.color += 1) },
+      { title: "Shuffle +1", desc: "Recover from a bad board", apply: () => (state.items.shuffle += 1) },
+      { title: "Extra Moves +2", desc: "Reduce next-floor pressure", apply: () => (state.nextFloorMoveBonus += 2) },
+      { title: "Momentum Surge", desc: "+40 momentum", apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
+      { title: "Legend Skill: Screen Pulse", desc: "Gain 1 full-board clear", apply: () => (state.items.screen_wipe += 1), legend: true },
+      { title: "Legend Skill: Rainbow Burst", desc: "Gain 1 double-color wipe", apply: () => (state.items.rainbow_burst += 1), legend: true },
+      { title: "Legend Skill: Time Freeze", desc: "Gain +3 moves and remove all lock effects", apply: () => (state.items.time_freeze += 1), legend: true },
+      { title: "Legend Skill: Boss Breaker", desc: "Crush boss charge and clear a large section", apply: () => (state.items.boss_breaker += 1), legend: true },
     ];
 
     const missingPerks = Object.entries(PERK_DEFS)
       .filter(([k]) => !state.perks[k])
       .map(([k, def]) => ({
-        title: `天赋：${def.title}`,
+        title: `Perk: ${def.title}`,
         desc: def.desc,
         apply: () => def.apply(state),
       }));
@@ -1279,7 +1363,7 @@
   }
 
   function createBoard() {
-    const arr = Array(SIZE * SIZE).fill(null);
+    const arr = Array(boardSize * boardSize).fill(null);
     for (let i = 0; i < arr.length; i += 1) arr[i] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
     return arr;
   }
@@ -1298,16 +1382,16 @@
 
   function collapseBoard() {
     const moved = [];
-    for (let c = 0; c < SIZE; c += 1) {
+    for (let c = 0; c < boardSize; c += 1) {
       const keep = [];
-      for (let r = SIZE - 1; r >= 0; r -= 1) {
-        const idx = r * SIZE + c;
+      for (let r = boardSize - 1; r >= 0; r -= 1) {
+        const idx = r * boardSize + c;
         const v = state.board[idx];
         if (v !== null) keep.push(v);
       }
-      for (let r = SIZE - 1; r >= 0; r -= 1) {
-        const idx = r * SIZE + c;
-        const next = keep[SIZE - 1 - r] ?? null;
+      for (let r = boardSize - 1; r >= 0; r -= 1) {
+        const idx = r * boardSize + c;
+        const next = keep[boardSize - 1 - r] ?? null;
         if (state.board[idx] !== next && next && isGem(next)) moved.push(idx);
         state.board[idx] = next;
       }
@@ -1330,11 +1414,11 @@
     return Math.abs(rowOf(a) - rowOf(b)) + Math.abs(colOf(a) - colOf(b)) === 1;
   }
 
-  function rowOf(i) { return Math.floor(i / SIZE); }
-  function colOf(i) { return i % SIZE; }
-  function inside(r, c) { return r >= 0 && r < SIZE && c >= 0 && c < SIZE; }
-  function indicesInRow(r) { return Array.from({ length: SIZE }, (_, x) => r * SIZE + x); }
-  function indicesInCol(c) { return Array.from({ length: SIZE }, (_, y) => y * SIZE + c); }
+  function rowOf(i) { return Math.floor(i / boardSize); }
+  function colOf(i) { return i % boardSize; }
+  function inside(r, c) { return r >= 0 && r < boardSize && c >= 0 && c < boardSize; }
+  function indicesInRow(r) { return Array.from({ length: boardSize }, (_, x) => r * boardSize + x); }
+  function indicesInCol(c) { return Array.from({ length: boardSize }, (_, y) => y * boardSize + c); }
 
   function swap(a, b) {
     const t = state.board[a];
@@ -1360,15 +1444,17 @@
     renderHUD();
     renderItems();
     renderBoard();
-    boardEl.style.setProperty("--board-size", String(SIZE));
+    boardEl.style.setProperty("--board-size", String(boardSize));
   }
 
   function renderHUD() {
     floorEl.textContent = `${state.floor}/${TOTAL_FLOORS}`;
     modifierEl.textContent = state.modifier ? state.modifier.name : "-";
     targetScoreEl.textContent = String(state.targetScore);
+    if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.targetScore);
     movesLeftEl.textContent = String(state.movesLeft);
     floorScoreEl.textContent = String(state.floorScore);
+    if (boardFloorScoreEl) boardFloorScoreEl.textContent = String(state.floorScore);
     scoreEl.textContent = String(state.score);
     bestFloorEl.textContent = String(meta.bestFloor);
     bestScoreEl.textContent = String(meta.bestScore);
@@ -1379,6 +1465,10 @@
     const bossPct = Math.max(0, Math.min(100, (state.boss.charge / state.boss.max) * 100));
     if (bossBarEl) bossBarEl.style.width = `${bossPct}%`;
     if (bossSkillHintEl) bossSkillHintEl.textContent = state.boss.hint;
+    if (bossTitleEl) bossTitleEl.textContent = state.boss.elite ? "Elite Rift Tyrant" : "Warden of the Deep";
+    if (bossStateEl) bossStateEl.textContent = state.boss.casting ? "Casting a battlefield skill" : state.boss.phase === "ready" ? "Primed to strike on the next beat" : `Charging through ${state.floorThreat.label}`;
+    if (bossThreatEl) bossThreatEl.textContent = getBossThreatLabel();
+    if (bossPatternEl) bossPatternEl.textContent = state.boss.elite ? "Storm / Lock / Shift / Elite pressure" : "Storm / Lock / Shift";
     if (bossMeterEl) {
       bossMeterEl.classList.remove("charging", "ready", "casting");
       if (state.boss.casting) bossMeterEl.classList.add("casting");
@@ -1386,13 +1476,22 @@
       else bossMeterEl.classList.add("charging");
     }
 
-    if (state.mode.type === "normal") modeTextEl.textContent = "模式：普通交换";
-    if (state.mode.type === "target_item") modeTextEl.textContent = `模式：道具选点（${ITEM_DEFS[state.mode.item].name}）`;
+    if (state.mode.type === "normal") modeTextEl.textContent = "Mode: Standard swap";
+    if (state.mode.type === "target_item") modeTextEl.textContent = `Mode: Target item (${ITEM_DEFS[state.mode.item].name})`;
+  }
+
+  function getBossThreatLabel() {
+    if (state.boss.casting) return "Cataclysmic";
+    const pct = state.boss.charge / state.boss.max;
+    if (pct >= 0.95) return "Critical";
+    if (pct >= 0.7) return "Severe";
+    if (pct >= 0.4) return "Rising";
+    return "Low";
   }
 
   function renderItems() {
     itemWrapEl.innerHTML = "";
-    const itemOrder = ["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst"];
+    const itemOrder = ["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker"];
     for (const id of itemOrder) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1400,7 +1499,7 @@
       btn.dataset.item = id;
       if (state.mode.type === "target_item" && state.mode.item === id) btn.classList.add("active");
       if (state.items[id] <= 0) btn.classList.add("disabled");
-      btn.innerHTML = `<strong>${ITEM_DEFS[id].name}</strong><small>数量 ${state.items[id]} · ${ITEM_DEFS[id].desc}</small>`;
+      btn.innerHTML = `<strong>${ITEM_DEFS[id].name}</strong><small>Count ${state.items[id]} - ${ITEM_DEFS[id].desc}</small>`;
       itemWrapEl.appendChild(btn);
     }
   }
