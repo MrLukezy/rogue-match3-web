@@ -29,17 +29,24 @@
     { label: "Final Stand", targetMul: 1.85, movesDelta: -3, obstacleBonus: 4, glassBonus: 3, bossGain: 3, bossMaxDelta: -2, pressure: 3 },
   ];
 
+  const MAX_ITEM_TYPES = 5;
+
   const ITEM_DEFS = {
-    hammer: { name: "Hammer", desc: "Break a single tile", amount: 1, target: true },
-    row: { name: "Row Sweep", desc: "Clear one full row", amount: 1, target: true },
-    cross: { name: "Cross Burst", desc: "Clear row and column", amount: 1, target: true },
-    color: { name: "Color Bomb", desc: "Clear the chosen color", amount: 1, target: true },
-    shuffle: { name: "Shuffle", desc: "Re-roll the board", amount: 1, target: false },
-    screen_wipe: { name: "Screen Pulse", desc: "Instantly clear every gem", amount: 1, target: false },
-    rainbow_burst: { name: "Rainbow Burst", desc: "Clear two random colors and trigger specials", amount: 1, target: false },
-    time_freeze: { name: "Time Freeze", desc: "Gain moves, unlock gems, and stabilize momentum", amount: 1, target: false },
-    boss_breaker: { name: "Boss Breaker", desc: "Smash charge and shatter a wide section of the board", amount: 1, target: false },
+    hammer: { name: "Hammer", image: "./assets/generated/items/item_hammer.png", desc: "Break a single tile", target: true, rarity: "common" },
+    row: { name: "Row Sweep", image: "./assets/generated/items/item_row_sweep.png", desc: "Clear one full row", target: true, rarity: "common" },
+    cross: { name: "Cross Burst", image: "./assets/generated/items/item_cross_burst.png", desc: "Clear row and column", target: true, rarity: "rare" },
+    color: { name: "Color Bomb", image: "./assets/generated/items/item_color_bomb.png", desc: "Clear the chosen color", target: true, rarity: "rare" },
+    shuffle: { name: "Shuffle", image: "./assets/generated/items/item_shuffle.png", desc: "Re-roll the board", target: false, rarity: "common" },
+    screen_wipe: { name: "Screen Pulse", image: "./assets/generated/items/item_screen_pulse.png", desc: "Instantly clear every gem", target: false, rarity: "epic" },
+    rainbow_burst: { name: "Rainbow Burst", image: "./assets/generated/items/item_rainbow_burst.png", desc: "Clear two random colors and trigger specials", target: false, rarity: "epic" },
+    time_freeze: { name: "Time Freeze", image: "./assets/generated/items/item_time_freeze.png", desc: "Gain moves, unlock gems, and stabilize momentum", target: false, rarity: "epic" },
+    boss_breaker: { name: "Boss Breaker", image: "./assets/generated/items/item_boss_breaker.png", desc: "Smash charge and shatter a wide section of the board", target: false, rarity: "legendary" },
   };
+
+  const ITEM_ORDER = ["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker"];
+  const ITEM_BASE_COUNTS = { hammer: 2, shuffle: 1 };
+  const ITEM_BASE_LEVEL = 1;
+  const RARITY_LABELS = { common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary" };
 
   const GUIDE_DEFS = {
     gem_basic: { title: "Element Gem", desc: "Match 3 or more gems of the same color to score and charge momentum.", preview: { kind: "gem", color: 0 } },
@@ -52,13 +59,13 @@
     rainbow: { title: "Rainbow Gem", desc: "Detonates every gem of the chosen color when activated.", preview: { kind: "gem", color: 4, special: "rainbow" } },
   };
 
-  const GEM_ICON_BY_COLOR = {
-    0: "local_fire_department",
-    1: "water_drop",
-    2: "eco",
-    3: "flash_on",
-    4: "stars",
-    5: "science",
+  const GEM_IMAGE_BY_COLOR = {
+    0: "./assets/generated/gems/gem_fire.png",
+    1: "./assets/generated/gems/gem_water.png",
+    2: "./assets/generated/gems/gem_nature.png",
+    3: "./assets/generated/gems/gem_lightning.png",
+    4: "./assets/generated/gems/gem_arcane.png",
+    5: "./assets/generated/gems/gem_alchemy.png",
   };
 
   const MODIFIERS = [
@@ -69,51 +76,22 @@
   ];
 
   const PERK_DEFS = {
-    combo_forge: {
-      title: "Combo Forge",
-      desc: "4-matches can upgrade into bomb gems",
-      apply: (s) => { s.perks.combo_forge = true; },
-    },
-    fever_loop: {
-      title: "Fever Loop",
-      desc: "Fever lasts +1 turn",
-      apply: (s) => { s.perks.fever_loop = true; },
-    },
-    relic_magnet: {
-      title: "Relic Magnet",
-      desc: "Item drop chance is higher",
-      apply: (s) => { s.perks.relic_magnet = true; },
-    },
-    blast_core: {
-      title: "Blast Core",
-      desc: "Specials and blasts score more",
-      apply: (s) => { s.perks.blast_core = true; },
-    },
-    glass_breaker: {
-      title: "Glass Breaker",
-      desc: "Breaking glass grants bonus points",
-      apply: (s) => { s.perks.glass_breaker = true; },
-    },
-    overcharge: {
-      title: "Overcharge",
-      desc: "Each floor begins with bonus momentum",
-      apply: (s) => { s.perks.overcharge = true; },
-    },
-    pressure_valve: {
-      title: "Pressure Valve",
-      desc: "Boss pressure removes fewer moves",
-      apply: (s) => { s.perks.pressure_valve = true; },
-    },
-    arcane_stockpile: {
-      title: "Arcane Stockpile",
-      desc: "Item drops can include legendary skills",
-      apply: (s) => { s.perks.arcane_stockpile = true; },
-    },
-    score_bloom: {
-      title: "Score Bloom",
-      desc: "Every gem cleared grants bonus score",
-      apply: (s) => { s.perks.score_bloom = true; },
-    },
+    combo_forge: { title: "Combo Forge", desc: "4-matches can upgrade into bomb gems", rarity: "common", apply: (s) => { s.perks.combo_forge = true; } },
+    fever_loop: { title: "Fever Loop", desc: "Fever lasts +1 turn", rarity: "common", apply: (s) => { s.perks.fever_loop = true; } },
+    relic_magnet: { title: "Relic Magnet", desc: "Item drop chance is higher", rarity: "common", apply: (s) => { s.perks.relic_magnet = true; } },
+    glass_breaker: { title: "Glass Breaker", desc: "Breaking glass grants bonus points", rarity: "common", apply: (s) => { s.perks.glass_breaker = true; } },
+    overcharge: { title: "Overcharge", desc: "Each floor begins with bonus momentum", rarity: "common", apply: (s) => { s.perks.overcharge = true; } },
+    pressure_valve: { title: "Pressure Valve", desc: "Boss pressure removes fewer moves", rarity: "common", apply: (s) => { s.perks.pressure_valve = true; } },
+    blast_core: { title: "Blast Core", desc: "Specials and blasts score more", rarity: "rare", apply: (s) => { s.perks.blast_core = true; } },
+    score_bloom: { title: "Score Bloom", desc: "Every gem cleared grants bonus score", rarity: "rare", apply: (s) => { s.perks.score_bloom = true; } },
+    quick_hands: { title: "Quick Hands", desc: "Target items gain bonus charge when upgraded", rarity: "rare", apply: (s) => { s.perks.quick_hands = true; } },
+    fever_smith: { title: "Fever Smith", desc: "Legend skills grant extra momentum", rarity: "rare", apply: (s) => { s.perks.fever_smith = true; } },
+    arcane_stockpile: { title: "Arcane Stockpile", desc: "Item drops can include legendary skills", rarity: "epic", apply: (s) => { s.perks.arcane_stockpile = true; } },
+    boss_hunter: { title: "Boss Hunter", desc: "Damage the boss charge more whenever you use a legend skill", rarity: "epic", apply: (s) => { s.perks.boss_hunter = true; } },
+    vault_expander: { title: "Vault Expander", desc: "New item types arrive with bonus charges", rarity: "epic", apply: (s) => { s.perks.vault_expander = true; } },
+    prism_heart: { title: "Prism Heart", desc: "Rainbow gems score more and spawn more often", rarity: "epic", apply: (s) => { s.perks.prism_heart = true; } },
+    sovereign_circuit: { title: "Sovereign Circuit", desc: "All equipped items gain +1 level instantly", rarity: "legendary", apply: (s) => { s.perks.sovereign_circuit = true; boostAllItemLevels(s); } },
+    dragon_hoard: { title: "Dragon Hoard", desc: "Your highest-level item gains charges every floor", rarity: "legendary", apply: (s) => { s.perks.dragon_hoard = true; } },
   };
 
   const BOSS_SKILLS = ["glass_storm", "hex_lock", "color_shift"];
@@ -140,13 +118,14 @@
   const boardWrapEl = document.getElementById("boardWrap");
   const boardEl = document.getElementById("board");
   const fxLayerEl = document.getElementById("fxLayer");
+  const itemTooltipEl = document.getElementById("itemTooltip");
   const messageEl = document.getElementById("message");
   const restartBtn = document.getElementById("restartBtn");
   const codexBtn = document.getElementById("codexBtn");
   const guideBtn = document.getElementById("guideBtn");
 
   const itemWrapEl = document.getElementById("itemWrap");
-  const guideListEl = document.getElementById("guideList");
+  const perkWrapEl = document.getElementById("perkWrap");
   const overlayEl = document.getElementById("overlay");
   const overlayTitleEl = document.getElementById("overlayTitle");
   const overlayDescEl = document.getElementById("overlayDesc");
@@ -177,7 +156,7 @@
   startRun();
 
   function createInitialState() {
-    return {
+    const initial = {
       floor: 1,
       score: 0,
       floorScore: 0,
@@ -186,7 +165,9 @@
       boardSize: MIN_BOARD_SIZE,
       board: [],
       mode: { type: "normal", item: null },
-      items: { hammer: 2, row: 0, cross: 0, color: 0, shuffle: 1, screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
+      items: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
+      itemLevels: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
+      itemSlots: ["hammer", "shuffle"],
       modifier: null,
       modGlass: 0,
       taxColor: null,
@@ -204,6 +185,13 @@
         pressure_valve: false,
         arcane_stockpile: false,
         score_bloom: false,
+        quick_hands: false,
+        fever_smith: false,
+        boss_hunter: false,
+        vault_expander: false,
+        prism_heart: false,
+        sovereign_circuit: false,
+        dragon_hoard: false,
       },
       boss: { charge: 0, max: 7, hint: "Idle", elite: false, phase: "charging", casting: false },
       eventCurseFloors: 0,
@@ -213,6 +201,84 @@
       gameOver: false,
       victory: false,
     };
+    seedStartingItems(initial);
+    return initial;
+  }
+
+  function seedStartingItems(s) {
+    for (const id of s.itemSlots) {
+      s.itemLevels[id] = ITEM_BASE_LEVEL;
+      s.items[id] = ITEM_BASE_COUNTS[id] || 1;
+    }
+  }
+
+  function getItemCount(id) {
+    return Number(state.items[id] || 0);
+  }
+
+  function getItemLevel(id) {
+    return Number(state.itemLevels[id] || 0);
+  }
+
+  function hasItemType(id) {
+    return state.itemSlots.includes(id);
+  }
+
+  function itemPower(id) {
+    return Math.max(1, getItemLevel(id) || 1);
+  }
+
+  function getCarriedItems() {
+    return state.itemSlots.filter((id) => ITEM_DEFS[id]);
+  }
+
+  function itemSlotAvailable() {
+    return getCarriedItems().length < MAX_ITEM_TYPES;
+  }
+
+  function ensureItemType(id) {
+    if (hasItemType(id)) return true;
+    if (!itemSlotAvailable()) return false;
+    state.itemSlots.push(id);
+    state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(id));
+    return true;
+  }
+
+  function addItemCharges(id, amount = 1, allowNewType = true) {
+    if (!hasItemType(id)) {
+      if (!allowNewType || !ensureItemType(id)) return false;
+      if (state.perks.vault_expander) amount += 1;
+    }
+    state.items[id] = getItemCount(id) + amount;
+    if (state.itemLevels[id] <= 0) state.itemLevels[id] = ITEM_BASE_LEVEL;
+    return true;
+  }
+
+  function upgradeItem(id, levelGain = 1, chargeGain = 1) {
+    if (!hasItemType(id) && !ensureItemType(id)) return false;
+    state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(id) + levelGain);
+    const bonusCharges = state.perks.quick_hands && ITEM_DEFS[id].target ? 1 : 0;
+    state.items[id] = getItemCount(id) + chargeGain + bonusCharges;
+    return true;
+  }
+
+  function spendItemCharge(id) {
+    state.items[id] = Math.max(0, getItemCount(id) - 1);
+  }
+
+  function boostAllItemLevels(s) {
+    for (const id of s.itemSlots) {
+      s.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, (s.itemLevels[id] || ITEM_BASE_LEVEL) + 1);
+      s.items[id] = Number(s.items[id] || 0) + 1;
+    }
+  }
+
+  function grantDragonHoardBonus() {
+    if (!state.perks.dragon_hoard) return;
+    const carried = getCarriedItems();
+    if (carried.length === 0) return;
+    carried.sort((a, b) => getItemLevel(b) - getItemLevel(a) || getItemCount(b) - getItemCount(a));
+    addItemCharges(carried[0], 1, false);
   }
 
   function defaultCodex() {
@@ -269,6 +335,8 @@
     });
     boardEl.addEventListener("click", onBoardClick);
     itemWrapEl.addEventListener("click", onItemClick);
+    itemWrapEl.addEventListener("mouseover", onItemHover);
+    itemWrapEl.addEventListener("mouseout", onItemHoverOut);
 
     if (codexBtn) codexBtn.addEventListener("click", openCodex);
     if (guideBtn) guideBtn.addEventListener("click", openGuidePanel);
@@ -308,14 +376,9 @@
 
   function renderGuideList(highlightId = null) {
     const entries = Object.entries(GUIDE_DEFS);
-    guideListEl.innerHTML = "";
     guideModalContentEl.innerHTML = "";
 
     for (const [id, def] of entries) {
-      const compact = createGuideEntry(id, def, highlightId === id);
-      compact.addEventListener("click", () => openGuidePanel(id));
-      guideListEl.appendChild(compact);
-
       const detail = createGuideEntry(id, def, highlightId === id, true);
       detail.addEventListener("click", () => {});
       guideModalContentEl.appendChild(detail);
@@ -356,9 +419,10 @@
     if (preview.glass) gem.classList.add("glass");
     if (preview.locked) gem.classList.add("locked");
 
-    const icon = document.createElement("span");
-    icon.className = "material-symbols-outlined gem-icon";
-    icon.textContent = GEM_ICON_BY_COLOR[preview.color ?? 0] || "diamond";
+    const icon = document.createElement("img");
+    icon.className = "gem-icon gem-image";
+    icon.alt = "guide gem";
+    icon.src = GEM_IMAGE_BY_COLOR[preview.color ?? 0] || GEM_IMAGE_BY_COLOR[0];
     gem.appendChild(icon);
     frame.appendChild(gem);
     return frame;
@@ -494,6 +558,7 @@
     if (state.perks.overcharge) {
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 28);
     }
+    grantDragonHoardBonus();
 
     state.board = createBoard();
     resolveAutoBoard();
@@ -570,11 +635,11 @@
     const btn = event.target.closest(".ability");
     if (!btn) return;
     const item = btn.dataset.item;
-    if (!item || state.items[item] <= 0) return;
+    if (!item || getItemCount(item) <= 0 || !hasItemType(item)) return;
 
     if (!ITEM_DEFS[item].target) {
       inputLocked = true;
-      state.items[item] -= 1;
+      spendItemCharge(item);
       recordCodex("itemUse", item);
       if (item === "shuffle") {
         useShuffle();
@@ -587,6 +652,22 @@
     state.mode = { type: "target_item", item };
     selected = null;
     renderAll();
+  }
+
+  function onItemHover(event) {
+    const btn = event.target.closest(".ability[data-item]");
+    if (!btn || !itemTooltipEl) return;
+    const item = btn.dataset.item;
+    if (!item || !ITEM_DEFS[item]) return;
+    itemTooltipEl.innerHTML = `<strong>${ITEM_DEFS[item].name} Lv.${getItemLevel(item)}</strong><small>${ITEM_DEFS[item].desc}</small>`;
+    itemTooltipEl.classList.remove("hidden");
+  }
+
+  function onItemHoverOut(event) {
+    if (!itemTooltipEl) return;
+    const related = event.relatedTarget;
+    if (related && related.closest && related.closest("#itemWrap")) return;
+    itemTooltipEl.classList.add("hidden");
   }
 
   async function onBoardClick(event) {
@@ -652,12 +733,12 @@
   }
 
   async function useTargetItem(item, idx) {
-    if (state.items[item] <= 0) return;
+    if (getItemCount(item) <= 0) return;
     const targets = getItemTargets(item, idx);
     if (targets.length === 0) return notify("That item cannot be used there.", "warn");
 
     inputLocked = true;
-    state.items[item] -= 1;
+    spendItemCharge(item);
     state.mode = { type: "normal", item: null };
     recordCodex("itemUse", item);
 
@@ -671,19 +752,43 @@
     const r = rowOf(idx);
     const c = colOf(idx);
 
-    if (item === "hammer") return [idx];
-    if (item === "row") return indicesInRow(r);
-    if (item === "cross") return [...new Set([...indicesInRow(r), ...indicesInCol(c)])];
+    if (item === "hammer") {
+      const power = itemPower(item);
+      if (power <= 1) return [idx];
+      const arr = [idx];
+      for (let rr = r - 1; rr <= r + 1; rr += 1) for (let cc = c - 1; cc <= c + 1; cc += 1) if (inside(rr, cc)) arr.push(rr * boardSize + cc);
+      return [...new Set(arr)];
+    }
+    if (item === "row") {
+      const rows = [r];
+      if (itemPower(item) >= 2 && inside(r - 1, c)) rows.push(r - 1);
+      if (itemPower(item) >= 3 && inside(r + 1, c)) rows.push(r + 1);
+      return [...new Set(rows.flatMap((row) => indicesInRow(row)))];
+    }
+    if (item === "cross") {
+      const arr = [...indicesInRow(r), ...indicesInCol(c)];
+      if (itemPower(item) >= 3) {
+        if (inside(r - 1, c)) arr.push(...indicesInRow(r - 1));
+        if (inside(r + 1, c)) arr.push(...indicesInRow(r + 1));
+      }
+      return [...new Set(arr)];
+    }
     if (item === "color") {
       const cell = state.board[idx];
       if (!isGem(cell)) return [];
       if (cell.lockedTurns > 0) return [];
-      return collectIndices((x) => isGem(x) && x.color === cell.color);
+      const targets = collectIndices((x) => isGem(x) && x.color === cell.color);
+      if (itemPower(item) >= 3) {
+        const bonusColor = (cell.color + 1) % COLORS;
+        targets.push(...collectIndices((x) => isGem(x) && x.color === bonusColor));
+      }
+      return [...new Set(targets)];
     }
     return [];
   }
 
   async function useShuffle() {
+    const power = itemPower("shuffle");
     const gems = collectIndices(isGem).map((i) => state.board[i]);
     shuffle(gems);
     let k = 0;
@@ -697,17 +802,30 @@
     await sleep(220);
     fallAnim.clear();
     resolveAutoBoard();
+    if (power >= 2) state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 10 + power * 2);
+    if (power >= 3) {
+      for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
+    }
     renderAll();
     await consumePostAction();
     inputLocked = false;
     notify("Item used: Shuffle", "ok");
   }
 
+  function applyLegendBossPressure() {
+    if (state.perks.fever_smith) {
+      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 10);
+    }
+    if (!state.perks.boss_hunter) return;
+    state.boss.charge = Math.max(0, state.boss.charge - 1);
+  }
+
   async function useLegendSkill(skill) {
     if (skill === "screen_wipe") {
       await playSkillShowcase("Screen Pulse", "screen");
-      const targets = collectIndices((x) => isGem(x));
+      const targets = collectIndices((x) => isGem(x) || (itemPower(skill) >= 2 && isObstacle(x)));
       recordCodex("skillUse", "screen_wipe");
+      applyLegendBossPressure();
       meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, targets.length);
       saveMeta();
       await resolveAction(targets, "legend");
@@ -722,9 +840,10 @@
       let second = randColor();
       if (second === first) second = (second + 1) % COLORS;
       const targets = collectIndices((x) => isGem(x) && (x.color === first || x.color === second));
-      const extra = collectIndices((x) => isGem(x) && x.special).slice(0, 10);
+      const extra = collectIndices((x) => isGem(x) && x.special).slice(0, itemPower(skill) >= 2 ? 16 : 10);
       const merged = [...new Set([...targets, ...extra])];
       recordCodex("skillUse", "rainbow_burst");
+      applyLegendBossPressure();
       meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, merged.length);
       saveMeta();
       await resolveAction(merged, "legend");
@@ -735,13 +854,14 @@
 
     if (skill === "time_freeze") {
       await playSkillShowcase("Time Freeze", "screen");
-      state.movesLeft += 3;
-      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 22);
+      state.movesLeft += 2 + itemPower(skill);
+      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 18 + itemPower(skill) * 4 + (state.perks.fever_smith ? 8 : 0));
       for (let i = 0; i < state.board.length; i += 1) {
         if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
       }
       recordCodex("skillUse", "time_freeze");
-      notify("Time Freeze grants +3 moves and removes all locks.", "ok");
+      applyLegendBossPressure();
+      notify(`Time Freeze grants +${2 + itemPower(skill)} moves and removes all locks.`, "ok");
       renderAll();
       await consumePostAction();
       inputLocked = false;
@@ -752,10 +872,11 @@
       await playSkillShowcase("Boss Breaker", "rainbow");
       const targets = collectIndices((x) => isGem(x));
       shuffle(targets);
-      const chosen = targets.slice(0, Math.min(14, targets.length));
-      state.boss.charge = Math.max(0, state.boss.charge - Math.ceil(state.boss.max * 0.6));
+      const chosen = targets.slice(0, Math.min(12 + itemPower(skill) * 3, targets.length));
+      state.boss.charge = Math.max(0, state.boss.charge - Math.ceil(state.boss.max * (0.45 + itemPower(skill) * 0.12)));
       state.boss.hint = "Boss Breaker: charge shattered";
       recordCodex("skillUse", "boss_breaker");
+      applyLegendBossPressure();
       meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, chosen.length);
       saveMeta();
       await resolveAction(chosen, "legend");
@@ -1016,7 +1137,8 @@
       if (g.len >= 5) {
         spawnMap.set(g.indices[2], "rainbow");
       } else if (g.len === 4 && !spawnMap.has(g.indices[1])) {
-        if (state.perks.combo_forge && Math.random() < 0.4) spawnMap.set(g.indices[1], "bomb");
+        if (state.perks.prism_heart && Math.random() < 0.18) spawnMap.set(g.indices[1], "rainbow");
+        else if (state.perks.combo_forge && Math.random() < 0.4) spawnMap.set(g.indices[1], "bomb");
         else spawnMap.set(g.indices[1], g.dir === "h" ? "line_h" : "line_v");
       }
     }
@@ -1145,16 +1267,17 @@
     }
     if (state.feverTurns > 0) chainMul += 0.5;
 
-    if (source === "hammer") base += 8;
-    if (source === "row") base += state.feverTurns > 0 ? 26 : 18;
-    if (source === "cross") base += state.feverTurns > 0 ? 34 : 24;
-    if (source === "color") base += state.feverTurns > 0 ? 40 : 28;
+    if (source === "hammer") base += 8 + itemPower("hammer") * 4;
+    if (source === "row") base += (state.feverTurns > 0 ? 26 : 18) + itemPower("row") * 5;
+    if (source === "cross") base += (state.feverTurns > 0 ? 34 : 24) + itemPower("cross") * 6;
+    if (source === "color") base += (state.feverTurns > 0 ? 40 : 28) + itemPower("color") * 6;
     if (source === "combo") base += 45;
 
     if (skillChainDepth > 1) base += skillChainDepth * 12;
     if (state.perks.blast_core && (source !== "normal" || skillChainDepth > 1)) base = Math.floor(base * 1.22);
     if (state.perks.glass_breaker && glassBroken > 0) base += glassBroken * 10;
     if (state.perks.score_bloom && gemCount > 0) base += gemCount * 5;
+    if (state.perks.prism_heart && source === "normal") base += Math.floor(gemCount * 1.5);
 
     return Math.max(0, Math.floor(base * chainMul));
   }
@@ -1184,10 +1307,16 @@
     chance = Math.max(0.08, Math.min(0.5, chance));
     if (Math.random() >= chance) return;
 
-    const drops = ["hammer", "row", "cross", "color", "shuffle"];
-    if (state.perks.arcane_stockpile && Math.random() < 0.35) drops.push("screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker");
-    const picked = randomPick(drops);
-    state.items[picked] += 1;
+    const carried = getCarriedItems();
+    const pool = carried.length >= MAX_ITEM_TYPES ? [...carried] : ITEM_ORDER.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
+    if (state.perks.arcane_stockpile && Math.random() < 0.35) pool.push("screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker");
+    const weighted = [];
+    for (const id of pool) {
+      const weight = hasItemType(id) ? 2 + getItemLevel(id) : 1;
+      for (let i = 0; i < weight; i += 1) weighted.push(id);
+    }
+    const picked = randomPick(weighted);
+    if (!addItemCharges(picked, 1, itemSlotAvailable())) return;
     spawnFloatText(`+${ITEM_DEFS[picked].name}`, Math.floor(Math.random() * boardSize * boardSize));
   }
 
@@ -1253,7 +1382,7 @@
         desc: "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Burst",
         apply: () => {
           state.eventCurseFloors = 2;
-          state.items.cross += 1;
+          addItemCharges("cross", 1, true);
           notify("You signed the Cursed Pact.", "warn");
         },
       },
@@ -1302,8 +1431,8 @@
 
     for (const reward of choices) {
       const btn = document.createElement("button");
-      btn.className = "choice";
-      btn.innerHTML = `<strong>${reward.title}</strong><small>${reward.desc}</small>`;
+      btn.className = `choice rarity-${reward.rarity || "common"}`;
+      btn.innerHTML = `<span class="choice-rarity">${RARITY_LABELS[reward.rarity] || "Common"}</span><strong>${reward.title}</strong><small>${reward.desc}</small>`;
       btn.addEventListener("click", () => {
         reward.apply();
         overlayEl.classList.add("hidden");
@@ -1316,39 +1445,103 @@
   }
 
   function buildRewardChoices() {
-    const pool = [
-      { title: "Hammer +2", desc: "Precise single-tile removal", apply: () => (state.items.hammer += 2) },
-      { title: "Row Sweep +1", desc: "Clear one full row", apply: () => (state.items.row += 1) },
-      { title: "Cross Burst +1", desc: "Blast row and column", apply: () => (state.items.cross += 1) },
-      { title: "Color Bomb +1", desc: "Erase one chosen color", apply: () => (state.items.color += 1) },
-      { title: "Shuffle +1", desc: "Recover from a bad board", apply: () => (state.items.shuffle += 1) },
-      { title: "Extra Moves +2", desc: "Reduce next-floor pressure", apply: () => (state.nextFloorMoveBonus += 2) },
-      { title: "Momentum Surge", desc: "+40 momentum", apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
-      { title: "Legend Skill: Screen Pulse", desc: "Gain 1 full-board clear", apply: () => (state.items.screen_wipe += 1), legend: true },
-      { title: "Legend Skill: Rainbow Burst", desc: "Gain 1 double-color wipe", apply: () => (state.items.rainbow_burst += 1), legend: true },
-      { title: "Legend Skill: Time Freeze", desc: "Gain +3 moves and remove all lock effects", apply: () => (state.items.time_freeze += 1), legend: true },
-      { title: "Legend Skill: Boss Breaker", desc: "Crush boss charge and clear a large section", apply: () => (state.items.boss_breaker += 1), legend: true },
-    ];
-
-    const missingPerks = Object.entries(PERK_DEFS)
-      .filter(([k]) => !state.perks[k])
-      .map(([k, def]) => ({
-        title: `Perk: ${def.title}`,
-        desc: def.desc,
-        apply: () => def.apply(state),
-      }));
-
     const result = [];
-    if (missingPerks.length > 0) result.push(randomPick(missingPerks));
+    const perkReward = buildPerkReward();
+    if (perkReward) result.push(perkReward);
 
-    shuffle(pool);
-    const nonLegend = pool.filter((x) => !x.legend);
-    const legend = pool.filter((x) => x.legend);
+    const itemRewards = buildItemRewards();
+    const supportRewards = buildSupportRewards();
+    const combined = [...itemRewards, ...supportRewards];
+    shuffle(combined);
 
-    if (legend.length > 0 && Math.random() < 0.35) result.push(legend.pop());
-    while (result.length < 3 && nonLegend.length > 0) result.push(nonLegend.pop());
-    while (result.length < 3 && legend.length > 0) result.push(legend.pop());
+    for (const reward of combined) {
+      if (result.length >= 3) break;
+      if (!result.some((x) => x.title === reward.title)) result.push(reward);
+    }
     return result.slice(0, 3);
+  }
+
+  function buildPerkReward() {
+    const missing = Object.entries(PERK_DEFS).filter(([k]) => !state.perks[k]);
+    if (missing.length === 0) return null;
+    const weighted = [];
+    for (const [id, def] of missing) {
+      const weight = def.rarity === "legendary" ? 1 : def.rarity === "epic" ? 2 : def.rarity === "rare" ? 3 : 4;
+      for (let i = 0; i < weight; i += 1) weighted.push([id, def]);
+    }
+    const [id, def] = randomPick(weighted);
+    return {
+      type: "perk",
+      rarity: def.rarity,
+      title: `${RARITY_LABELS[def.rarity]} Skill: ${def.title}`,
+      desc: def.desc,
+      apply: () => def.apply(state),
+    };
+  }
+
+  function buildItemRewards() {
+    const rewards = [];
+    const carried = getCarriedItems();
+    const newCandidates = ITEM_ORDER.filter((id) => !hasItemType(id));
+
+    if (carried.length < MAX_ITEM_TYPES && newCandidates.length > 0) {
+      const preferred = newCandidates.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
+      const candidate = randomPick(preferred.length > 0 ? preferred : newCandidates);
+      rewards.push(createNewItemReward(candidate));
+    }
+
+    const upgradePool = [];
+    for (const id of carried) {
+      const weight = 2 + getItemLevel(id) * 2 + (getItemCount(id) === 0 ? 1 : 0);
+      for (let i = 0; i < weight; i += 1) upgradePool.push(id);
+    }
+    while (upgradePool.length > 0 && rewards.length < 2) {
+      const id = randomPick(upgradePool);
+      rewards.push(createUpgradeReward(id));
+      for (let i = upgradePool.length - 1; i >= 0; i -= 1) if (upgradePool[i] === id) upgradePool.splice(i, 1);
+    }
+
+    return rewards;
+  }
+
+  function buildSupportRewards() {
+    return [
+      { type: "support", rarity: "common", title: "Extra Moves +2", desc: "Reduce next-floor pressure", apply: () => (state.nextFloorMoveBonus += 2) },
+      { type: "support", rarity: "common", title: "Momentum Surge", desc: "+40 momentum", apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
+      { type: "support", rarity: "rare", title: "Field Repair", desc: "Restore 2 random item charges across carried gear", apply: restoreRandomCharges },
+    ];
+  }
+
+  function createNewItemReward(id) {
+    const bonus = state.perks.vault_expander ? 2 : 1;
+    return {
+      type: "item",
+      rarity: ITEM_DEFS[id].rarity,
+      title: `New Item: ${ITEM_DEFS[id].name}`,
+      desc: `Add ${ITEM_DEFS[id].name} to your loadout with ${bonus} charge${bonus > 1 ? "s" : ""}.`,
+      apply: () => addItemCharges(id, bonus, true),
+    };
+  }
+
+  function createUpgradeReward(id) {
+    const charges = ITEM_DEFS[id].rarity === "legendary" ? 1 : 2;
+    return {
+      type: "item",
+      rarity: ITEM_DEFS[id].rarity,
+      title: `Upgrade ${ITEM_DEFS[id].name}`,
+      desc: `Raise ${ITEM_DEFS[id].name} to Lv.${getItemLevel(id) + 1} and gain +${charges} charge${charges > 1 ? "s" : ""}.`,
+      apply: () => upgradeItem(id, 1, charges),
+    };
+  }
+
+  function restoreRandomCharges() {
+    const carried = getCarriedItems();
+    if (carried.length === 0) return;
+    const bag = [];
+    for (const id of carried) {
+      for (let i = 0; i < Math.max(1, getItemLevel(id)); i += 1) bag.push(id);
+    }
+    for (let i = 0; i < 2; i += 1) addItemCharges(randomPick(bag), 1, false);
   }
 
   function consumeMove() {
@@ -1386,7 +1579,7 @@
 
     const fx = document.createElement("div");
     fx.className = `item-cast-fx item-${item}`;
-    fx.textContent = item === "hammer" ? "H" : item === "row" ? "R" : item === "cross" ? "C" : item === "color" ? "O" : "S";
+    fx.innerHTML = `<img src="${ITEM_DEFS[item].image}" alt="${ITEM_DEFS[item].name}" class="item-cast-image">`;
 
     const sx = from.left + from.width / 2;
     const sy = from.top + from.height / 2;
@@ -1604,6 +1797,7 @@
   function renderAll() {
     renderHUD();
     renderItems();
+    renderPerks();
     renderGuideList();
     renderBoard();
     boardEl.style.setProperty("--board-size", String(boardSize));
@@ -1652,16 +1846,45 @@
 
   function renderItems() {
     itemWrapEl.innerHTML = "";
-    const itemOrder = ["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker"];
-    for (const id of itemOrder) {
+    const carried = getCarriedItems();
+    for (const id of carried) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "ability";
       btn.dataset.item = id;
       if (state.mode.type === "target_item" && state.mode.item === id) btn.classList.add("active");
-      if (state.items[id] <= 0) btn.classList.add("disabled");
-      btn.innerHTML = `<strong>${ITEM_DEFS[id].name}</strong><small>Count ${state.items[id]} - ${ITEM_DEFS[id].desc}</small>`;
+      if (getItemCount(id) <= 0) btn.classList.add("disabled");
+      btn.classList.add(`rarity-${ITEM_DEFS[id].rarity}`);
+      btn.innerHTML = `<img class="item-icon item-image" src="${ITEM_DEFS[id].image}" alt="${ITEM_DEFS[id].name}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">Lv.${getItemLevel(id)}</i><strong>${ITEM_DEFS[id].name}</strong><small>${ITEM_DEFS[id].desc}</small>`;
       itemWrapEl.appendChild(btn);
+    }
+    for (let i = carried.length; i < MAX_ITEM_TYPES; i += 1) {
+      const slot = document.createElement("div");
+      slot.className = "ability disabled empty-slot";
+      slot.innerHTML = `<div class="item-icon empty-item-slot">+</div><strong>Empty Slot</strong><small>New item types can be drafted here.</small>`;
+      itemWrapEl.appendChild(slot);
+    }
+  }
+
+  function renderPerks() {
+    if (!perkWrapEl) return;
+    perkWrapEl.innerHTML = "";
+    const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
+    const owned = Object.entries(PERK_DEFS)
+      .filter(([id]) => state.perks[id])
+      .sort((a, b) => rarityOrder[a[1].rarity] - rarityOrder[b[1].rarity]);
+    if (owned.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "perk-empty";
+      empty.textContent = "Draft rogue skills after each floor to shape your run.";
+      perkWrapEl.appendChild(empty);
+      return;
+    }
+    for (const [, def] of owned) {
+      const el = document.createElement("div");
+      el.className = `perk-chip rarity-${def.rarity}`;
+      el.innerHTML = `<span>${RARITY_LABELS[def.rarity]}</span><strong>${def.title}</strong><small>${def.desc}</small>`;
+      perkWrapEl.appendChild(el);
     }
   }
 
@@ -1691,9 +1914,10 @@
         if (clearAnim.has(i)) gem.classList.add("clear-pop");
         if (fallAnim.has(i)) gem.classList.add("fall-in");
 
-        const icon = document.createElement("span");
-        icon.className = "material-symbols-outlined gem-icon";
-        icon.textContent = GEM_ICON_BY_COLOR[value.color] || "diamond";
+        const icon = document.createElement("img");
+        icon.className = "gem-icon gem-image";
+        icon.src = GEM_IMAGE_BY_COLOR[value.color] || GEM_IMAGE_BY_COLOR[0];
+        icon.alt = `gem-${value.color}`;
         gem.appendChild(icon);
 
         cell.appendChild(gem);

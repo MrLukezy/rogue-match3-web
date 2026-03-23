@@ -4,9 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rogue Match-3</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,700,1,0" rel="stylesheet" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -32,17 +29,19 @@
           </div>
         </section>
 
-        <section class="toolbox">
-          <h2>Items</h2>
-          <div id="itemWrap" class="btn-grid"></div>
-        </section>
-
         <section class="glossary-panel">
           <div class="section-head">
             <h2>Tile Guide</h2>
             <button id="guideBtn" class="mini-btn" type="button">Open Guide</button>
           </div>
-          <div id="guideList" class="guide-list"></div>
+        </section>
+
+        <section class="build-panel">
+          <div class="section-head">
+            <h2>Rogue Skills</h2>
+            <span class="panel-note">Common / Rare / Epic / Legendary</span>
+          </div>
+          <div id="perkWrap" class="perk-list"></div>
         </section>
 
         <div class="actions-row">
@@ -69,7 +68,15 @@
           </div>
         </div>
         <div id="board" class="board" aria-label="match3 board"></div>
+        <div class="item-dock-wrap">
+          <div class="dock-title">
+            <span>Equipped Items</span>
+            <small>Carry up to 5 types</small>
+          </div>
+          <div id="itemWrap" class="item-dock"></div>
+        </div>
         <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
+        <div id="itemTooltip" class="item-tooltip hidden" role="tooltip"></div>
       </main>
 
       <aside class="panel boss-panel">
@@ -78,7 +85,7 @@
           <h2>Encounter Gauge</h2>
           <div class="boss-crest">
             <div class="boss-sigil">
-              <span class="material-symbols-outlined">skull</span>
+              <img src="./assets/generated/boss/boss_sigil.png" alt="Boss sigil" class="boss-sigil-image" />
             </div>
             <div>
               <strong id="bossTitle">Warden of the Deep</strong>
