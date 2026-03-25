@@ -481,13 +481,41 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     guideModalEl.classList.add("hidden");
     meta.codex.runs += 1;
     saveMeta();
-    startFloor(1);
-    notify("A new run begins.", "ok");
+    showChapterSelect();
+    notify("Choose a chapter to begin the run.", "ok");
+  }
+
+  function getChapterLocalFloor() {
+    if (!state.selectedChapter) return state.floor;
+    return state.floor - state.selectedChapter.start + 1;
+  }
+
+  function showChapterSelect() {
+    overlayTitleEl.textContent = "Choose Chapter";
+    overlayDescEl.textContent = "Each chapter is a compact 3-floor challenge with its own boss, pressure style, and route decisions.";
+    choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = "";
+
+    for (const chapter of CHAPTER_THEMES) {
+      const btn = document.createElement("button");
+      btn.className = "choice rarity-rare";
+      btn.innerHTML = `<span class="choice-rarity">Chapter</span><strong>${chapter.title}</strong><small>${chapter.intro}</small>`;
+      btn.addEventListener("click", () => {
+        state.selectedChapter = chapter;
+        state.floorTheme = chapter;
+        state.routePlan = { id: "main", title: "Main Path", floorsRemaining: 0, moveBonus: 0, movePenalty: 0, targetMulDelta: 0, pressureDelta: 0, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
+        showChapterBlessings(true);
+      });
+      choiceWrapEl.appendChild(btn);
+    }
+
+    overlayEl.classList.remove("hidden");
   }
 
   function startFloor(floor) {
     state.floor = floor;
-    if (state.floor > TOTAL_FLOORS) return onVictory();
+    const chapter = state.selectedChapter || CHAPTER_THEMES[0];
+    if (state.floor > chapter.end) return onVictory();
 
     const previousColorCount = state.activeGemColors?.length || 4;
 
@@ -1405,15 +1433,16 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   function onFloorCleared() {
     grantMetaShards(1 + (state.routePlan?.shardBonus || 0));
     saveMeta();
-    if (state.floor >= TOTAL_FLOORS) return onVictory();
-    if ([3, 6, 9].includes(state.floor)) return showChapterBlessings();
-    if (EVENT_NODE_FLOORS.includes(state.floor)) return showEventNode();
+    const localFloor = getChapterLocalFloor();
+    if (state.selectedChapter && state.floor >= state.selectedChapter.end) return onVictory();
+    if (localFloor === 1) return showRewardChoices();
+    if (localFloor === 2) return showEventNode();
     showRewardChoices();
   }
 
-  function showChapterBlessings() {
+  function showChapterBlessings(isChapterStart = false) {
     overlayTitleEl.textContent = `Chapter Blessing · ${state.floorTheme.title}`;
-    overlayDescEl.textContent = "Choose one powerful blessing to shape the rest of your run.";
+    overlayDescEl.textContent = isChapterStart ? "Choose one powerful blessing before entering this chapter." : "Choose one powerful blessing to shape the rest of your run.";
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
@@ -1430,7 +1459,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
         overlayEl.classList.add("hidden");
         notify(`Blessing acquired: ${def.title}`, "ok");
         renderAll();
-        startFloor(state.floor + 1);
+        if (isChapterStart) startFloor(state.selectedChapter.start);
+        else startFloor(state.floor + 1);
       });
       choiceWrapEl.appendChild(btn);
     }
@@ -1443,8 +1473,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     grantMetaShards(6 + Math.floor(state.score / 900));
     updateMeta();
     renderAll();
-    overlayTitleEl.textContent = "Victory!";
-    overlayDescEl.textContent = `You cleared all ${TOTAL_FLOORS} floors across ${CHAPTER_THEMES.length} chapters with a final score of ${state.score}.`;
+    overlayTitleEl.textContent = `${state.selectedChapter?.title || "Chapter"} Cleared!`;
+    overlayDescEl.textContent = `You defeated ${state.floorTheme.bossName} and cleared this chapter challenge with a final score of ${state.score}.`;
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = `<button type="button" class="btn danger overlay-btn" data-action="restart-run">Start New Run</button>`;
     bindOverlayActions();
@@ -1457,7 +1487,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     updateMeta();
     renderAll();
     overlayTitleEl.textContent = "Run Failed";
-    overlayDescEl.textContent = `Floor ${state.floor} ended below the target score. Final score: ${state.score}.`;
+    overlayDescEl.textContent = `Chapter ${state.selectedChapter?.title || "Run"} ended on floor ${getChapterLocalFloor()}. Final score: ${state.score}.`;
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = `<button type="button" class="btn danger overlay-btn" data-action="restart-run">Restart Now</button>`;
     bindOverlayActions();
@@ -1466,7 +1496,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function showEventNode() {
     overlayTitleEl.textContent = `Branch Route · ${state.floorTheme.title}`;
-    overlayDescEl.textContent = `Choose a route for the next 2 floors in ${state.floorTheme.shortLabel}.`;
+    overlayDescEl.textContent = `Choose a route for the final boss floor in ${state.floorTheme.shortLabel}.`;
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
@@ -1499,25 +1529,25 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     return [
       {
         title: names[0],
-        desc: "Next 2 floors: +2 moves, lower target pressure, calmer pacing.",
+        desc: "Final boss floor: +2 moves, lower target pressure, calmer pacing.",
         apply: () => {
-          state.routePlan = { id: "safe", title: names[0], floorsRemaining: 2, moveBonus: 2, movePenalty: 0, targetMulDelta: -0.08, pressureDelta: -1, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
+          state.routePlan = { id: "safe", title: names[0], floorsRemaining: 1, moveBonus: 2, movePenalty: 0, targetMulDelta: -0.08, pressureDelta: -1, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
           notify(`Route chosen: ${names[0]}.`, "ok");
         },
       },
       {
         title: names[1],
-        desc: "Next 2 floors: extra drops and +1 shard per floor, but targets are slightly higher.",
+        desc: "Final boss floor: extra drops and +1 shard, but targets are slightly higher.",
         apply: () => {
-          state.routePlan = { id: "greed", title: names[1], floorsRemaining: 2, moveBonus: 0, movePenalty: 0, targetMulDelta: 0.08, pressureDelta: 0, dropBoost: 0.1, chainBonus: 0, shardBonus: 1 };
+          state.routePlan = { id: "greed", title: names[1], floorsRemaining: 1, moveBonus: 0, movePenalty: 0, targetMulDelta: 0.08, pressureDelta: 0, dropBoost: 0.1, chainBonus: 0, shardBonus: 1 };
           notify(`Route chosen: ${names[1]}.`, "warn");
         },
       },
       {
         title: names[2],
-        desc: "Next 2 floors: fewer moves and more pressure, but stronger chains and a full item refill now.",
+        desc: "Final boss floor: fewer moves and more pressure, but stronger chains and a full item refill now.",
         apply: () => {
-          state.routePlan = { id: "trial", title: names[2], floorsRemaining: 2, moveBonus: 0, movePenalty: 1, targetMulDelta: 0.12, pressureDelta: 1, dropBoost: 0.04, chainBonus: 0.18, shardBonus: 0 };
+          state.routePlan = { id: "trial", title: names[2], floorsRemaining: 1, moveBonus: 0, movePenalty: 1, targetMulDelta: 0.12, pressureDelta: 1, dropBoost: 0.04, chainBonus: 0.18, shardBonus: 0 };
           refillCarriedCharges();
           notify(`Route chosen: ${names[2]}.`, "warn");
         },
@@ -1859,7 +1889,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   function renderHUD() {
-    floorEl.textContent = `${state.floor}/${TOTAL_FLOORS}`;
+    floorEl.textContent = state.selectedChapter ? `${getChapterLocalFloor()}/3` : `${state.floor}/${TOTAL_FLOORS}`;
     if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.targetScore);
     movesLeftEl.textContent = String(state.movesLeft);
     floorScoreEl.textContent = String(state.floorScore);
