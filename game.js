@@ -1307,36 +1307,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
-    const events = [
-      {
-        title: "Cursed Pact",
-        desc: "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Burst",
-        apply: () => {
-          state.eventCurseFloors = 2;
-          addItemCharges("cross", 1, true);
-          notify("You signed the Cursed Pact.", "warn");
-        },
-      },
-      {
-        title: "Repair Forge",
-        desc: "Gain +2 moves next floor and reset the boss charge",
-        apply: () => {
-          state.nextFloorMoveBonus += 2;
-          state.boss.charge = 0;
-          notify("The forge stabilizes the next floor.", "ok");
-        },
-      },
-      {
-        title: "Greed Altar",
-        desc: "Gain +180 score now, but lose 2 moves next floor",
-        apply: () => {
-          state.score += 180;
-          state.floorScore += 40;
-          state.nextFloorMovePenalty += 2;
-          notify("Greed Altar activated: high reward, high pressure.", "warn");
-        },
-      },
-    ];
+    const events = buildEventChoices();
 
     for (const ev of events) {
       const btn = document.createElement("button");
@@ -1351,6 +1322,101 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     }
 
     overlayEl.classList.remove("hidden");
+  }
+
+  function buildEventChoices() {
+    const commonEvents = [
+      {
+        title: "Cursed Pact",
+        desc: "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Burst.",
+        apply: () => {
+          state.eventCurseFloors = 2;
+          addItemCharges("cross", 1, true);
+          notify("You signed the Cursed Pact.", "warn");
+        },
+      },
+      {
+        title: "Repair Forge",
+        desc: "Gain +2 moves next floor and reset the boss charge.",
+        apply: () => {
+          state.nextFloorMoveBonus += 2;
+          state.boss.charge = 0;
+          notify("The forge stabilizes the next floor.", "ok");
+        },
+      },
+      {
+        title: "Greed Altar",
+        desc: "Gain +180 score now, but lose 2 moves next floor.",
+        apply: () => {
+          state.score += 180;
+          state.floorScore += 40;
+          state.nextFloorMovePenalty += 2;
+          notify("Greed Altar activated: high reward, high pressure.", "warn");
+        },
+      },
+      {
+        title: "Tactical Map",
+        desc: "Scout the next floor to gain +3 moves and +20 momentum.",
+        apply: () => {
+          state.nextFloorMoveBonus += 3;
+          state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 20);
+          notify("You charted a safer route.", "ok");
+        },
+      },
+    ];
+
+    const chapterEvents = {
+      crystal_mines: [
+        {
+          title: "Prospector Cache",
+          desc: "Open an old mine crate to gain +1 Hammer and +1 Row Sweep.",
+          apply: () => {
+            addItemCharges("hammer", 1, true);
+            addItemCharges("row", 1, true);
+            notify("Prospector tools added to your kit.", "ok");
+          },
+        },
+      ],
+      frozen_archive: [
+        {
+          title: "Frozen Lantern",
+          desc: "Stabilize the archive: remove all current locks and gain +25 momentum.",
+          apply: () => {
+            for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
+            state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
+            notify("The lantern calms the frozen archive.", "ok");
+          },
+        },
+      ],
+      storm_forge: [
+        {
+          title: "Forge Overdrive",
+          desc: "Gain +1 Color Bomb and boost the next cursed floor payoff.",
+          apply: () => {
+            addItemCharges("color", 1, true);
+            state.eventCurseFloors = Math.max(state.eventCurseFloors, 1);
+            notify("The forge roars to life.", "warn");
+          },
+        },
+      ],
+      void_rift: [
+        {
+          title: "Void Bargain",
+          desc: "Gain +240 score and +1 Rainbow Burst, but suffer -1 move next floor.",
+          apply: () => {
+            state.score += 240;
+            state.floorScore += 60;
+            state.nextFloorMovePenalty += 1;
+            addItemCharges("rainbow_burst", 1, true);
+            notify("The rift grants power at a cost.", "warn");
+          },
+        },
+      ],
+    };
+
+    const pool = [...commonEvents, ...(chapterEvents[state.floorTheme.id] || [])];
+    shuffle(pool);
+    return pool.slice(0, 3);
   }
 
   function showRewardChoices() {
@@ -1440,6 +1506,11 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       { type: "support", rarity: "common", title: "Extra Moves +2", desc: "Reduce next-floor pressure", apply: () => (state.nextFloorMoveBonus += 2) },
       { type: "support", rarity: "common", title: "Momentum Surge", desc: "+40 momentum", apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
       { type: "support", rarity: "rare", title: "Field Repair", desc: "Restore 2 random item charges across carried gear", apply: restoreRandomCharges },
+      { type: "support", rarity: "common", title: "Vault Refill", desc: "Restore 1 charge to every carried item", apply: refillCarriedCharges },
+      { type: "support", rarity: "rare", title: "Forge Tune-Up", desc: "Upgrade a random carried item by 1 level and gain 1 charge", apply: upgradeRandomCarriedItem },
+      { type: "support", rarity: "rare", title: "Boss Suppressant", desc: "Start the next floor with +2 moves and a fully reset boss gauge", apply: () => { state.nextFloorMoveBonus += 2; state.boss.charge = 0; } },
+      { type: "support", rarity: "epic", title: "Fever Battery", desc: "Gain +70 momentum to prime your next power spike", apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 70)) },
+      { type: "support", rarity: "epic", title: "Rift Cache", desc: "Gain +1 random epic-or-higher item charge", apply: grantHighTierCharge },
     ];
   }
 
@@ -1473,6 +1544,25 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       for (let i = 0; i < Math.max(1, getItemLevel(id)); i += 1) bag.push(id);
     }
     for (let i = 0; i < 2; i += 1) addItemCharges(randomPick(bag), 1, false);
+  }
+
+  function refillCarriedCharges() {
+    for (const id of getCarriedItems()) addItemCharges(id, 1, false);
+  }
+
+  function upgradeRandomCarriedItem() {
+    const carried = getCarriedItems();
+    if (carried.length === 0) return;
+    const id = randomPick(carried);
+    upgradeItem(id, 1, 1);
+  }
+
+  function grantHighTierCharge() {
+    const carried = getCarriedItems().filter((id) => ["epic", "legendary"].includes(ITEM_DEFS[id].rarity));
+    const fallback = getCarriedItems();
+    const pool = carried.length > 0 ? carried : fallback;
+    if (pool.length === 0) return;
+    addItemCharges(randomPick(pool), 1, false);
   }
 
   function consumeMove() {
