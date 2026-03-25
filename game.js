@@ -405,6 +405,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       btn.addEventListener("click", () => {
         if (btn.dataset.action === "restart-run") startRun();
         if (btn.dataset.action === "chapter-select") showChapterSelect();
+        if (btn.dataset.action === "next-chapter") startNextChapter();
       });
     }
   }
@@ -511,7 +512,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     overlayEl.classList.add("hidden");
     chapterListEl.innerHTML = "";
     const unlocked = new Set(meta.progression.unlockedChapters || ["crystal_mines"]);
-    if (chapterShellEl) chapterShellEl.style.setProperty("--chapter-preview-image", `url("${CHAPTER_THEMES[0].chapterPreviewImage}")`);
+    if (chapterScreenEl) chapterScreenEl.style.setProperty("--chapter-preview-image", `url("${CHAPTER_THEMES[0].chapterPreviewImage}")`);
 
     for (const chapter of CHAPTER_THEMES) {
       const btn = document.createElement("button");
@@ -521,10 +522,10 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       btn.disabled = !isUnlocked;
       btn.innerHTML = `<span class="tag">${isUnlocked ? (isCleared ? "Cleared" : "Unlocked") : "Locked"}</span><strong>${chapter.title}</strong><small>${chapter.intro}<br>Boss: ${chapter.bossName}<br>Pattern: ${chapter.pattern}</small>`;
       btn.addEventListener("mouseenter", () => {
-        if (chapterShellEl) chapterShellEl.style.setProperty("--chapter-preview-image", `url("${chapter.chapterPreviewImage}")`);
+        if (chapterScreenEl) chapterScreenEl.style.setProperty("--chapter-preview-image", `url("${chapter.chapterPreviewImage}")`);
       });
       btn.addEventListener("focus", () => {
-        if (chapterShellEl) chapterShellEl.style.setProperty("--chapter-preview-image", `url("${chapter.chapterPreviewImage}")`);
+        if (chapterScreenEl) chapterScreenEl.style.setProperty("--chapter-preview-image", `url("${chapter.chapterPreviewImage}")`);
       });
       btn.addEventListener("click", () => {
         if (!isUnlocked) return;
@@ -1511,20 +1512,39 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   function onVictory() {
     state.victory = true;
     grantMetaShards(6 + Math.floor(state.score / 900));
+    let nextUnlockedChapter = null;
     if (state.selectedChapter?.id) {
       meta.progression.clearedChapters[state.selectedChapter.id] = true;
       const currentIndex = CHAPTER_THEMES.findIndex((x) => x.id === state.selectedChapter.id);
       const next = CHAPTER_THEMES[currentIndex + 1];
       if (next && !meta.progression.unlockedChapters.includes(next.id)) meta.progression.unlockedChapters.push(next.id);
+      nextUnlockedChapter = next || null;
     }
     updateMeta();
     renderAll();
     overlayTitleEl.textContent = `${state.selectedChapter?.title || "Chapter"} Cleared!`;
     overlayDescEl.textContent = `You defeated ${state.floorTheme.bossName} and cleared this chapter challenge with a final score of ${state.score}. ${unlockSummaryText()}`;
     choiceWrapEl.innerHTML = "";
-    overlayActionsEl.innerHTML = `<button type="button" class="btn overlay-btn" data-action="chapter-select">Back to Chapters</button><button type="button" class="btn danger overlay-btn" data-action="restart-run">Start New Run</button>`;
+    if (nextUnlockedChapter) {
+      overlayActionsEl.innerHTML = `<button type="button" class="btn overlay-btn" data-action="next-chapter">Next Chapter</button><button type="button" class="btn danger overlay-btn" data-action="chapter-select">Back to Chapters</button>`;
+    } else {
+      overlayActionsEl.innerHTML = `<button type="button" class="btn overlay-btn" data-action="chapter-select">Back to Home</button><button type="button" class="btn danger overlay-btn" data-action="restart-run">Start New Run</button>`;
+    }
     bindOverlayActions();
     overlayEl.classList.remove("hidden");
+  }
+
+  function startNextChapter() {
+    if (!state.selectedChapter?.id) return showChapterSelect();
+    const currentIndex = CHAPTER_THEMES.findIndex((x) => x.id === state.selectedChapter.id);
+    const next = CHAPTER_THEMES[currentIndex + 1];
+    if (!next) return showChapterSelect();
+    state = createInitialState();
+    state.selectedChapter = next;
+    state.floorTheme = next;
+    overlayEl.classList.add("hidden");
+    closeChapterScreen();
+    showChapterBlessings(true);
   }
 
   function onDefeat() {
