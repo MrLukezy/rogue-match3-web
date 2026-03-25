@@ -405,6 +405,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function renderCodex() {
     const c = meta.codex;
+    const p = meta.progression;
     codexContentEl.innerHTML = "";
 
     const rows = [
@@ -434,6 +435,37 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       div.innerHTML = `<span>${k}</span><strong>${v}</strong>`;
       codexContentEl.appendChild(div);
     }
+
+    const progression = document.createElement("div");
+    progression.className = "codex-progression";
+    progression.innerHTML = `<div class="row"><span>Rift Shards</span><strong>${p.shards}</strong></div><h4>Permanent Upgrades</h4>`;
+
+    const upgrades = [
+      { id: "veteran_boots", title: "Veteran Boots", desc: "+1 start move per rank", max: 3, cost: (lvl) => 4 + lvl * 3 },
+      { id: "ember_core", title: "Ember Core", desc: "+12 start momentum per rank", max: 3, cost: (lvl) => 5 + lvl * 4 },
+      { id: "relic_satchel", title: "Relic Satchel", desc: "Starting Hammer and Shuffle gain +1 charge per rank", max: 2, cost: (lvl) => 6 + lvl * 5 },
+      { id: "boss_dampener", title: "Boss Dampener", desc: "Reduce boss charge gain by 1 on early floors", max: 2, cost: (lvl) => 8 + lvl * 6 },
+    ];
+
+    for (const up of upgrades) {
+      const level = Number(p.upgrades[up.id] || 0);
+      const canBuy = level < up.max;
+      const cost = up.cost(level);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "choice codex-upgrade";
+      btn.disabled = !canBuy || p.shards < cost;
+      btn.innerHTML = `<strong>${up.title} Lv.${level}/${up.max}</strong><small>${up.desc}</small><small>Cost: ${canBuy ? cost : "MAX"} shards</small>`;
+      btn.addEventListener("click", () => {
+        if (!canBuy || meta.progression.shards < cost) return;
+        meta.progression.shards -= cost;
+        meta.progression.upgrades[up.id] = level + 1;
+        saveMeta();
+        renderCodex();
+      });
+      progression.appendChild(btn);
+    }
+    codexContentEl.appendChild(progression);
   }
 
   function startRun() {
@@ -489,10 +521,12 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       state.movesLeft += state.nextFloorMoveBonus;
       state.nextFloorMoveBonus = 0;
     }
+    state.movesLeft += Number(meta.progression.upgrades.veteran_boots || 0);
 
     if (state.perks.overcharge) {
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 28);
     }
+    state.momentum = Math.min(MOMENTUM_MAX, state.momentum + Number(meta.progression.upgrades.ember_core || 0) * 12);
     if (state.blessings.tactical_reserve) state.movesLeft += 1;
     if (state.blessings.chain_matrix) state.chainBonus += 0.15;
     if (state.blessings.supply_cache) refillCarriedCharges();
@@ -501,6 +535,12 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 18);
     }
     grantDragonHoardBonus();
+
+    const satchelBonus = Number(meta.progression.upgrades.relic_satchel || 0);
+    if (satchelBonus > 0) {
+      addItemCharges("hammer", satchelBonus, false);
+      addItemCharges("shuffle", satchelBonus, false);
+    }
 
     state.board = createBoard();
     resolveAutoBoard();
@@ -913,7 +953,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   async function tickBoss() {
     if (state.gameOver || state.victory || state.boss.casting) return;
-    const gain = Math.max(1, state.floorThreat.bossGain + (state.boss.elite ? 1 : 0) - (state.blessings.boss_shunt ? 1 : 0));
+    const permanentDampener = state.floor <= 6 ? Number(meta.progression.upgrades.boss_dampener || 0) : 0;
+    const gain = Math.max(1, state.floorThreat.bossGain + (state.boss.elite ? 1 : 0) - (state.blessings.boss_shunt ? 1 : 0) - permanentDampener);
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
     state.boss.phase = state.boss.charge >= state.boss.max ? "ready" : "charging";
     if (state.boss.charge < state.boss.max) return;
@@ -1384,6 +1425,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function onVictory() {
     state.victory = true;
+    grantMetaShards(6 + Math.floor(state.score / 900));
     updateMeta();
     renderAll();
     overlayTitleEl.textContent = "Victory!";
@@ -1396,6 +1438,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function onDefeat() {
     state.gameOver = true;
+    grantMetaShards(Math.max(2, state.floor - 1));
     updateMeta();
     renderAll();
     overlayTitleEl.textContent = "Run Failed";
@@ -1706,6 +1749,10 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     meta.bestFloor = Math.max(meta.bestFloor, state.floor);
     meta.bestScore = Math.max(meta.bestScore, state.score);
     saveMeta();
+  }
+
+  function grantMetaShards(amount) {
+    meta.progression.shards = Number(meta.progression.shards || 0) + Math.max(0, amount);
   }
 
   function createBoard() {

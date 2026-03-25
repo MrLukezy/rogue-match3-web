@@ -173,14 +173,31 @@ export function defaultCodex() {
   };
 }
 
+export function defaultMetaProgression() {
+  return {
+    shards: 0,
+    upgrades: {
+      veteran_boots: 0,
+      ember_core: 0,
+      relic_satchel: 0,
+      boss_dampener: 0,
+    },
+  };
+}
+
 export function loadMeta(storage, META_KEY) {
   try {
     const raw = storage.getItem(META_KEY);
-    if (!raw) return { bestFloor: 0, bestScore: 0, codex: defaultCodex() };
+    if (!raw) return { bestFloor: 0, bestScore: 0, codex: defaultCodex(), progression: defaultMetaProgression() };
     const parsed = JSON.parse(raw);
     return {
       bestFloor: Number(parsed.bestFloor || 0),
       bestScore: Number(parsed.bestScore || 0),
+      progression: {
+        ...defaultMetaProgression(),
+        ...(parsed.progression || {}),
+        upgrades: { ...defaultMetaProgression().upgrades, ...((parsed.progression || {}).upgrades || {}) },
+      },
       codex: {
         ...defaultCodex(),
         ...(parsed.codex || {}),
@@ -192,7 +209,7 @@ export function loadMeta(storage, META_KEY) {
       },
     };
   } catch {
-    return { bestFloor: 0, bestScore: 0, codex: defaultCodex() };
+    return { bestFloor: 0, bestScore: 0, codex: defaultCodex(), progression: defaultMetaProgression() };
   }
 }
 
