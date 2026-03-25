@@ -86,6 +86,9 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     { id: "heavy", name: "Heavy", desc: "Lose 2 moves, gain stronger chains", apply: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 2); s.chainBonus += 0.2; } },
     { id: "color_tax", name: "Color Tax", desc: "One color scores less", apply: (s) => { s.taxColor = randColor(); } },
     { id: "lucky", name: "Lucky Drop", desc: "Item drop chance is higher", apply: (s) => { s.dropBoost += 0.12; } },
+    { id: "frost_seal", name: "Frost Seal", desc: "Several gems begin locked", apply: (s) => { s.modLocks = 4; } },
+    { id: "stormfront", name: "Stormfront", desc: "Builds momentum faster but trims one move", apply: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 1); s.chainBonus += 0.12; s.dropBoost += 0.04; } },
+    { id: "rich_vein", name: "Rich Vein", desc: "Gain score and extra tool density on this floor", apply: (s) => { s.floorScore += 80; s.dropBoost += 0.08; } },
   ];
 
   const PERK_DEFS = {
@@ -468,6 +471,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     state.mode = { type: "normal", item: null };
     state.modifier = randomPick(MODIFIERS);
     state.modGlass = 0;
+    state.modLocks = 0;
     state.taxColor = null;
     state.dropBoost = 0;
     state.chainBonus = 0;
@@ -492,6 +496,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     placeObstacles(cfg.obstacles + threat.obstacleBonus);
     state.modifier.apply(state);
 
+    applyThemePressure(theme, threat);
+
     if (state.eventCurseFloors > 0) {
       state.eventCurseFloors -= 1;
       state.dropBoost += 0.08;
@@ -499,6 +505,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     }
 
     if (state.modGlass > 0) placeGlass(state.modGlass + threat.glassBonus);
+    if (state.modLocks > 0) placeLocks(state.modLocks + Math.max(0, threat.pressure - 1));
 
     const isElite = ELITE_FLOORS.includes(state.floor);
     state.boss.elite = isElite;
@@ -553,6 +560,28 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     const idxs = collectIndices((c) => c && c.kind === "gem");
     shuffle(idxs);
     for (let i = 0; i < Math.min(count, idxs.length); i += 1) state.board[idxs[i]].glass = true;
+  }
+
+  function placeLocks(count) {
+    const idxs = collectIndices((c) => c && c.kind === "gem" && c.lockedTurns <= 0);
+    shuffle(idxs);
+    for (let i = 0; i < Math.min(count, idxs.length); i += 1) state.board[idxs[i]].lockedTurns = 2;
+  }
+
+  function applyThemePressure(theme, threat) {
+    if (theme.id === "frozen_archive") {
+      state.modLocks += 2 + Math.min(2, threat.pressure);
+      state.modGlass += 1;
+    }
+    if (theme.id === "storm_forge") {
+      state.chainBonus += 0.08;
+      state.dropBoost += 0.06;
+    }
+    if (theme.id === "void_rift") {
+      if (state.taxColor == null) state.taxColor = randColor();
+      state.modGlass += 1;
+      placeObstacles(1 + Math.max(0, threat.pressure - 2));
+    }
   }
 
   function collectIndices(predicate) {
@@ -870,7 +899,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     renderAll();
     await sleep(360);
 
-    const skill = randomPick(BOSS_SKILLS);
+    const skillPool = state.floorTheme.id === "void_rift" ? BOSS_SKILLS : BOSS_SKILLS.filter((skill) => skill !== "rift_collapse");
+    const skill = randomPick(skillPool);
     await castBossSkill(skill);
 
     boardWrapEl.classList.remove("boss-telegraph");
@@ -934,6 +964,26 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       applyBossPressure(skill);
       renderAll();
       await sleep(200);
+      boardWrapEl.classList.remove("boss-cast");
+      return;
+    }
+
+    if (skill === "rift_collapse") {
+      const gems = collectIndices((x) => isGem(x) && x.lockedTurns <= 0);
+      shuffle(gems);
+      const collapseCount = Math.min(gems.length, state.boss.elite ? 8 : 5);
+      for (let i = 0; i < collapseCount; i += 1) {
+        state.board[gems[i]] = { kind: "obstacle" };
+      }
+      placeLocks(state.boss.elite ? 5 : 3);
+      state.boss.hint = `Rift Collapse: ${collapseCount} tiles corrupted`;
+      notify("Boss casts Rift Collapse!", "warn");
+      spawnFloatText("Boss: Rift Collapse", Math.floor((boardSize * boardSize) / 2));
+      for (let i = 0; i < 6; i += 1) spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
+      shakeBoard(1.55);
+      applyBossPressure("color_shift");
+      renderAll();
+      await sleep(240);
       boardWrapEl.classList.remove("boss-cast");
     }
   }

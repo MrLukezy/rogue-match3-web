@@ -13,6 +13,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
     itemSlots: ["hammer", "shuffle"],
     modifier: null,
     modGlass: 0,
+    modLocks: 0,
     taxColor: null,
     dropBoost: 0,
     chainBonus: 0,
@@ -154,7 +155,7 @@ export function defaultCodex() {
   return {
     itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0, screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
     specialTrigger: { line_h: 0, line_v: 0, bomb: 0, rainbow: 0 },
-    bossSeen: { glass_storm: 0, hex_lock: 0, color_shift: 0 },
+    bossSeen: { glass_storm: 0, hex_lock: 0, color_shift: 0, rift_collapse: 0 },
     skillUse: { screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
     maxSingleClear: 0,
     maxChain: 0,

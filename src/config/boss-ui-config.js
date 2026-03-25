@@ -14,4 +14,4 @@ export const BOSS_ANIM_FRAMES = [
   "./assets/generated/boss/anim/boss_sigil_f8.png",
 ];
 
-export const BOSS_SKILLS = ["glass_storm", "hex_lock", "color_shift"];
+export const BOSS_SKILLS = ["glass_storm", "hex_lock", "color_shift", "rift_collapse"];
