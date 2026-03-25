@@ -32,7 +32,7 @@ export function renderItemsView({
   }
 }
 
-export function renderPerksView({ perkWrapEl, state, PERK_DEFS, RARITY_LABELS }) {
+export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, RARITY_LABELS }) {
   if (!perkWrapEl) return;
   perkWrapEl.innerHTML = "";
   const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
@@ -40,12 +40,23 @@ export function renderPerksView({ perkWrapEl, state, PERK_DEFS, RARITY_LABELS })
     .filter(([id]) => state.perks[id])
     .sort((a, b) => rarityOrder[a[1].rarity] - rarityOrder[b[1].rarity]);
 
-  if (owned.length === 0) {
+  const blessings = Object.entries(BLESSING_DEFS || {})
+    .filter(([id]) => state.blessings?.[id])
+    .sort((a, b) => rarityOrder[a[1].rarity] - rarityOrder[b[1].rarity]);
+
+  if (owned.length === 0 && blessings.length === 0) {
     const empty = document.createElement("div");
     empty.className = "perk-empty";
     empty.textContent = "Draft rogue skills after each floor to shape your run.";
     perkWrapEl.appendChild(empty);
     return;
+  }
+
+  for (const [, def] of blessings) {
+    const el = document.createElement("div");
+    el.className = `perk-chip rarity-${def.rarity}`;
+    el.innerHTML = `<span>Blessing</span><strong>${def.title}</strong><small>${def.desc}</small>`;
+    perkWrapEl.appendChild(el);
   }
 
   for (const [, def] of owned) {

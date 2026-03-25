@@ -24,6 +24,7 @@ import {
 } from "./src/config/items-config.js";
 import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES, GEM_POOL_BY_FLOOR } from "./src/config/gems-config.js";
 import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-config.js";
+import { BLESSING_DEFS } from "./src/config/blessings-config.js";
 import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
 import { renderBoardView } from "./src/render/board-render.js";
 import {
@@ -489,6 +490,9 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     if (state.perks.overcharge) {
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 28);
     }
+    if (state.blessings.tactical_reserve) state.movesLeft += 1;
+    if (state.blessings.chain_matrix) state.chainBonus += 0.15;
+    if (state.blessings.supply_cache) refillCarriedCharges();
     grantDragonHoardBonus();
 
     state.board = createBoard();
@@ -504,8 +508,9 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       state.chainBonus += 0.1;
     }
 
-    if (state.modGlass > 0) placeGlass(state.modGlass + threat.glassBonus);
-    if (state.modLocks > 0) placeLocks(state.modLocks + Math.max(0, threat.pressure - 1));
+    const purifierOffset = state.blessings.purifier_sigil ? 2 : 0;
+    if (state.modGlass > 0) placeGlass(Math.max(0, state.modGlass + threat.glassBonus - purifierOffset));
+    if (state.modLocks > 0) placeLocks(Math.max(0, state.modLocks + Math.max(0, threat.pressure - 1) - purifierOffset));
 
     const isElite = ELITE_FLOORS.includes(state.floor);
     state.boss.elite = isElite;
@@ -897,7 +902,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   async function tickBoss() {
     if (state.gameOver || state.victory || state.boss.casting) return;
-    const gain = state.floorThreat.bossGain + (state.boss.elite ? 1 : 0);
+    const gain = Math.max(1, state.floorThreat.bossGain + (state.boss.elite ? 1 : 0) - (state.blessings.boss_shunt ? 1 : 0));
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
     state.boss.phase = state.boss.charge >= state.boss.max ? "ready" : "charging";
     if (state.boss.charge < state.boss.max) return;
@@ -1285,7 +1290,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     state.momentum = Math.min(MOMENTUM_MAX, state.momentum + gain);
     if (state.momentum >= MOMENTUM_MAX) {
       state.momentum = 0;
-      state.feverTurns = state.perks.fever_loop ? 4 : 3;
+      state.feverTurns = (state.perks.fever_loop ? 4 : 3) + (state.blessings.fever_engine ? 1 : 0);
       spawnFloatText("FEVER!", Math.floor((boardSize * boardSize) / 2));
       notify("FEVER started: score and drops are boosted!", "ok");
     }
@@ -1334,8 +1339,36 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function onFloorCleared() {
     if (state.floor >= TOTAL_FLOORS) return onVictory();
+    if ([3, 6, 9].includes(state.floor)) return showChapterBlessings();
     if (EVENT_NODE_FLOORS.includes(state.floor)) return showEventNode();
     showRewardChoices();
+  }
+
+  function showChapterBlessings() {
+    overlayTitleEl.textContent = `Chapter Blessing · ${state.floorTheme.title}`;
+    overlayDescEl.textContent = "Choose one powerful blessing to shape the rest of your run.";
+    choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = "";
+
+    const missing = Object.entries(BLESSING_DEFS).filter(([id]) => !state.blessings[id]);
+    shuffle(missing);
+    const picks = missing.slice(0, 3);
+
+    for (const [, def] of picks) {
+      const btn = document.createElement("button");
+      btn.className = `choice rarity-${def.rarity}`;
+      btn.innerHTML = `<span class="choice-rarity">Blessing</span><strong>${def.title}</strong><small>${def.desc}</small>`;
+      btn.addEventListener("click", () => {
+        def.apply(state);
+        overlayEl.classList.add("hidden");
+        notify(`Blessing acquired: ${def.title}`, "ok");
+        renderAll();
+        startFloor(state.floor + 1);
+      });
+      choiceWrapEl.appendChild(btn);
+    }
+
+    overlayEl.classList.remove("hidden");
   }
 
   function onVictory() {
@@ -1770,7 +1803,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   function renderPerks() {
-    renderPerksView({ perkWrapEl, state, PERK_DEFS, RARITY_LABELS });
+    renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, RARITY_LABELS });
   }
 
   function renderBoard() {
