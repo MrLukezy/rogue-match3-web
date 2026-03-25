@@ -494,6 +494,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     const cfg = FLOOR_CONFIG[state.floor - 1];
     const threat = getFloorThreat(state.floor);
     const theme = getFloorTheme(state.floor);
+    const route = state.routePlan || { id: "main", title: "Main Path", floorsRemaining: 0, moveBonus: 0, movePenalty: 0, targetMulDelta: 0, pressureDelta: 0, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
     boardSize = getBoardSizeForFloor(state.floor);
     state.boardSize = boardSize;
     state.activeGemColors = getGemPoolForFloor(state.floor);
@@ -501,7 +502,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     state.floorTheme = theme;
     const unlockedNewColor = state.activeGemColors.length > previousColorCount;
 
-    state.targetScore = Math.floor(cfg.target * threat.targetMul);
+    state.targetScore = Math.floor(cfg.target * (threat.targetMul + route.targetMulDelta));
     state.movesLeft = Math.max(8, cfg.moves + threat.movesDelta);
     state.floorScore = 0;
     state.mode = { type: "normal", item: null };
@@ -512,6 +513,18 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     state.dropBoost = 0;
     state.chainBonus = 0;
     selected = null;
+
+    if (route.floorsRemaining > 0) {
+      state.movesLeft += route.moveBonus;
+      state.movesLeft = Math.max(7, state.movesLeft - route.movePenalty);
+      state.dropBoost += route.dropBoost;
+      state.chainBonus += route.chainBonus;
+      state.floorThreat.pressure += route.pressureDelta;
+      route.floorsRemaining -= 1;
+      if (route.floorsRemaining <= 0) {
+        state.routePlan = { id: "main", title: "Main Path", floorsRemaining: 0, moveBonus: 0, movePenalty: 0, targetMulDelta: 0, pressureDelta: 0, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
+      }
+    }
 
     if (state.nextFloorMovePenalty > 0) {
       state.movesLeft = Math.max(7, state.movesLeft - state.nextFloorMovePenalty);
@@ -578,7 +591,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       const newest = state.activeGemColors[state.activeGemColors.length - 1];
       notify(`New gem unlocked: ${GEM_COLOR_NAMES[newest]}. +1 move and +18 momentum to ease the transition.`, "ok");
     }
-    notify(`Floor ${state.floor} begins: ${theme.title} / ${state.modifier.name} / ${threat.label}.`, "ok");
+    notify(`Floor ${state.floor} begins: ${theme.title} / ${state.routePlan.title} / ${state.modifier.name} / ${threat.label}.`, "ok");
     scanGuideDiscoveries();
   }
 
@@ -1390,6 +1403,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   function onFloorCleared() {
+    grantMetaShards(1 + (state.routePlan?.shardBonus || 0));
+    saveMeta();
     if (state.floor >= TOTAL_FLOORS) return onVictory();
     if ([3, 6, 9].includes(state.floor)) return showChapterBlessings();
     if (EVENT_NODE_FLOORS.includes(state.floor)) return showEventNode();
@@ -1450,12 +1465,12 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   function showEventNode() {
-    overlayTitleEl.textContent = `Event Node · ${state.floorTheme.title}`;
-    overlayDescEl.textContent = `Choose one route to shape the next floor in ${state.floorTheme.shortLabel}.`;
+    overlayTitleEl.textContent = `Branch Route · ${state.floorTheme.title}`;
+    overlayDescEl.textContent = `Choose a route for the next 2 floors in ${state.floorTheme.shortLabel}.`;
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
-    const events = buildEventChoices();
+    const events = buildBranchRoutes();
 
     for (const ev of events) {
       const btn = document.createElement("button");
@@ -1470,6 +1485,44 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     }
 
     overlayEl.classList.remove("hidden");
+  }
+
+  function buildBranchRoutes() {
+    const theme = state.floorTheme.id;
+    const names = {
+      crystal_mines: ["Survey Route", "Greed Route", "Blast Route"],
+      frozen_archive: ["Calm Route", "Scholar Route", "Risk Route"],
+      storm_forge: ["Shielded Route", "Harvest Route", "Overdrive Route"],
+      void_rift: ["Anchored Route", "Rift Route", "Cataclysm Route"],
+    }[theme] || ["Safe Route", "Greedy Route", "Trial Route"];
+
+    return [
+      {
+        title: names[0],
+        desc: "Next 2 floors: +2 moves, lower target pressure, calmer pacing.",
+        apply: () => {
+          state.routePlan = { id: "safe", title: names[0], floorsRemaining: 2, moveBonus: 2, movePenalty: 0, targetMulDelta: -0.08, pressureDelta: -1, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
+          notify(`Route chosen: ${names[0]}.`, "ok");
+        },
+      },
+      {
+        title: names[1],
+        desc: "Next 2 floors: extra drops and +1 shard per floor, but targets are slightly higher.",
+        apply: () => {
+          state.routePlan = { id: "greed", title: names[1], floorsRemaining: 2, moveBonus: 0, movePenalty: 0, targetMulDelta: 0.08, pressureDelta: 0, dropBoost: 0.1, chainBonus: 0, shardBonus: 1 };
+          notify(`Route chosen: ${names[1]}.`, "warn");
+        },
+      },
+      {
+        title: names[2],
+        desc: "Next 2 floors: fewer moves and more pressure, but stronger chains and a full item refill now.",
+        apply: () => {
+          state.routePlan = { id: "trial", title: names[2], floorsRemaining: 2, moveBonus: 0, movePenalty: 1, targetMulDelta: 0.12, pressureDelta: 1, dropBoost: 0.04, chainBonus: 0.18, shardBonus: 0 };
+          refillCarriedCharges();
+          notify(`Route chosen: ${names[2]}.`, "warn");
+        },
+      },
+    ];
   }
 
   function buildEventChoices() {
@@ -1825,7 +1878,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     if (bossStateEl) bossStateEl.textContent = state.boss.casting ? `Casting in ${state.floorTheme.shortLabel}` : state.boss.phase === "ready" ? "Primed to strike on the next beat" : `Charging through ${state.floorTheme.title}`;
     if (bossThreatEl) bossThreatEl.textContent = getBossThreatLabel();
     if (bossPatternEl) bossPatternEl.textContent = state.boss.elite ? `${state.floorTheme.pattern} / Elite pressure` : state.floorTheme.pattern;
-    if (modifierEl) modifierEl.textContent = state.modifier ? `${state.floorTheme.shortLabel} · ${state.modifier.name} · ${state.activeGemColors.length}C` : `${state.floorTheme.shortLabel} · ${state.activeGemColors.length}C`;
+    if (modifierEl) modifierEl.textContent = state.modifier ? `${state.floorTheme.shortLabel} · ${state.routePlan.title} · ${state.modifier.name} · ${state.activeGemColors.length}C` : `${state.floorTheme.shortLabel} · ${state.routePlan.title} · ${state.activeGemColors.length}C`;
     if (bossMeterEl) {
       bossMeterEl.classList.remove("charging", "ready", "casting");
       if (state.boss.casting) bossMeterEl.classList.add("casting");

@@ -52,6 +52,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
     nextFloorMoveBonus: 0,
     floorThreat: { label: "Warm-Up", bossGain: 1, pressure: 0 },
     floorTheme: { id: "crystal_mines", title: "Crystal Mines", shortLabel: "Mines", bossName: "Mine Warden", eliteBossName: "Crystal Burrow Tyrant", pattern: "Glass / Obstacle / Pressure", intro: "Stable crystal tunnels with early board hazards." },
+    routePlan: { id: "main", title: "Main Path", floorsRemaining: 0, moveBonus: 0, movePenalty: 0, targetMulDelta: 0, pressureDelta: 0, dropBoost: 0, chainBonus: 0, shardBonus: 0 },
     gameOver: false,
     victory: false,
   };
