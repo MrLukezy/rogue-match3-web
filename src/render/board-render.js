@@ -30,7 +30,6 @@ export function renderBoardView({
       if (value.special) gem.classList.add(`sp-${value.special}`);
       if (value.glass) gem.classList.add("glass");
       if (value.lockedTurns > 0) gem.classList.add("locked");
-      if (clearAnim.has(i)) gem.classList.add("clear-pop");
       if (fallAnim.has(i)) gem.classList.add("fall-in");
 
       const icon = document.createElement("img");

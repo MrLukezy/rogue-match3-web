@@ -49,6 +49,7 @@ export async function playItemCastAnimation({ itemWrapEl, boardEl, item, idx, im
 }
 
 export function spawnShatterFX({ indices, boardEl, state, isGem, fxLayerEl, MAX_ACTIVE_SHARDS, activeShards, setActiveShards }) {
+  const host = document.body;
   const capped = indices.slice(0, 16);
   const shardBudget = Math.max(0, MAX_ACTIVE_SHARDS - activeShards);
   if (shardBudget <= 0) return;
@@ -72,7 +73,7 @@ export function spawnShatterFX({ indices, boardEl, state, isGem, fxLayerEl, MAX_
       const color = `var(--gem-color-${source.color}, #ffffff)`;
       burst.style.background = `radial-gradient(circle, rgba(255,255,255,0.98) 0%, ${color} 28%, rgba(255,255,255,0.14) 58%, rgba(255,255,255,0) 76%)`;
     }
-    fxLayerEl.appendChild(burst);
+    host.appendChild(burst);
     setTimeout(() => burst.remove(), 280);
 
     if (isGem(source) && source.special) {
@@ -85,7 +86,7 @@ export function spawnShatterFX({ indices, boardEl, state, isGem, fxLayerEl, MAX_
         const rot = `${(360 / streakCount) * s + (source.special === "line_h" ? 0 : source.special === "line_v" ? 90 : 30)}deg`;
         streak.style.setProperty("--streak-rot", rot);
         streak.style.background = `linear-gradient(90deg, rgba(255,255,255,0), var(--gem-color-${source.color}, #fff), rgba(255,255,255,0))`;
-        fxLayerEl.appendChild(streak);
+        host.appendChild(streak);
         setTimeout(() => streak.remove(), 320);
       }
     }
@@ -108,7 +109,7 @@ export function spawnShatterFX({ indices, boardEl, state, isGem, fxLayerEl, MAX_
       p.style.setProperty("--dx", `${dx}px`);
       p.style.setProperty("--dy", `${dy}px`);
       p.style.setProperty("--rot", rot);
-      fxLayerEl.appendChild(p);
+      host.appendChild(p);
       setActiveShards(activeShards + 1);
       activeShards += 1;
       setTimeout(() => {
@@ -121,6 +122,7 @@ export function spawnShatterFX({ indices, boardEl, state, isGem, fxLayerEl, MAX_
 }
 
 export function spawnShockwaveFX({ boardEl, fxLayerEl, index, strong = false }) {
+  const host = document.body;
   const cell = boardEl.querySelector(`.cell[data-index="${index}"]`);
   if (!cell) return;
   const r = cell.getBoundingClientRect();
@@ -135,31 +137,31 @@ export function spawnShockwaveFX({ boardEl, fxLayerEl, index, strong = false }) 
     wave.style.marginTop = `${-size / 2}px`;
     wave.style.borderWidth = `${border}px`;
     wave.style.borderColor = `rgba(255,255,255,${alpha})`;
-    fxLayerEl.appendChild(wave);
+      host.appendChild(wave);
     setTimeout(() => wave.remove(), life);
   };
 
   spawnWave(strong ? 16 : 12, strong ? 3 : 2, strong ? 360 : 320, strong ? 0.98 : 0.85);
-  if (strong) {
-    spawnWave(24, 2, 420, 0.68);
-    spawnWave(34, 2, 460, 0.32);
-    const flash = document.createElement("i");
-    flash.style.position = "fixed";
-    flash.style.left = `${r.left + r.width / 2}px`;
-    flash.style.top = `${r.top + r.height / 2}px`;
-    flash.style.width = "28px";
-    flash.style.height = "28px";
-    flash.style.marginLeft = "-14px";
-    flash.style.marginTop = "-14px";
-    flash.style.borderRadius = "50%";
-    flash.style.background = "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0) 100%)";
-    flash.style.animation = "waveExpand 240ms ease forwards";
-    fxLayerEl.appendChild(flash);
+    if (strong) {
+      spawnWave(24, 2, 420, 0.68);
+      spawnWave(34, 2, 460, 0.32);
+      const flash = document.createElement("i");
+      flash.style.position = "fixed";
+      flash.style.left = `${r.left + r.width / 2}px`;
+      flash.style.top = `${r.top + r.height / 2}px`;
+      flash.style.width = "28px";
+      flash.style.height = "28px";
+      flash.style.borderRadius = "50%";
+      flash.style.transform = "translate(-50%, -50%)";
+      flash.style.background = "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0) 100%)";
+      flash.style.animation = "waveExpand 240ms ease forwards";
+      host.appendChild(flash);
     setTimeout(() => flash.remove(), 260);
   }
 }
 
 export function spawnFloatText({ boardEl, fxLayerEl, text, index }) {
+  const host = document.body;
   const cell = boardEl.querySelector(`.cell[data-index="${index}"]`);
   if (!cell) return;
   const r = cell.getBoundingClientRect();
@@ -168,14 +170,15 @@ export function spawnFloatText({ boardEl, fxLayerEl, text, index }) {
   el.textContent = text;
   el.style.left = `${r.left + r.width / 2}px`;
   el.style.top = `${r.top + r.height / 2}px`;
-  fxLayerEl.appendChild(el);
+  host.appendChild(el);
   setTimeout(() => el.remove(), 540);
 }
 
 export function spawnScreenPulse({ fxLayerEl, theme = "boss", duration = 420 }) {
+  const host = document.body;
   const el = document.createElement("i");
   el.className = `fx-screen-pulse ${theme}`;
-  fxLayerEl.appendChild(el);
+  host.appendChild(el);
   setTimeout(() => el.remove(), duration);
 }
 
