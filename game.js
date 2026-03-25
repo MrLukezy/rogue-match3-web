@@ -30,6 +30,10 @@
   ];
 
   const MAX_ITEM_TYPES = 5;
+  const UI_IMAGES = {
+    obstacle: "./assets/generated/ui/tile_obstacle_obsidian.png",
+    emptySlot: "./assets/generated/ui/icon_empty_slot_relic.png",
+  };
 
   const ITEM_DEFS = {
     hammer: { name: "Hammer", image: "./assets/generated/items/item_hammer.png", desc: "Break a single tile", target: true, rarity: "common" },
@@ -41,6 +45,18 @@
     rainbow_burst: { name: "Rainbow Burst", image: "./assets/generated/items/item_rainbow_burst.png", desc: "Clear two random colors and trigger specials", target: false, rarity: "epic" },
     time_freeze: { name: "Time Freeze", image: "./assets/generated/items/item_time_freeze.png", desc: "Gain moves, unlock gems, and stabilize momentum", target: false, rarity: "epic" },
     boss_breaker: { name: "Boss Breaker", image: "./assets/generated/items/item_boss_breaker.png", desc: "Smash charge and shatter a wide section of the board", target: false, rarity: "legendary" },
+  };
+
+  const ITEM_ANIM_FRAMES = {
+    hammer: ["./assets/generated/items/anim/item_hammer_f1.png", "./assets/generated/items/anim/item_hammer_f2.png", "./assets/generated/items/anim/item_hammer_f3.png", "./assets/generated/items/anim/item_hammer_f4.png", "./assets/generated/items/anim/item_hammer_f5.png", "./assets/generated/items/anim/item_hammer_f6.png", "./assets/generated/items/anim/item_hammer_f7.png", "./assets/generated/items/anim/item_hammer_f8.png"],
+    row: ["./assets/generated/items/anim/item_row_sweep_f1.png", "./assets/generated/items/anim/item_row_sweep_f2.png", "./assets/generated/items/anim/item_row_sweep_f3.png", "./assets/generated/items/anim/item_row_sweep_f4.png", "./assets/generated/items/anim/item_row_sweep_f5.png", "./assets/generated/items/anim/item_row_sweep_f6.png", "./assets/generated/items/anim/item_row_sweep_f7.png", "./assets/generated/items/anim/item_row_sweep_f8.png"],
+    cross: ["./assets/generated/items/anim/item_cross_burst_f1.png", "./assets/generated/items/anim/item_cross_burst_f2.png", "./assets/generated/items/anim/item_cross_burst_f3.png", "./assets/generated/items/anim/item_cross_burst_f4.png", "./assets/generated/items/anim/item_cross_burst_f5.png", "./assets/generated/items/anim/item_cross_burst_f6.png", "./assets/generated/items/anim/item_cross_burst_f7.png", "./assets/generated/items/anim/item_cross_burst_f8.png"],
+    color: ["./assets/generated/items/anim/item_color_bomb_f1.png", "./assets/generated/items/anim/item_color_bomb_f2.png", "./assets/generated/items/anim/item_color_bomb_f3.png", "./assets/generated/items/anim/item_color_bomb_f4.png", "./assets/generated/items/anim/item_color_bomb_f5.png", "./assets/generated/items/anim/item_color_bomb_f6.png", "./assets/generated/items/anim/item_color_bomb_f7.png", "./assets/generated/items/anim/item_color_bomb_f8.png"],
+    shuffle: ["./assets/generated/items/anim/item_shuffle_f1.png", "./assets/generated/items/anim/item_shuffle_f2.png", "./assets/generated/items/anim/item_shuffle_f3.png", "./assets/generated/items/anim/item_shuffle_f4.png", "./assets/generated/items/anim/item_shuffle_f5.png", "./assets/generated/items/anim/item_shuffle_f6.png", "./assets/generated/items/anim/item_shuffle_f7.png", "./assets/generated/items/anim/item_shuffle_f8.png"],
+    screen_wipe: ["./assets/generated/items/anim/item_screen_pulse_f1.png", "./assets/generated/items/anim/item_screen_pulse_f2.png", "./assets/generated/items/anim/item_screen_pulse_f3.png", "./assets/generated/items/anim/item_screen_pulse_f4.png", "./assets/generated/items/anim/item_screen_pulse_f5.png", "./assets/generated/items/anim/item_screen_pulse_f6.png", "./assets/generated/items/anim/item_screen_pulse_f7.png", "./assets/generated/items/anim/item_screen_pulse_f8.png"],
+    rainbow_burst: ["./assets/generated/items/anim/item_rainbow_burst_f1.png", "./assets/generated/items/anim/item_rainbow_burst_f2.png", "./assets/generated/items/anim/item_rainbow_burst_f3.png", "./assets/generated/items/anim/item_rainbow_burst_f4.png", "./assets/generated/items/anim/item_rainbow_burst_f5.png", "./assets/generated/items/anim/item_rainbow_burst_f6.png", "./assets/generated/items/anim/item_rainbow_burst_f7.png", "./assets/generated/items/anim/item_rainbow_burst_f8.png"],
+    time_freeze: ["./assets/generated/items/anim/item_time_freeze_f1.png", "./assets/generated/items/anim/item_time_freeze_f2.png", "./assets/generated/items/anim/item_time_freeze_f3.png", "./assets/generated/items/anim/item_time_freeze_f4.png", "./assets/generated/items/anim/item_time_freeze_f5.png", "./assets/generated/items/anim/item_time_freeze_f6.png", "./assets/generated/items/anim/item_time_freeze_f7.png", "./assets/generated/items/anim/item_time_freeze_f8.png"],
+    boss_breaker: ["./assets/generated/items/anim/item_boss_breaker_f1.png", "./assets/generated/items/anim/item_boss_breaker_f2.png", "./assets/generated/items/anim/item_boss_breaker_f3.png", "./assets/generated/items/anim/item_boss_breaker_f4.png", "./assets/generated/items/anim/item_boss_breaker_f5.png", "./assets/generated/items/anim/item_boss_breaker_f6.png", "./assets/generated/items/anim/item_boss_breaker_f7.png", "./assets/generated/items/anim/item_boss_breaker_f8.png"],
   };
 
   const ITEM_ORDER = ["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker"];
@@ -67,6 +83,17 @@
     4: "./assets/generated/gems/gem_arcane.png",
     5: "./assets/generated/gems/gem_alchemy.png",
   };
+
+  const GEM_ANIM_FRAMES = {
+    0: ["./assets/generated/gems/anim/gem_fire_f1.png", "./assets/generated/gems/anim/gem_fire_f2.png", "./assets/generated/gems/anim/gem_fire_f3.png", "./assets/generated/gems/anim/gem_fire_f4.png", "./assets/generated/gems/anim/gem_fire_f5.png", "./assets/generated/gems/anim/gem_fire_f6.png", "./assets/generated/gems/anim/gem_fire_f7.png", "./assets/generated/gems/anim/gem_fire_f8.png"],
+    1: ["./assets/generated/gems/anim/gem_water_f1.png", "./assets/generated/gems/anim/gem_water_f2.png", "./assets/generated/gems/anim/gem_water_f3.png", "./assets/generated/gems/anim/gem_water_f4.png", "./assets/generated/gems/anim/gem_water_f5.png", "./assets/generated/gems/anim/gem_water_f6.png", "./assets/generated/gems/anim/gem_water_f7.png", "./assets/generated/gems/anim/gem_water_f8.png"],
+    2: ["./assets/generated/gems/anim/gem_nature_f1.png", "./assets/generated/gems/anim/gem_nature_f2.png", "./assets/generated/gems/anim/gem_nature_f3.png", "./assets/generated/gems/anim/gem_nature_f4.png", "./assets/generated/gems/anim/gem_nature_f5.png", "./assets/generated/gems/anim/gem_nature_f6.png", "./assets/generated/gems/anim/gem_nature_f7.png", "./assets/generated/gems/anim/gem_nature_f8.png"],
+    3: ["./assets/generated/gems/anim/gem_lightning_f1.png", "./assets/generated/gems/anim/gem_lightning_f2.png", "./assets/generated/gems/anim/gem_lightning_f3.png", "./assets/generated/gems/anim/gem_lightning_f4.png", "./assets/generated/gems/anim/gem_lightning_f5.png", "./assets/generated/gems/anim/gem_lightning_f6.png", "./assets/generated/gems/anim/gem_lightning_f7.png", "./assets/generated/gems/anim/gem_lightning_f8.png"],
+    4: ["./assets/generated/gems/anim/gem_arcane_f1.png", "./assets/generated/gems/anim/gem_arcane_f2.png", "./assets/generated/gems/anim/gem_arcane_f3.png", "./assets/generated/gems/anim/gem_arcane_f4.png", "./assets/generated/gems/anim/gem_arcane_f5.png", "./assets/generated/gems/anim/gem_arcane_f6.png", "./assets/generated/gems/anim/gem_arcane_f7.png", "./assets/generated/gems/anim/gem_arcane_f8.png"],
+    5: ["./assets/generated/gems/anim/gem_alchemy_f1.png", "./assets/generated/gems/anim/gem_alchemy_f2.png", "./assets/generated/gems/anim/gem_alchemy_f3.png", "./assets/generated/gems/anim/gem_alchemy_f4.png", "./assets/generated/gems/anim/gem_alchemy_f5.png", "./assets/generated/gems/anim/gem_alchemy_f6.png", "./assets/generated/gems/anim/gem_alchemy_f7.png", "./assets/generated/gems/anim/gem_alchemy_f8.png"],
+  };
+
+  const BOSS_ANIM_FRAMES = ["./assets/generated/boss/anim/boss_sigil_f1.png", "./assets/generated/boss/anim/boss_sigil_f2.png", "./assets/generated/boss/anim/boss_sigil_f3.png", "./assets/generated/boss/anim/boss_sigil_f4.png", "./assets/generated/boss/anim/boss_sigil_f5.png", "./assets/generated/boss/anim/boss_sigil_f6.png", "./assets/generated/boss/anim/boss_sigil_f7.png", "./assets/generated/boss/anim/boss_sigil_f8.png"];
 
   const MODIFIERS = [
     { id: "glass", name: "Glass", desc: "Start with extra glass layers", apply: (s) => (s.modGlass = 8) },
@@ -151,8 +178,11 @@
   let boardSize = MIN_BOARD_SIZE;
   let guideQueue = [];
   let guideActive = false;
+  let itemAnimFrameIndex = 0;
+  let itemAnimTimer = null;
 
   bindEvents();
+  startItemIconAnimation();
   startRun();
 
   function createInitialState() {
@@ -218,6 +248,59 @@
 
   function getItemLevel(id) {
     return Number(state.itemLevels[id] || 0);
+  }
+
+  function getItemFrames(id) {
+    return ITEM_ANIM_FRAMES[id] || [ITEM_DEFS[id]?.image].filter(Boolean);
+  }
+
+  function getAnimatedItemImage(id, frameIndex = itemAnimFrameIndex) {
+    const frames = getItemFrames(id);
+    if (!frames.length) return ITEM_DEFS[id]?.image || "";
+    return frames[frameIndex % frames.length];
+  }
+
+  function getGemFrames(color) {
+    return GEM_ANIM_FRAMES[color] || [GEM_IMAGE_BY_COLOR[color] || GEM_IMAGE_BY_COLOR[0]].filter(Boolean);
+  }
+
+  function getAnimatedGemImage(color, frameIndex = itemAnimFrameIndex) {
+    const frames = getGemFrames(color);
+    return frames[frameIndex % frames.length];
+  }
+
+  function getAnimatedBossImage(frameIndex = itemAnimFrameIndex) {
+    return BOSS_ANIM_FRAMES[frameIndex % BOSS_ANIM_FRAMES.length] || "./assets/generated/boss/boss_sigil.png";
+  }
+
+  function syncAnimatedItemImages(root = document) {
+    const images = root.querySelectorAll("[data-anim-item]");
+    for (const img of images) {
+      const item = img.dataset.animItem;
+      const next = getAnimatedItemImage(item);
+      if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
+    }
+
+    const gemImages = root.querySelectorAll("[data-anim-gem]");
+    for (const img of gemImages) {
+      const color = Number(img.dataset.animGem);
+      const next = getAnimatedGemImage(color);
+      if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
+    }
+
+    const bossImages = root.querySelectorAll("[data-anim-boss]");
+    for (const img of bossImages) {
+      const next = getAnimatedBossImage();
+      if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
+    }
+  }
+
+  function startItemIconAnimation() {
+    if (itemAnimTimer) clearInterval(itemAnimTimer);
+    itemAnimTimer = setInterval(() => {
+      itemAnimFrameIndex = (itemAnimFrameIndex + 1) % 8;
+      syncAnimatedItemImages(document);
+    }, 145);
   }
 
   function hasItemType(id) {
@@ -422,7 +505,8 @@
     const icon = document.createElement("img");
     icon.className = "gem-icon gem-image";
     icon.alt = "guide gem";
-    icon.src = GEM_IMAGE_BY_COLOR[preview.color ?? 0] || GEM_IMAGE_BY_COLOR[0];
+    icon.dataset.animGem = String(preview.color ?? 0);
+    icon.src = getAnimatedGemImage(preview.color ?? 0);
     gem.appendChild(icon);
     frame.appendChild(gem);
     return frame;
@@ -1579,7 +1663,7 @@
 
     const fx = document.createElement("div");
     fx.className = `item-cast-fx item-${item}`;
-    fx.innerHTML = `<img src="${ITEM_DEFS[item].image}" alt="${ITEM_DEFS[item].name}" class="item-cast-image">`;
+    fx.innerHTML = `<img src="${getAnimatedItemImage(item)}" alt="${ITEM_DEFS[item].name}" class="item-cast-image" data-anim-item="${item}">`;
 
     const sx = from.left + from.width / 2;
     const sy = from.top + from.height / 2;
@@ -1611,9 +1695,35 @@
       if (!cell) continue;
       const rect = cell.getBoundingClientRect();
       const source = state.board[idx];
-      const specialBoost = isGem(source) && source.special ? 1.45 : 1;
-      const pieces = Math.min(useBudget, Math.floor((10 + Math.random() * 6) * specialBoost));
+      const specialBoost = isGem(source) && source.special ? 1.75 : 1;
+      const pieces = Math.min(useBudget, Math.floor((18 + Math.random() * 12) * specialBoost));
       useBudget -= pieces;
+
+      const burst = document.createElement("i");
+      burst.className = "fx-burst";
+      burst.style.left = `${rect.left + rect.width / 2}px`;
+      burst.style.top = `${rect.top + rect.height / 2}px`;
+      if (isGem(source)) {
+        const color = `var(--gem-color-${source.color}, #ffffff)`;
+        burst.style.background = `radial-gradient(circle, rgba(255,255,255,0.98) 0%, ${color} 28%, rgba(255,255,255,0.14) 58%, rgba(255,255,255,0) 76%)`;
+      }
+      fxLayerEl.appendChild(burst);
+      setTimeout(() => burst.remove(), 280);
+
+      if (isGem(source) && source.special) {
+        const streakCount = source.special === "bomb" || source.special === "rainbow" ? 6 : 4;
+        for (let s = 0; s < streakCount; s += 1) {
+          const streak = document.createElement("i");
+          streak.className = "fx-streak";
+          streak.style.left = `${rect.left + rect.width / 2}px`;
+          streak.style.top = `${rect.top + rect.height / 2}px`;
+          const rot = `${(360 / streakCount) * s + (source.special === "line_h" ? 0 : source.special === "line_v" ? 90 : 30)}deg`;
+          streak.style.setProperty("--streak-rot", rot);
+          streak.style.background = `linear-gradient(90deg, rgba(255,255,255,0), var(--gem-color-${source.color}, #fff), rgba(255,255,255,0))`;
+          fxLayerEl.appendChild(streak);
+          setTimeout(() => streak.remove(), 320);
+        }
+      }
 
       for (let i = 0; i < pieces; i += 1) {
         const p = document.createElement("i");
@@ -1622,14 +1732,18 @@
         p.style.top = `${rect.top + rect.height / 2}px`;
 
         const ang = Math.random() * Math.PI * 2;
-        const speed = 26 + Math.random() * 62;
+        const speed = 34 + Math.random() * 86;
         const dx = Math.cos(ang) * speed;
-        const dy = Math.sin(ang) * speed + 16;
+        const dy = Math.sin(ang) * speed + 24;
         const rot = `${(Math.random() - 0.5) * 520}deg`;
 
-        p.style.width = `${3 + Math.random() * 5}px`;
-        p.style.height = `${2 + Math.random() * 4}px`;
+        p.style.width = `${4 + Math.random() * 8}px`;
+        p.style.height = `${3 + Math.random() * 6}px`;
         p.style.background = isGem(source) ? `var(--gem-color-${source.color}, #dce8ff)` : "#dce8ff";
+        p.style.opacity = String(0.72 + Math.random() * 0.28);
+        p.style.clipPath = Math.random() > 0.5
+          ? "polygon(50% 0%, 0% 100%, 100% 100%)"
+          : "polygon(0% 0%, 100% 18%, 76% 100%, 14% 82%)";
         p.style.setProperty("--dx", `${dx}px`);
         p.style.setProperty("--dy", `${dy}px`);
         p.style.setProperty("--rot", rot);
@@ -1639,7 +1753,7 @@
         setTimeout(() => {
           p.remove();
           activeShards = Math.max(0, activeShards - 1);
-        }, 460);
+        }, 620);
       }
     }
   }
@@ -1664,19 +1778,20 @@
       setTimeout(() => wave.remove(), life);
     };
 
-    spawnWave(12, 2, 320, strong ? 0.95 : 0.85);
+    spawnWave(strong ? 16 : 12, strong ? 3 : 2, strong ? 360 : 320, strong ? 0.98 : 0.85);
     if (strong) {
-      spawnWave(18, 2, 360, 0.55);
+      spawnWave(24, 2, 420, 0.68);
+      spawnWave(34, 2, 460, 0.32);
       const flash = document.createElement("i");
       flash.style.position = "fixed";
       flash.style.left = `${r.left + r.width / 2}px`;
       flash.style.top = `${r.top + r.height / 2}px`;
-      flash.style.width = "20px";
-      flash.style.height = "20px";
-      flash.style.marginLeft = "-10px";
-      flash.style.marginTop = "-10px";
+      flash.style.width = "28px";
+      flash.style.height = "28px";
+      flash.style.marginLeft = "-14px";
+      flash.style.marginTop = "-14px";
       flash.style.borderRadius = "50%";
-      flash.style.background = "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.15) 65%, rgba(255,255,255,0) 100%)";
+      flash.style.background = "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0) 100%)";
       flash.style.animation = "waveExpand 240ms ease forwards";
       fxLayerEl.appendChild(flash);
       setTimeout(() => flash.remove(), 260);
@@ -1855,13 +1970,13 @@
       if (state.mode.type === "target_item" && state.mode.item === id) btn.classList.add("active");
       if (getItemCount(id) <= 0) btn.classList.add("disabled");
       btn.classList.add(`rarity-${ITEM_DEFS[id].rarity}`);
-      btn.innerHTML = `<img class="item-icon item-image" src="${ITEM_DEFS[id].image}" alt="${ITEM_DEFS[id].name}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">Lv.${getItemLevel(id)}</i><strong>${ITEM_DEFS[id].name}</strong><small>${ITEM_DEFS[id].desc}</small>`;
+      btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${ITEM_DEFS[id].name}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">Lv.${getItemLevel(id)}</i><strong>${ITEM_DEFS[id].name}</strong><small>${ITEM_DEFS[id].desc}</small>`;
       itemWrapEl.appendChild(btn);
     }
     for (let i = carried.length; i < MAX_ITEM_TYPES; i += 1) {
       const slot = document.createElement("div");
       slot.className = "ability disabled empty-slot";
-      slot.innerHTML = `<div class="item-icon empty-item-slot">+</div><strong>Empty Slot</strong><small>New item types can be drafted here.</small>`;
+      slot.innerHTML = `<div class="item-icon empty-item-slot"><img class="empty-slot-image" src="${UI_IMAGES.emptySlot}" alt="Empty slot"></div><strong>Empty Slot</strong><small>New item types can be drafted here.</small>`;
       itemWrapEl.appendChild(slot);
     }
   }
@@ -1916,7 +2031,8 @@
 
         const icon = document.createElement("img");
         icon.className = "gem-icon gem-image";
-        icon.src = GEM_IMAGE_BY_COLOR[value.color] || GEM_IMAGE_BY_COLOR[0];
+        icon.dataset.animGem = String(value.color);
+        icon.src = getAnimatedGemImage(value.color);
         icon.alt = `gem-${value.color}`;
         gem.appendChild(icon);
 
