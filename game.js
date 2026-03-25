@@ -10,6 +10,9 @@ import {
   MAX_ACTIVE_SHARDS,
   FLOOR_CONFIG,
   FLOOR_DIFFICULTY,
+  CHAPTER_THEMES,
+  EVENT_NODE_FLOORS,
+  ELITE_FLOORS,
 } from "./src/config/game-config.js";
 import {
   MAX_ITEM_TYPES,
@@ -453,9 +456,11 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
     const cfg = FLOOR_CONFIG[state.floor - 1];
     const threat = getFloorThreat(state.floor);
+    const theme = getFloorTheme(state.floor);
     boardSize = getBoardSizeForFloor(state.floor);
     state.boardSize = boardSize;
     state.floorThreat = { label: threat.label, bossGain: threat.bossGain, pressure: threat.pressure };
+    state.floorTheme = theme;
 
     state.targetScore = Math.floor(cfg.target * threat.targetMul);
     state.movesLeft = Math.max(8, cfg.moves + threat.movesDelta);
@@ -495,11 +500,11 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
     if (state.modGlass > 0) placeGlass(state.modGlass + threat.glassBonus);
 
-    const isElite = state.floor === 3 || state.floor === 5 || state.floor === 7;
+    const isElite = ELITE_FLOORS.includes(state.floor);
     state.boss.elite = isElite;
     state.boss.charge = 0;
     state.boss.max = Math.max(3, (isElite ? 5 : 7) + threat.bossMaxDelta);
-    state.boss.hint = isElite ? `Elite boss ready - ${threat.label}` : `Boss idle - ${threat.label}`;
+    state.boss.hint = isElite ? `${theme.eliteBossName} ready - ${threat.label}` : `${theme.bossName} idle - ${threat.label}`;
     state.boss.phase = "charging";
     state.boss.casting = false;
 
@@ -510,12 +515,16 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
     renderAll();
     showFloorIntro(threat);
-    notify(`Floor ${state.floor} begins: ${state.modifier.name} - ${threat.label}.`, "ok");
+    notify(`Floor ${state.floor} begins: ${theme.title} / ${state.modifier.name} / ${threat.label}.`, "ok");
     scanGuideDiscoveries();
   }
 
   function getFloorThreat(floor) {
     return FLOOR_DIFFICULTY[Math.max(0, Math.min(FLOOR_DIFFICULTY.length - 1, floor - 1))];
+  }
+
+  function getFloorTheme(floor) {
+    return CHAPTER_THEMES.find((theme) => floor >= theme.start && floor <= theme.end) || CHAPTER_THEMES[0];
   }
 
   function getBoardSizeForFloor(floor) {
@@ -526,7 +535,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   function showFloorIntro(threat) {
     const fx = document.createElement("div");
     fx.className = "floor-intro";
-    fx.innerHTML = `<strong>Floor ${state.floor}</strong><small>${threat.label} - ${state.modifier.name}</small>`;
+    fx.innerHTML = `<strong>${state.floorTheme.title} · Floor ${state.floor}</strong><small>${threat.label} - ${state.modifier.name}</small>`;
     fxLayerEl.appendChild(fx);
 
     spawnScreenPulse("floor", 620);
@@ -1264,7 +1273,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function onFloorCleared() {
     if (state.floor >= TOTAL_FLOORS) return onVictory();
-    if ([2, 4, 6].includes(state.floor)) return showEventNode();
+    if (EVENT_NODE_FLOORS.includes(state.floor)) return showEventNode();
     showRewardChoices();
   }
 
@@ -1273,7 +1282,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     updateMeta();
     renderAll();
     overlayTitleEl.textContent = "Victory!";
-    overlayDescEl.textContent = `You cleared all ${TOTAL_FLOORS} floors with a final score of ${state.score}.`;
+    overlayDescEl.textContent = `You cleared all ${TOTAL_FLOORS} floors across ${CHAPTER_THEMES.length} chapters with a final score of ${state.score}.`;
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = `<button type="button" class="btn danger overlay-btn" data-action="restart-run">Start New Run</button>`;
     bindOverlayActions();
@@ -1293,8 +1302,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   function showEventNode() {
-    overlayTitleEl.textContent = `Event Node (after Floor ${state.floor})`;
-    overlayDescEl.textContent = "Choose one route to shape the next floor.";
+    overlayTitleEl.textContent = `Event Node · ${state.floorTheme.title}`;
+    overlayDescEl.textContent = `Choose one route to shape the next floor in ${state.floorTheme.shortLabel}.`;
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
@@ -1556,7 +1565,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function renderHUD() {
     floorEl.textContent = `${state.floor}/${TOTAL_FLOORS}`;
-    modifierEl.textContent = state.modifier ? state.modifier.name : "-";
+    modifierEl.textContent = state.modifier ? `${state.floorTheme.shortLabel} · ${state.modifier.name}` : state.floorTheme.shortLabel;
     if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.targetScore);
     movesLeftEl.textContent = String(state.movesLeft);
     floorScoreEl.textContent = String(state.floorScore);
@@ -1571,10 +1580,10 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     const bossPct = Math.max(0, Math.min(100, (state.boss.charge / state.boss.max) * 100));
     if (bossBarEl) bossBarEl.style.width = `${bossPct}%`;
     if (bossSkillHintEl) bossSkillHintEl.textContent = state.boss.hint;
-    if (bossTitleEl) bossTitleEl.textContent = state.boss.elite ? "Elite Rift Tyrant" : "Warden of the Deep";
-    if (bossStateEl) bossStateEl.textContent = state.boss.casting ? "Casting a battlefield skill" : state.boss.phase === "ready" ? "Primed to strike on the next beat" : `Charging through ${state.floorThreat.label}`;
+    if (bossTitleEl) bossTitleEl.textContent = state.boss.elite ? state.floorTheme.eliteBossName : state.floorTheme.bossName;
+    if (bossStateEl) bossStateEl.textContent = state.boss.casting ? `Casting in ${state.floorTheme.shortLabel}` : state.boss.phase === "ready" ? "Primed to strike on the next beat" : `Charging through ${state.floorTheme.title}`;
     if (bossThreatEl) bossThreatEl.textContent = getBossThreatLabel();
-    if (bossPatternEl) bossPatternEl.textContent = state.boss.elite ? "Storm / Lock / Shift / Elite pressure" : "Storm / Lock / Shift";
+    if (bossPatternEl) bossPatternEl.textContent = state.boss.elite ? `${state.floorTheme.pattern} / Elite pressure` : state.floorTheme.pattern;
     if (bossMeterEl) {
       bossMeterEl.classList.remove("charging", "ready", "casting");
       if (state.boss.casting) bossMeterEl.classList.add("casting");
