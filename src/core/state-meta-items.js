@@ -1,0 +1,195 @@
+export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
+  return {
+    floor: 1,
+    score: 0,
+    floorScore: 0,
+    targetScore: 0,
+    movesLeft: 0,
+    boardSize: MIN_BOARD_SIZE,
+    board: [],
+    mode: { type: "normal", item: null },
+    items: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
+    itemLevels: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
+    itemSlots: ["hammer", "shuffle"],
+    modifier: null,
+    modGlass: 0,
+    taxColor: null,
+    dropBoost: 0,
+    chainBonus: 0,
+    momentum: 0,
+    feverTurns: 0,
+    perks: {
+      combo_forge: false,
+      fever_loop: false,
+      relic_magnet: false,
+      blast_core: false,
+      glass_breaker: false,
+      overcharge: false,
+      pressure_valve: false,
+      arcane_stockpile: false,
+      score_bloom: false,
+      quick_hands: false,
+      fever_smith: false,
+      boss_hunter: false,
+      vault_expander: false,
+      prism_heart: false,
+      sovereign_circuit: false,
+      dragon_hoard: false,
+    },
+    boss: { charge: 0, max: 7, hint: "Idle", elite: false, phase: "charging", casting: false },
+    eventCurseFloors: 0,
+    nextFloorMovePenalty: 0,
+    nextFloorMoveBonus: 0,
+    floorThreat: { label: "Warm-Up", bossGain: 1, pressure: 0 },
+    gameOver: false,
+    victory: false,
+  };
+}
+
+export function seedStartingItems(state, { ITEM_BASE_LEVEL, ITEM_BASE_COUNTS }) {
+  for (const id of state.itemSlots) {
+    state.itemLevels[id] = ITEM_BASE_LEVEL;
+    state.items[id] = ITEM_BASE_COUNTS[id] || 1;
+  }
+}
+
+export const getItemCount = (state, id) => Number(state.items[id] || 0);
+export const getItemLevel = (state, id) => Number(state.itemLevels[id] || 0);
+export const hasItemType = (state, id) => state.itemSlots.includes(id);
+export const getCarriedItems = (state, ITEM_DEFS) => state.itemSlots.filter((id) => ITEM_DEFS[id]);
+export const itemSlotAvailable = (state, ITEM_DEFS, MAX_ITEM_TYPES) => getCarriedItems(state, ITEM_DEFS).length < MAX_ITEM_TYPES;
+
+export function getItemFrames(id, ITEM_ANIM_FRAMES, ITEM_DEFS) {
+  return ITEM_ANIM_FRAMES[id] || [ITEM_DEFS[id]?.image].filter(Boolean);
+}
+
+export function getAnimatedItemImage(id, frameIndex, ITEM_ANIM_FRAMES, ITEM_DEFS) {
+  const frames = getItemFrames(id, ITEM_ANIM_FRAMES, ITEM_DEFS);
+  if (!frames.length) return ITEM_DEFS[id]?.image || "";
+  return frames[frameIndex % frames.length];
+}
+
+export function getGemFrames(color, GEM_ANIM_FRAMES, GEM_IMAGE_BY_COLOR) {
+  return GEM_ANIM_FRAMES[color] || [GEM_IMAGE_BY_COLOR[color] || GEM_IMAGE_BY_COLOR[0]].filter(Boolean);
+}
+
+export function getAnimatedGemImage(color, frameIndex, GEM_ANIM_FRAMES, GEM_IMAGE_BY_COLOR) {
+  const frames = getGemFrames(color, GEM_ANIM_FRAMES, GEM_IMAGE_BY_COLOR);
+  return frames[frameIndex % frames.length];
+}
+
+export function getAnimatedBossImage(frameIndex, BOSS_ANIM_FRAMES) {
+  return BOSS_ANIM_FRAMES[frameIndex % BOSS_ANIM_FRAMES.length] || "./assets/generated/boss/boss_sigil.png";
+}
+
+export function syncAnimatedVisuals({ root = document, frameIndex, getAnimatedItemImage, getAnimatedGemImage, getAnimatedBossImage }) {
+  const itemImages = root.querySelectorAll("[data-anim-item]");
+  for (const img of itemImages) {
+    const item = img.dataset.animItem;
+    const next = getAnimatedItemImage(item, frameIndex);
+    if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
+  }
+
+  const gemImages = root.querySelectorAll("[data-anim-gem]");
+  for (const img of gemImages) {
+    const color = Number(img.dataset.animGem);
+    const next = getAnimatedGemImage(color, frameIndex);
+    if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
+  }
+
+  const bossImages = root.querySelectorAll("[data-anim-boss]");
+  for (const img of bossImages) {
+    const next = getAnimatedBossImage(frameIndex);
+    if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
+  }
+}
+
+export function ensureItemType(state, id, { ITEM_BASE_LEVEL, ITEM_DEFS, MAX_ITEM_TYPES }) {
+  if (hasItemType(state, id)) return true;
+  if (!itemSlotAvailable(state, ITEM_DEFS, MAX_ITEM_TYPES)) return false;
+  state.itemSlots.push(id);
+  state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(state, id));
+  return true;
+}
+
+export function addItemCharges(state, id, amount, allowNewType, deps) {
+  if (!hasItemType(state, id)) {
+    if (!allowNewType || !ensureItemType(state, id, deps)) return false;
+    if (state.perks.vault_expander) amount += 1;
+  }
+  state.items[id] = getItemCount(state, id) + amount;
+  if (state.itemLevels[id] <= 0) state.itemLevels[id] = deps.ITEM_BASE_LEVEL;
+  return true;
+}
+
+export function upgradeItem(state, id, levelGain, chargeGain, deps) {
+  if (!hasItemType(state, id) && !ensureItemType(state, id, deps)) return false;
+  state.itemLevels[id] = Math.max(deps.ITEM_BASE_LEVEL, getItemLevel(state, id) + levelGain);
+  const bonusCharges = state.perks.quick_hands && deps.ITEM_DEFS[id].target ? 1 : 0;
+  state.items[id] = getItemCount(state, id) + chargeGain + bonusCharges;
+  return true;
+}
+
+export function spendItemCharge(state, id) {
+  state.items[id] = Math.max(0, getItemCount(state, id) - 1);
+}
+
+export function boostAllItemLevels(state, ITEM_BASE_LEVEL) {
+  for (const id of state.itemSlots) {
+    state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, (state.itemLevels[id] || ITEM_BASE_LEVEL) + 1);
+    state.items[id] = Number(state.items[id] || 0) + 1;
+  }
+}
+
+export function grantDragonHoardBonus(state, ITEM_DEFS, addItemChargesFn) {
+  if (!state.perks.dragon_hoard) return;
+  const carried = getCarriedItems(state, ITEM_DEFS);
+  if (carried.length === 0) return;
+  carried.sort((a, b) => getItemLevel(state, b) - getItemLevel(state, a) || getItemCount(state, b) - getItemCount(state, a));
+  addItemChargesFn(carried[0], 1, false);
+}
+
+export function defaultCodex() {
+  return {
+    itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0, screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
+    specialTrigger: { line_h: 0, line_v: 0, bomb: 0, rainbow: 0 },
+    bossSeen: { glass_storm: 0, hex_lock: 0, color_shift: 0 },
+    skillUse: { screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
+    maxSingleClear: 0,
+    maxChain: 0,
+    runs: 0,
+    guideSeen: {},
+  };
+}
+
+export function loadMeta(storage, META_KEY) {
+  try {
+    const raw = storage.getItem(META_KEY);
+    if (!raw) return { bestFloor: 0, bestScore: 0, codex: defaultCodex() };
+    const parsed = JSON.parse(raw);
+    return {
+      bestFloor: Number(parsed.bestFloor || 0),
+      bestScore: Number(parsed.bestScore || 0),
+      codex: {
+        ...defaultCodex(),
+        ...(parsed.codex || {}),
+        itemUse: { ...defaultCodex().itemUse, ...((parsed.codex || {}).itemUse || {}) },
+        specialTrigger: { ...defaultCodex().specialTrigger, ...((parsed.codex || {}).specialTrigger || {}) },
+        bossSeen: { ...defaultCodex().bossSeen, ...((parsed.codex || {}).bossSeen || {}) },
+        skillUse: { ...defaultCodex().skillUse, ...((parsed.codex || {}).skillUse || {}) },
+        guideSeen: { ...defaultCodex().guideSeen, ...((parsed.codex || {}).guideSeen || {}) },
+      },
+    };
+  } catch {
+    return { bestFloor: 0, bestScore: 0, codex: defaultCodex() };
+  }
+}
+
+export function saveMeta(storage, META_KEY, meta) {
+  storage.setItem(META_KEY, JSON.stringify(meta));
+}
+
+export function recordCodex(meta, group, key, delta = 1) {
+  if (!meta.codex[group]) return;
+  if (typeof meta.codex[group] === "object") meta.codex[group][key] = Number(meta.codex[group][key] || 0) + delta;
+}

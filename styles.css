@@ -317,8 +317,8 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 
 .ability {
   position: relative;
-  min-height: 168px;
-  padding: 14px 10px 10px;
+  min-height: 116px;
+  padding: 10px 10px 8px;
   text-align: center;
   background: linear-gradient(180deg, rgba(20, 39, 63, 0.9), rgba(12, 24, 42, 0.96));
   border: 1px solid rgba(124, 170, 230, 0.18);
@@ -337,9 +337,9 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 
 .item-icon {
   display: block;
-  width: 74px;
-  height: 74px;
-  margin-bottom: 10px;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 6px;
   object-fit: contain;
 }
 
@@ -395,7 +395,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 
 .ability strong {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.2;
   margin-top: 2px;
 }
@@ -474,7 +474,6 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   justify-content: center;
   align-items: center;
   position: relative;
-  padding-bottom: 270px;
   background:
     linear-gradient(180deg, rgba(8, 18, 31, 0.2), rgba(6, 11, 21, 0.7)),
     var(--bg-board-image) center / cover no-repeat,
@@ -492,20 +491,18 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 }
 
 .item-dock-wrap {
-  width: min(calc(100vw - 40px), 1160px);
-  margin-top: 0;
-  padding: 18px 18px 20px;
+  width: min(66vh, 760px);
+  max-width: 100%;
+  margin-top: 14px;
+  padding: 12px 14px 14px;
   border-radius: 22px;
   border: 1px solid rgba(123, 167, 223, 0.22);
   background:
     linear-gradient(180deg, rgba(14, 24, 42, 0.84), rgba(10, 19, 33, 0.95)),
     var(--bg-board-image) center bottom / cover no-repeat;
   box-shadow: 0 22px 42px rgba(5, 11, 20, 0.28);
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  z-index: 22;
+  position: relative;
+  z-index: 3;
   backdrop-filter: blur(10px);
 }
 
@@ -522,13 +519,13 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   position: relative;
   z-index: 1;
 }
 
 .dock-title span {
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #d7e9ff;
@@ -541,7 +538,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 .item-dock {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
   position: relative;
   z-index: 1;
 }
@@ -621,7 +618,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 .item-tooltip {
   position: fixed;
   left: 50%;
-  bottom: 232px;
+  bottom: 28px;
   transform: translateX(-50%);
   width: min(calc(100vw - 56px), 720px);
   padding: 14px 16px;
@@ -1318,11 +1315,10 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   .app { grid-template-columns: 1fr; }
   .board-topbar { grid-template-columns: 1fr; }
   .item-dock { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ability { min-height: 138px; }
-  .item-icon { width: 60px; height: 60px; }
-  .board-wrap { padding-bottom: 320px; }
-  .item-dock-wrap { width: min(calc(100vw - 24px), 760px); bottom: 12px; padding: 14px 14px 16px; }
-  .item-tooltip { bottom: 250px; width: min(calc(100vw - 24px), 640px); }
+  .ability { min-height: 104px; }
+  .item-icon { width: 50px; height: 50px; }
+  .item-dock-wrap { width: min(90vw, 680px); padding: 12px 12px 14px; }
+  .item-tooltip { bottom: 20px; width: min(calc(100vw - 24px), 640px); }
   .board { width: min(90vw, 680px); gap: 3px; }
   .choices { grid-template-columns: 1fr; }
 }

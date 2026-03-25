@@ -22,6 +22,60 @@ import {
 } from "./src/config/items-config.js";
 import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES } from "./src/config/gems-config.js";
 import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-config.js";
+import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
+import { renderBoardView } from "./src/render/board-render.js";
+import {
+  createInitialState as buildInitialState,
+  seedStartingItems,
+  getItemCount as readItemCount,
+  getItemLevel as readItemLevel,
+  getAnimatedItemImage as pickAnimatedItemImage,
+  getAnimatedGemImage as pickAnimatedGemImage,
+  getAnimatedBossImage as pickAnimatedBossImage,
+  syncAnimatedVisuals,
+  hasItemType as checkHasItemType,
+  getCarriedItems as listCarriedItems,
+  itemSlotAvailable as checkItemSlotAvailable,
+  ensureItemType as ensureStateItemType,
+  addItemCharges as addStateItemCharges,
+  upgradeItem as upgradeStateItem,
+  spendItemCharge as spendStateItemCharge,
+  boostAllItemLevels,
+  grantDragonHoardBonus as applyDragonHoardBonus,
+  defaultCodex,
+  loadMeta as loadMetaState,
+  saveMeta as persistMeta,
+  recordCodex as patchCodex,
+} from "./src/core/state-meta-items.js";
+import {
+  createBoard as createBoardState,
+  resolveAutoBoard as resolveAutoBoardState,
+  collapseBoard as collapseBoardState,
+  refillBoard as refillBoardState,
+  rowOf as getRowOf,
+  colOf as getColOf,
+  inside as isInside,
+  indicesInRow as getIndicesInRow,
+  indicesInCol as getIndicesInCol,
+  isAdjacent as checkIsAdjacent,
+  swap as swapBoardCells,
+  randColor as pickRandColor,
+  randomPick as pickRandom,
+  shuffle as shuffleArray,
+  sleep as wait,
+  isGem as checkIsGem,
+  isObstacle as checkIsObstacle,
+} from "./src/core/board-core.js";
+import {
+  playSwapAnimation as runSwapAnimation,
+  playItemCastAnimation as runItemCastAnimation,
+  spawnShatterFX as runShatterFX,
+  spawnShockwaveFX as runShockwaveFX,
+  spawnFloatText as runFloatText,
+  spawnScreenPulse as runScreenPulse,
+  shakeBoard as runShakeBoard,
+} from "./src/fx/board-fx.js";
+import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
 (() => {
   const MODIFIERS = [
@@ -50,50 +104,50 @@ import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-c
     dragon_hoard: { title: "Dragon Hoard", desc: "Your highest-level item gains charges every floor", rarity: "legendary", apply: (s) => { s.perks.dragon_hoard = true; } },
   };
 
-  const floorEl = document.getElementById("floor");
-  const modifierEl = document.getElementById("modifier");
-  const movesLeftEl = document.getElementById("movesLeft");
-  const floorScoreEl = document.getElementById("floorScore");
-  const scoreEl = document.getElementById("score");
-  const boardTargetScoreEl = document.getElementById("boardTargetScore");
-  const boardFloorScoreEl = document.getElementById("boardFloorScore");
-  const bestFloorEl = document.getElementById("bestFloor");
-  const bestScoreEl = document.getElementById("bestScore");
-  const momentumBarEl = document.getElementById("momentumBar");
-  const feverTurnsEl = document.getElementById("feverTurns");
-  const bossMeterEl = document.getElementById("bossMeter");
-  const bossBarEl = document.getElementById("bossBar");
-  const bossSkillHintEl = document.getElementById("bossSkillHint");
-  const bossTitleEl = document.getElementById("bossTitle");
-  const bossStateEl = document.getElementById("bossState");
-  const bossThreatEl = document.getElementById("bossThreat");
-  const bossPatternEl = document.getElementById("bossPattern");
-  const modeTextEl = document.getElementById("modeText");
-  const boardWrapEl = document.getElementById("boardWrap");
-  const boardEl = document.getElementById("board");
-  const fxLayerEl = document.getElementById("fxLayer");
-  const itemTooltipEl = document.getElementById("itemTooltip");
-  const messageEl = document.getElementById("message");
-  const restartBtn = document.getElementById("restartBtn");
-  const codexBtn = document.getElementById("codexBtn");
-  const guideBtn = document.getElementById("guideBtn");
-
-  const itemWrapEl = document.getElementById("itemWrap");
-  const perkWrapEl = document.getElementById("perkWrap");
-  const overlayEl = document.getElementById("overlay");
-  const overlayTitleEl = document.getElementById("overlayTitle");
-  const overlayDescEl = document.getElementById("overlayDesc");
-  const choiceWrapEl = document.getElementById("choiceWrap");
-  const overlayActionsEl = document.getElementById("overlayActions");
-
-  const codexModalEl = document.getElementById("codexModal");
-  const codexContentEl = document.getElementById("codexContent");
-  const codexCloseBtn = document.getElementById("codexCloseBtn");
-  const guideModalEl = document.getElementById("guideModal");
-  const guideModalTitleEl = document.getElementById("guideModalTitle");
-  const guideModalDescEl = document.getElementById("guideModalDesc");
-  const guideModalContentEl = document.getElementById("guideModalContent");
-  const guideCloseBtn = document.getElementById("guideCloseBtn");
+  const {
+    floorEl,
+    modifierEl,
+    movesLeftEl,
+    floorScoreEl,
+    scoreEl,
+    boardTargetScoreEl,
+    boardFloorScoreEl,
+    bestFloorEl,
+    bestScoreEl,
+    momentumBarEl,
+    feverTurnsEl,
+    bossMeterEl,
+    bossBarEl,
+    bossSkillHintEl,
+    bossTitleEl,
+    bossStateEl,
+    bossThreatEl,
+    bossPatternEl,
+    modeTextEl,
+    boardWrapEl,
+    boardEl,
+    fxLayerEl,
+    itemTooltipEl,
+    messageEl,
+    restartBtn,
+    codexBtn,
+    guideBtn,
+    itemWrapEl,
+    perkWrapEl,
+    overlayEl,
+    overlayTitleEl,
+    overlayDescEl,
+    choiceWrapEl,
+    overlayActionsEl,
+    codexModalEl,
+    codexContentEl,
+    codexCloseBtn,
+    guideModalEl,
+    guideModalTitleEl,
+    guideModalDescEl,
+    guideModalContentEl,
+    guideCloseBtn,
+  } = getDomRefs(document);
 
   let meta = loadMeta();
   let state = createInitialState();
@@ -113,113 +167,33 @@ import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-c
   startRun();
 
   function createInitialState() {
-    const initial = {
-      floor: 1,
-      score: 0,
-      floorScore: 0,
-      targetScore: 0,
-      movesLeft: 0,
-      boardSize: MIN_BOARD_SIZE,
-      board: [],
-      mode: { type: "normal", item: null },
-      items: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
-      itemLevels: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
-      itemSlots: ["hammer", "shuffle"],
-      modifier: null,
-      modGlass: 0,
-      taxColor: null,
-      dropBoost: 0,
-      chainBonus: 0,
-      momentum: 0,
-      feverTurns: 0,
-      perks: {
-        combo_forge: false,
-        fever_loop: false,
-        relic_magnet: false,
-        blast_core: false,
-        glass_breaker: false,
-        overcharge: false,
-        pressure_valve: false,
-        arcane_stockpile: false,
-        score_bloom: false,
-        quick_hands: false,
-        fever_smith: false,
-        boss_hunter: false,
-        vault_expander: false,
-        prism_heart: false,
-        sovereign_circuit: false,
-        dragon_hoard: false,
-      },
-      boss: { charge: 0, max: 7, hint: "Idle", elite: false, phase: "charging", casting: false },
-      eventCurseFloors: 0,
-      nextFloorMovePenalty: 0,
-      nextFloorMoveBonus: 0,
-      floorThreat: { label: "Warm-Up", bossGain: 1, pressure: 0 },
-      gameOver: false,
-      victory: false,
-    };
-    seedStartingItems(initial);
+    const initial = buildInitialState({ MIN_BOARD_SIZE, ITEM_ORDER });
+    seedStartingItems(initial, { ITEM_BASE_LEVEL, ITEM_BASE_COUNTS });
     return initial;
   }
 
-  function seedStartingItems(s) {
-    for (const id of s.itemSlots) {
-      s.itemLevels[id] = ITEM_BASE_LEVEL;
-      s.items[id] = ITEM_BASE_COUNTS[id] || 1;
-    }
-  }
-
   function getItemCount(id) {
-    return Number(state.items[id] || 0);
+    return readItemCount(state, id);
   }
 
   function getItemLevel(id) {
-    return Number(state.itemLevels[id] || 0);
-  }
-
-  function getItemFrames(id) {
-    return ITEM_ANIM_FRAMES[id] || [ITEM_DEFS[id]?.image].filter(Boolean);
+    return readItemLevel(state, id);
   }
 
   function getAnimatedItemImage(id, frameIndex = itemAnimFrameIndex) {
-    const frames = getItemFrames(id);
-    if (!frames.length) return ITEM_DEFS[id]?.image || "";
-    return frames[frameIndex % frames.length];
-  }
-
-  function getGemFrames(color) {
-    return GEM_ANIM_FRAMES[color] || [GEM_IMAGE_BY_COLOR[color] || GEM_IMAGE_BY_COLOR[0]].filter(Boolean);
+    return pickAnimatedItemImage(id, frameIndex, ITEM_ANIM_FRAMES, ITEM_DEFS);
   }
 
   function getAnimatedGemImage(color, frameIndex = itemAnimFrameIndex) {
-    const frames = getGemFrames(color);
-    return frames[frameIndex % frames.length];
+    return pickAnimatedGemImage(color, frameIndex, GEM_ANIM_FRAMES, GEM_IMAGE_BY_COLOR);
   }
 
   function getAnimatedBossImage(frameIndex = itemAnimFrameIndex) {
-    return BOSS_ANIM_FRAMES[frameIndex % BOSS_ANIM_FRAMES.length] || "./assets/generated/boss/boss_sigil.png";
+    return pickAnimatedBossImage(frameIndex, BOSS_ANIM_FRAMES);
   }
 
   function syncAnimatedItemImages(root = document) {
-    const images = root.querySelectorAll("[data-anim-item]");
-    for (const img of images) {
-      const item = img.dataset.animItem;
-      const next = getAnimatedItemImage(item);
-      if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
-    }
-
-    const gemImages = root.querySelectorAll("[data-anim-gem]");
-    for (const img of gemImages) {
-      const color = Number(img.dataset.animGem);
-      const next = getAnimatedGemImage(color);
-      if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
-    }
-
-    const bossImages = root.querySelectorAll("[data-anim-boss]");
-    for (const img of bossImages) {
-      const next = getAnimatedBossImage();
-      if (next && img.getAttribute("src") !== next) img.setAttribute("src", next);
-    }
+    syncAnimatedVisuals({ root, frameIndex: itemAnimFrameIndex, getAnimatedItemImage, getAnimatedGemImage, getAnimatedBossImage });
   }
 
   function startItemIconAnimation() {
@@ -231,7 +205,7 @@ import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-c
   }
 
   function hasItemType(id) {
-    return state.itemSlots.includes(id);
+    return checkHasItemType(state, id);
   }
 
   function itemPower(id) {
@@ -239,129 +213,66 @@ import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-c
   }
 
   function getCarriedItems() {
-    return state.itemSlots.filter((id) => ITEM_DEFS[id]);
+    return listCarriedItems(state, ITEM_DEFS);
   }
 
   function itemSlotAvailable() {
-    return getCarriedItems().length < MAX_ITEM_TYPES;
+    return checkItemSlotAvailable(state, ITEM_DEFS, MAX_ITEM_TYPES);
   }
 
   function ensureItemType(id) {
-    if (hasItemType(id)) return true;
-    if (!itemSlotAvailable()) return false;
-    state.itemSlots.push(id);
-    state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(id));
-    return true;
+    return ensureStateItemType(state, id, { ITEM_BASE_LEVEL, ITEM_DEFS, MAX_ITEM_TYPES });
   }
 
   function addItemCharges(id, amount = 1, allowNewType = true) {
-    if (!hasItemType(id)) {
-      if (!allowNewType || !ensureItemType(id)) return false;
-      if (state.perks.vault_expander) amount += 1;
-    }
-    state.items[id] = getItemCount(id) + amount;
-    if (state.itemLevels[id] <= 0) state.itemLevels[id] = ITEM_BASE_LEVEL;
-    return true;
+    return addStateItemCharges(state, id, amount, allowNewType, { ITEM_BASE_LEVEL, ITEM_DEFS, MAX_ITEM_TYPES });
   }
 
   function upgradeItem(id, levelGain = 1, chargeGain = 1) {
-    if (!hasItemType(id) && !ensureItemType(id)) return false;
-    state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(id) + levelGain);
-    const bonusCharges = state.perks.quick_hands && ITEM_DEFS[id].target ? 1 : 0;
-    state.items[id] = getItemCount(id) + chargeGain + bonusCharges;
-    return true;
+    return upgradeStateItem(state, id, levelGain, chargeGain, { ITEM_BASE_LEVEL, ITEM_DEFS, MAX_ITEM_TYPES });
   }
 
   function spendItemCharge(id) {
-    state.items[id] = Math.max(0, getItemCount(id) - 1);
-  }
-
-  function boostAllItemLevels(s) {
-    for (const id of s.itemSlots) {
-      s.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, (s.itemLevels[id] || ITEM_BASE_LEVEL) + 1);
-      s.items[id] = Number(s.items[id] || 0) + 1;
-    }
+    spendStateItemCharge(state, id);
   }
 
   function grantDragonHoardBonus() {
-    if (!state.perks.dragon_hoard) return;
-    const carried = getCarriedItems();
-    if (carried.length === 0) return;
-    carried.sort((a, b) => getItemLevel(b) - getItemLevel(a) || getItemCount(b) - getItemCount(a));
-    addItemCharges(carried[0], 1, false);
-  }
-
-  function defaultCodex() {
-    return {
-      itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0, screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
-      specialTrigger: { line_h: 0, line_v: 0, bomb: 0, rainbow: 0 },
-      bossSeen: { glass_storm: 0, hex_lock: 0, color_shift: 0 },
-      skillUse: { screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
-      maxSingleClear: 0,
-      maxChain: 0,
-      runs: 0,
-      guideSeen: {},
-    };
+    applyDragonHoardBonus(state, ITEM_DEFS, (id, amount, allowNewType) => addItemCharges(id, amount, allowNewType));
   }
 
   function loadMeta() {
-    try {
-      const raw = localStorage.getItem(META_KEY);
-      if (!raw) return { bestFloor: 0, bestScore: 0, codex: defaultCodex() };
-      const parsed = JSON.parse(raw);
-      return {
-        bestFloor: Number(parsed.bestFloor || 0),
-        bestScore: Number(parsed.bestScore || 0),
-        codex: {
-          ...defaultCodex(),
-          ...(parsed.codex || {}),
-          itemUse: { ...defaultCodex().itemUse, ...((parsed.codex || {}).itemUse || {}) },
-          specialTrigger: { ...defaultCodex().specialTrigger, ...((parsed.codex || {}).specialTrigger || {}) },
-          bossSeen: { ...defaultCodex().bossSeen, ...((parsed.codex || {}).bossSeen || {}) },
-          skillUse: { ...defaultCodex().skillUse, ...((parsed.codex || {}).skillUse || {}) },
-          guideSeen: { ...defaultCodex().guideSeen, ...((parsed.codex || {}).guideSeen || {}) },
-        },
-      };
-    } catch {
-      return { bestFloor: 0, bestScore: 0, codex: defaultCodex() };
-    }
+    return loadMetaState(localStorage, META_KEY);
   }
 
   function saveMeta() {
-    localStorage.setItem(META_KEY, JSON.stringify(meta));
+    persistMeta(localStorage, META_KEY, meta);
   }
 
   function recordCodex(group, key, delta = 1) {
-    if (!meta.codex[group]) return;
-    if (typeof meta.codex[group] === "object") {
-      meta.codex[group][key] = Number(meta.codex[group][key] || 0) + delta;
-    }
+    patchCodex(meta, group, key, delta);
     saveMeta();
   }
 
   function bindEvents() {
-    restartBtn.addEventListener("click", () => {
-      if (window.confirm("Restart the run?")) startRun();
+    bindCoreEvents({
+      restartBtn,
+      boardEl,
+      itemWrapEl,
+      codexBtn,
+      guideBtn,
+      codexCloseBtn,
+      guideCloseBtn,
+      codexModalEl,
+      guideModalEl,
+      startRun,
+      onBoardClick,
+      onItemClick,
+      onItemHover,
+      onItemHoverOut,
+      openCodex,
+      openGuidePanel,
+      closeGuideModal,
     });
-    boardEl.addEventListener("click", onBoardClick);
-    itemWrapEl.addEventListener("click", onItemClick);
-    itemWrapEl.addEventListener("mouseover", onItemHover);
-    itemWrapEl.addEventListener("mouseout", onItemHoverOut);
-
-    if (codexBtn) codexBtn.addEventListener("click", openCodex);
-    if (guideBtn) guideBtn.addEventListener("click", openGuidePanel);
-    if (codexCloseBtn) codexCloseBtn.addEventListener("click", () => codexModalEl.classList.add("hidden"));
-    if (guideCloseBtn) guideCloseBtn.addEventListener("click", closeGuideModal);
-    if (codexModalEl) {
-      codexModalEl.addEventListener("click", (e) => {
-        if (e.target === codexModalEl) codexModalEl.classList.add("hidden");
-      });
-    }
-    if (guideModalEl) {
-      guideModalEl.addEventListener("click", (e) => {
-        if (e.target === guideModalEl) closeGuideModal();
-      });
-    }
   }
 
   function openCodex() {
@@ -1560,196 +1471,31 @@ import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-c
   }
 
   async function playSwapAnimation(a, b) {
-    const cellA = boardEl.querySelector(`.cell[data-index="${a}"]`);
-    const cellB = boardEl.querySelector(`.cell[data-index="${b}"]`);
-    if (!cellA || !cellB) return;
-
-    const ra = cellA.getBoundingClientRect();
-    const rb = cellB.getBoundingClientRect();
-    const dx = rb.left - ra.left;
-    const dy = rb.top - ra.top;
-
-    cellA.style.transition = "transform 140ms ease";
-    cellB.style.transition = "transform 140ms ease";
-    cellA.style.transform = `translate(${dx}px, ${dy}px)`;
-    cellB.style.transform = `translate(${-dx}px, ${-dy}px)`;
-
-    await sleep(145);
-    cellA.style.transform = "";
-    cellB.style.transform = "";
-    await sleep(20);
+    await runSwapAnimation(boardEl, a, b, sleep);
   }
 
   async function playItemCastAnimation(item, idx) {
-    const fromEl = itemWrapEl.querySelector(`.ability[data-item="${item}"]`);
-    const toEl = boardEl.querySelector(`.cell[data-index="${idx}"]`);
-    if (!fromEl || !toEl) return;
-
-    const from = fromEl.getBoundingClientRect();
-    const to = toEl.getBoundingClientRect();
-
-    const fx = document.createElement("div");
-    fx.className = `item-cast-fx item-${item}`;
-    fx.innerHTML = `<img src="${getAnimatedItemImage(item)}" alt="${ITEM_DEFS[item].name}" class="item-cast-image" data-anim-item="${item}">`;
-
-    const sx = from.left + from.width / 2;
-    const sy = from.top + from.height / 2;
-    const ex = to.left + to.width / 2;
-    const ey = to.top + to.height / 2;
-
-    fx.style.left = `${sx}px`;
-    fx.style.top = `${sy}px`;
-    document.body.appendChild(fx);
-
-    requestAnimationFrame(() => {
-      fx.style.transform = `translate(${ex - sx}px, ${ey - sy}px) scale(0.7)`;
-      fx.style.opacity = "0.2";
-    });
-
-    await sleep(240);
-    fx.remove();
+    await runItemCastAnimation({ itemWrapEl, boardEl, item, idx, imageSrc: getAnimatedItemImage(item), itemName: ITEM_DEFS[item].name, sleep });
   }
 
   function spawnShatterFX(indices) {
-    const capped = indices.slice(0, 16);
-    const shardBudget = Math.max(0, MAX_ACTIVE_SHARDS - activeShards);
-    if (shardBudget <= 0) return;
-
-    let useBudget = shardBudget;
-    for (const idx of capped) {
-      if (useBudget <= 0) break;
-      const cell = boardEl.querySelector(`.cell[data-index="${idx}"]`);
-      if (!cell) continue;
-      const rect = cell.getBoundingClientRect();
-      const source = state.board[idx];
-      const specialBoost = isGem(source) && source.special ? 1.75 : 1;
-      const pieces = Math.min(useBudget, Math.floor((18 + Math.random() * 12) * specialBoost));
-      useBudget -= pieces;
-
-      const burst = document.createElement("i");
-      burst.className = "fx-burst";
-      burst.style.left = `${rect.left + rect.width / 2}px`;
-      burst.style.top = `${rect.top + rect.height / 2}px`;
-      if (isGem(source)) {
-        const color = `var(--gem-color-${source.color}, #ffffff)`;
-        burst.style.background = `radial-gradient(circle, rgba(255,255,255,0.98) 0%, ${color} 28%, rgba(255,255,255,0.14) 58%, rgba(255,255,255,0) 76%)`;
-      }
-      fxLayerEl.appendChild(burst);
-      setTimeout(() => burst.remove(), 280);
-
-      if (isGem(source) && source.special) {
-        const streakCount = source.special === "bomb" || source.special === "rainbow" ? 6 : 4;
-        for (let s = 0; s < streakCount; s += 1) {
-          const streak = document.createElement("i");
-          streak.className = "fx-streak";
-          streak.style.left = `${rect.left + rect.width / 2}px`;
-          streak.style.top = `${rect.top + rect.height / 2}px`;
-          const rot = `${(360 / streakCount) * s + (source.special === "line_h" ? 0 : source.special === "line_v" ? 90 : 30)}deg`;
-          streak.style.setProperty("--streak-rot", rot);
-          streak.style.background = `linear-gradient(90deg, rgba(255,255,255,0), var(--gem-color-${source.color}, #fff), rgba(255,255,255,0))`;
-          fxLayerEl.appendChild(streak);
-          setTimeout(() => streak.remove(), 320);
-        }
-      }
-
-      for (let i = 0; i < pieces; i += 1) {
-        const p = document.createElement("i");
-        p.className = "fx-shard";
-        p.style.left = `${rect.left + rect.width / 2}px`;
-        p.style.top = `${rect.top + rect.height / 2}px`;
-
-        const ang = Math.random() * Math.PI * 2;
-        const speed = 34 + Math.random() * 86;
-        const dx = Math.cos(ang) * speed;
-        const dy = Math.sin(ang) * speed + 24;
-        const rot = `${(Math.random() - 0.5) * 520}deg`;
-
-        p.style.width = `${4 + Math.random() * 8}px`;
-        p.style.height = `${3 + Math.random() * 6}px`;
-        p.style.background = isGem(source) ? `var(--gem-color-${source.color}, #dce8ff)` : "#dce8ff";
-        p.style.opacity = String(0.72 + Math.random() * 0.28);
-        p.style.clipPath = Math.random() > 0.5
-          ? "polygon(50% 0%, 0% 100%, 100% 100%)"
-          : "polygon(0% 0%, 100% 18%, 76% 100%, 14% 82%)";
-        p.style.setProperty("--dx", `${dx}px`);
-        p.style.setProperty("--dy", `${dy}px`);
-        p.style.setProperty("--rot", rot);
-
-        fxLayerEl.appendChild(p);
-        activeShards += 1;
-        setTimeout(() => {
-          p.remove();
-          activeShards = Math.max(0, activeShards - 1);
-        }, 620);
-      }
-    }
+    runShatterFX({ indices, boardEl, state, isGem, fxLayerEl, MAX_ACTIVE_SHARDS, activeShards, setActiveShards: (value) => { activeShards = value; } });
   }
 
   function spawnShockwaveFX(index, strong = false) {
-    const cell = boardEl.querySelector(`.cell[data-index="${index}"]`);
-    if (!cell) return;
-    const r = cell.getBoundingClientRect();
-
-    const spawnWave = (size, border, life, alpha = 0.9) => {
-      const wave = document.createElement("i");
-      wave.className = "fx-wave";
-      wave.style.left = `${r.left + r.width / 2}px`;
-      wave.style.top = `${r.top + r.height / 2}px`;
-      wave.style.width = `${size}px`;
-      wave.style.height = `${size}px`;
-      wave.style.marginLeft = `${-size / 2}px`;
-      wave.style.marginTop = `${-size / 2}px`;
-      wave.style.borderWidth = `${border}px`;
-      wave.style.borderColor = `rgba(255,255,255,${alpha})`;
-      fxLayerEl.appendChild(wave);
-      setTimeout(() => wave.remove(), life);
-    };
-
-    spawnWave(strong ? 16 : 12, strong ? 3 : 2, strong ? 360 : 320, strong ? 0.98 : 0.85);
-    if (strong) {
-      spawnWave(24, 2, 420, 0.68);
-      spawnWave(34, 2, 460, 0.32);
-      const flash = document.createElement("i");
-      flash.style.position = "fixed";
-      flash.style.left = `${r.left + r.width / 2}px`;
-      flash.style.top = `${r.top + r.height / 2}px`;
-      flash.style.width = "28px";
-      flash.style.height = "28px";
-      flash.style.marginLeft = "-14px";
-      flash.style.marginTop = "-14px";
-      flash.style.borderRadius = "50%";
-      flash.style.background = "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0) 100%)";
-      flash.style.animation = "waveExpand 240ms ease forwards";
-      fxLayerEl.appendChild(flash);
-      setTimeout(() => flash.remove(), 260);
-    }
+    runShockwaveFX({ boardEl, fxLayerEl, index, strong });
   }
 
   function spawnFloatText(text, index) {
-    const cell = boardEl.querySelector(`.cell[data-index="${index}"]`);
-    if (!cell) return;
-    const r = cell.getBoundingClientRect();
-    const el = document.createElement("i");
-    el.className = "fx-text";
-    el.textContent = text;
-    el.style.left = `${r.left + r.width / 2}px`;
-    el.style.top = `${r.top + r.height / 2}px`;
-    fxLayerEl.appendChild(el);
-    setTimeout(() => el.remove(), 540);
+    runFloatText({ boardEl, fxLayerEl, text, index });
   }
 
   function spawnScreenPulse(theme = "boss", duration = 420) {
-    const el = document.createElement("i");
-    el.className = `fx-screen-pulse ${theme}`;
-    fxLayerEl.appendChild(el);
-    setTimeout(() => el.remove(), duration);
+    runScreenPulse({ fxLayerEl, theme, duration });
   }
 
   function shakeBoard(power = 1) {
-    boardWrapEl.classList.remove("shake");
-    boardWrapEl.style.setProperty("--shake-power", String(power));
-    boardWrapEl.offsetWidth;
-    boardWrapEl.classList.add("shake");
+    runShakeBoard(boardWrapEl, power);
   }
 
   function updateMeta() {
@@ -1759,82 +1505,45 @@ import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-c
   }
 
   function createBoard() {
-    const arr = Array(boardSize * boardSize).fill(null);
-    for (let i = 0; i < arr.length; i += 1) arr[i] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
-    return arr;
+    return createBoardState(boardSize, randColor);
   }
 
   function resolveAutoBoard() {
-    let safe = 0;
-    while (true) {
-      const groups = findMatchGroups();
-      if (groups.length === 0) break;
-      for (const g of groups) for (const idx of g.indices) {
-        if (isGem(state.board[idx])) state.board[idx].color = randColor();
-      }
-      if (++safe > 80) break;
-    }
+    resolveAutoBoardState(state, findMatchGroups, isGem, randColor);
   }
 
   function collapseBoard() {
-    const moved = [];
-    for (let c = 0; c < boardSize; c += 1) {
-      const keep = [];
-      for (let r = boardSize - 1; r >= 0; r -= 1) {
-        const idx = r * boardSize + c;
-        const v = state.board[idx];
-        if (v !== null) keep.push(v);
-      }
-      for (let r = boardSize - 1; r >= 0; r -= 1) {
-        const idx = r * boardSize + c;
-        const next = keep[boardSize - 1 - r] ?? null;
-        if (state.board[idx] !== next && next && isGem(next)) moved.push(idx);
-        state.board[idx] = next;
-      }
-    }
-    return moved;
+    return collapseBoardState(state, boardSize, isGem);
   }
 
   function refillBoard() {
-    const born = [];
-    for (let i = 0; i < state.board.length; i += 1) {
-      if (state.board[i] === null) {
-        state.board[i] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
-        born.push(i);
-      }
-    }
-    return born;
+    return refillBoardState(state, randColor);
   }
 
   function isAdjacent(a, b) {
-    return Math.abs(rowOf(a) - rowOf(b)) + Math.abs(colOf(a) - colOf(b)) === 1;
+    return checkIsAdjacent(boardSize, a, b);
   }
 
-  function rowOf(i) { return Math.floor(i / boardSize); }
-  function colOf(i) { return i % boardSize; }
-  function inside(r, c) { return r >= 0 && r < boardSize && c >= 0 && c < boardSize; }
-  function indicesInRow(r) { return Array.from({ length: boardSize }, (_, x) => r * boardSize + x); }
-  function indicesInCol(c) { return Array.from({ length: boardSize }, (_, y) => y * boardSize + c); }
+  function rowOf(i) { return getRowOf(boardSize, i); }
+  function colOf(i) { return getColOf(boardSize, i); }
+  function inside(r, c) { return isInside(boardSize, r, c); }
+  function indicesInRow(r) { return getIndicesInRow(boardSize, r); }
+  function indicesInCol(c) { return getIndicesInCol(boardSize, c); }
 
   function swap(a, b) {
-    const t = state.board[a];
-    state.board[a] = state.board[b];
-    state.board[b] = t;
+    swapBoardCells(state, a, b);
   }
 
-  function randColor() { return Math.floor(Math.random() * COLORS); }
-  function randomPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function randColor() { return pickRandColor(COLORS); }
+  function randomPick(arr) { return pickRandom(arr); }
 
   function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
+    shuffleArray(arr);
   }
 
-  function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
-  function isGem(c) { return c && c.kind === "gem"; }
-  function isObstacle(c) { return c && c.kind === "obstacle"; }
+  function sleep(ms) { return wait(ms); }
+  function isGem(c) { return checkIsGem(c); }
+  function isObstacle(c) { return checkIsObstacle(c); }
 
   function renderAll() {
     renderHUD();
@@ -1887,87 +1596,34 @@ import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-c
   }
 
   function renderItems() {
-    itemWrapEl.innerHTML = "";
-    const carried = getCarriedItems();
-    for (const id of carried) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "ability";
-      btn.dataset.item = id;
-      if (state.mode.type === "target_item" && state.mode.item === id) btn.classList.add("active");
-      if (getItemCount(id) <= 0) btn.classList.add("disabled");
-      btn.classList.add(`rarity-${ITEM_DEFS[id].rarity}`);
-      btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${ITEM_DEFS[id].name}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">Lv.${getItemLevel(id)}</i><strong>${ITEM_DEFS[id].name}</strong>`;
-      itemWrapEl.appendChild(btn);
-    }
-    for (let i = carried.length; i < MAX_ITEM_TYPES; i += 1) {
-      const slot = document.createElement("div");
-      slot.className = "ability disabled empty-slot";
-      slot.innerHTML = `<div class="item-icon empty-item-slot"><img class="empty-slot-image" src="${UI_IMAGES.emptySlot}" alt="Empty slot"></div><strong>Empty Slot</strong><small>New item types can be drafted here.</small>`;
-      itemWrapEl.appendChild(slot);
-    }
+    renderItemsView({
+      itemWrapEl,
+      getCarriedItems,
+      state,
+      getItemCount,
+      getItemLevel,
+      ITEM_DEFS,
+      getAnimatedItemImage,
+      MAX_ITEM_TYPES,
+      UI_IMAGES,
+    });
   }
 
   function renderPerks() {
-    if (!perkWrapEl) return;
-    perkWrapEl.innerHTML = "";
-    const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
-    const owned = Object.entries(PERK_DEFS)
-      .filter(([id]) => state.perks[id])
-      .sort((a, b) => rarityOrder[a[1].rarity] - rarityOrder[b[1].rarity]);
-    if (owned.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "perk-empty";
-      empty.textContent = "Draft rogue skills after each floor to shape your run.";
-      perkWrapEl.appendChild(empty);
-      return;
-    }
-    for (const [, def] of owned) {
-      const el = document.createElement("div");
-      el.className = `perk-chip rarity-${def.rarity}`;
-      el.innerHTML = `<span>${RARITY_LABELS[def.rarity]}</span><strong>${def.title}</strong><small>${def.desc}</small>`;
-      perkWrapEl.appendChild(el);
-    }
+    renderPerksView({ perkWrapEl, state, PERK_DEFS, RARITY_LABELS });
   }
 
   function renderBoard() {
-    boardEl.innerHTML = "";
-    const targeting = state.mode.type === "target_item";
-
-    for (let i = 0; i < state.board.length; i += 1) {
-      const cell = document.createElement("button");
-      cell.type = "button";
-      cell.className = "cell";
-      cell.dataset.index = String(i);
-      if (selected === i) cell.classList.add("selected");
-      if (targeting) cell.classList.add("targeting");
-
-      const value = state.board[i];
-      if (isObstacle(value)) {
-        const block = document.createElement("div");
-        block.className = "obstacle";
-        cell.appendChild(block);
-      } else if (isGem(value)) {
-        const gem = document.createElement("div");
-        gem.className = `gem g-${value.color}`;
-        if (value.special) gem.classList.add(`sp-${value.special}`);
-        if (value.glass) gem.classList.add("glass");
-        if (value.lockedTurns > 0) gem.classList.add("locked");
-        if (clearAnim.has(i)) gem.classList.add("clear-pop");
-        if (fallAnim.has(i)) gem.classList.add("fall-in");
-
-        const icon = document.createElement("img");
-        icon.className = "gem-icon gem-image";
-        icon.dataset.animGem = String(value.color);
-        icon.src = getAnimatedGemImage(value.color);
-        icon.alt = `gem-${value.color}`;
-        gem.appendChild(icon);
-
-        cell.appendChild(gem);
-      }
-
-      boardEl.appendChild(cell);
-    }
+    renderBoardView({
+      boardEl,
+      state,
+      selected,
+      isObstacle,
+      isGem,
+      clearAnim,
+      fallAnim,
+      getAnimatedGemImage,
+    });
   }
 
   function notify(text, type = "ok") {
