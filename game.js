@@ -22,7 +22,7 @@ import {
   ITEM_BASE_LEVEL,
   RARITY_LABELS,
 } from "./src/config/items-config.js";
-import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES, GEM_POOL_BY_FLOOR } from "./src/config/gems-config.js";
+import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES, GEM_POOL_BY_FLOOR, GEM_COLOR_NAMES } from "./src/config/gems-config.js";
 import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-config.js";
 import { BLESSING_DEFS } from "./src/config/blessings-config.js";
 import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
@@ -457,6 +457,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     state.floor = floor;
     if (state.floor > TOTAL_FLOORS) return onVictory();
 
+    const previousColorCount = state.activeGemColors?.length || 4;
+
     const cfg = FLOOR_CONFIG[state.floor - 1];
     const threat = getFloorThreat(state.floor);
     const theme = getFloorTheme(state.floor);
@@ -465,6 +467,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     state.activeGemColors = getGemPoolForFloor(state.floor);
     state.floorThreat = { label: threat.label, bossGain: threat.bossGain, pressure: threat.pressure };
     state.floorTheme = theme;
+    const unlockedNewColor = state.activeGemColors.length > previousColorCount;
 
     state.targetScore = Math.floor(cfg.target * threat.targetMul);
     state.movesLeft = Math.max(8, cfg.moves + threat.movesDelta);
@@ -493,6 +496,10 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     if (state.blessings.tactical_reserve) state.movesLeft += 1;
     if (state.blessings.chain_matrix) state.chainBonus += 0.15;
     if (state.blessings.supply_cache) refillCarriedCharges();
+    if (unlockedNewColor) {
+      state.movesLeft += 1;
+      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 18);
+    }
     grantDragonHoardBonus();
 
     state.board = createBoard();
@@ -527,6 +534,10 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
     renderAll();
     showFloorIntro(threat);
+    if (unlockedNewColor) {
+      const newest = state.activeGemColors[state.activeGemColors.length - 1];
+      notify(`New gem unlocked: ${GEM_COLOR_NAMES[newest]}. +1 move and +18 momentum to ease the transition.`, "ok");
+    }
     notify(`Floor ${state.floor} begins: ${theme.title} / ${state.modifier.name} / ${threat.label}.`, "ok");
     scanGuideDiscoveries();
   }

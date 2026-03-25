@@ -41,3 +41,12 @@ export const GEM_POOL_BY_FLOOR = [
   [0, 1, 2, 3, 4, 5],
   [0, 1, 2, 3, 4, 5],
 ];
+
+export const GEM_COLOR_NAMES = {
+  0: "Fire",
+  1: "Water",
+  2: "Nature",
+  3: "Lightning",
+  4: "Arcane",
+  5: "Alchemy",
+};
