@@ -7,7 +7,17 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div class="app">
+    <div id="chapterScreen" class="chapter-screen hidden">
+      <div class="chapter-shell">
+        <div class="chapter-header">
+          <h1>Choose Chapter</h1>
+          <p>Clear chapters in order. Defeat the chapter boss to unlock the next region.</p>
+        </div>
+        <div id="chapterList" class="chapter-list"></div>
+      </div>
+    </div>
+
+    <div id="appRoot" class="app hidden">
       <aside class="panel left-panel">
         <div class="title-block">
           <img src="./assets/generated/ui/logo_rogue_match3_crest.png" alt="Rogue Match-3 crest" class="title-crest" />

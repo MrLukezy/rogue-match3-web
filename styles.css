@@ -36,6 +36,83 @@ body {
   overflow: hidden;
 }
 
+.chapter-screen {
+  min-height: 100vh;
+  padding: 40px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chapter-shell {
+  width: min(1280px, 100%);
+  padding: 28px;
+  border-radius: 28px;
+  border: 1px solid rgba(112, 154, 188, 0.18);
+  background: linear-gradient(180deg, rgba(10, 19, 30, 0.9), rgba(9, 16, 26, 0.96));
+  box-shadow: 0 28px 64px rgba(2, 8, 18, 0.34);
+}
+
+.chapter-header h1 {
+  margin: 0;
+  font-size: 38px;
+}
+
+.chapter-header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.chapter-list {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.chapter-card {
+  position: relative;
+  padding: 18px;
+  border-radius: 22px;
+  border: 1px solid rgba(124, 170, 230, 0.2);
+  background: linear-gradient(180deg, rgba(20, 39, 63, 0.86), rgba(12, 24, 42, 0.94));
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.chapter-card.locked {
+  opacity: 0.52;
+  cursor: not-allowed;
+}
+
+.chapter-card .tag {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.08);
+  color: #d9e8ff;
+}
+
+.chapter-card strong,
+.chapter-card small {
+  display: block;
+}
+
+.chapter-card strong {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.chapter-card small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 body[data-theme="crystal_mines"] {
   background:
     linear-gradient(180deg, rgba(6, 11, 15, 0.24), rgba(5, 12, 18, 0.78)),

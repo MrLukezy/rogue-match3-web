@@ -178,6 +178,8 @@ export function defaultCodex() {
 export function defaultMetaProgression() {
   return {
     shards: 0,
+    unlockedChapters: ["crystal_mines"],
+    clearedChapters: {},
     upgrades: {
       veteran_boots: 0,
       ember_core: 0,
@@ -198,6 +200,10 @@ export function loadMeta(storage, META_KEY) {
       progression: {
         ...defaultMetaProgression(),
         ...(parsed.progression || {}),
+        unlockedChapters: Array.isArray((parsed.progression || {}).unlockedChapters) && (parsed.progression || {}).unlockedChapters.length > 0
+          ? (parsed.progression || {}).unlockedChapters
+          : defaultMetaProgression().unlockedChapters,
+        clearedChapters: { ...defaultMetaProgression().clearedChapters, ...((parsed.progression || {}).clearedChapters || {}) },
         upgrades: { ...defaultMetaProgression().upgrades, ...((parsed.progression || {}).upgrades || {}) },
       },
       codex: {

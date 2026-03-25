@@ -1,5 +1,8 @@
 export function getDomRefs(doc = document) {
   return {
+    appRootEl: doc.getElementById("appRoot"),
+    chapterScreenEl: doc.getElementById("chapterScreen"),
+    chapterListEl: doc.getElementById("chapterList"),
     floorEl: doc.getElementById("floor"),
     modifierEl: doc.getElementById("modifier"),
     movesLeftEl: doc.getElementById("movesLeft"),
