@@ -2,7 +2,6 @@ import {
   MIN_BOARD_SIZE,
   MAX_BOARD_SIZE,
   BOARD_SIZE_BY_FLOOR,
-  COLORS,
   TOTAL_FLOORS,
   META_KEY,
   MOMENTUM_MAX,
@@ -23,7 +22,7 @@ import {
   ITEM_BASE_LEVEL,
   RARITY_LABELS,
 } from "./src/config/items-config.js";
-import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES } from "./src/config/gems-config.js";
+import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES, GEM_POOL_BY_FLOOR } from "./src/config/gems-config.js";
 import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-config.js";
 import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
 import { renderBoardView } from "./src/render/board-render.js";
@@ -462,6 +461,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     const theme = getFloorTheme(state.floor);
     boardSize = getBoardSizeForFloor(state.floor);
     state.boardSize = boardSize;
+    state.activeGemColors = getGemPoolForFloor(state.floor);
     state.floorThreat = { label: threat.label, bossGain: threat.bossGain, pressure: threat.pressure };
     state.floorTheme = theme;
 
@@ -534,6 +534,17 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     return CHAPTER_THEMES.find((theme) => floor >= theme.start && floor <= theme.end) || CHAPTER_THEMES[0];
   }
 
+  function getGemPoolForFloor(floor) {
+    return GEM_POOL_BY_FLOOR[Math.max(0, Math.min(GEM_POOL_BY_FLOOR.length - 1, floor - 1))] || [0, 1, 2, 3];
+  }
+
+  function nextGemColor(color) {
+    const pool = state.activeGemColors || [0, 1, 2, 3];
+    const idx = pool.indexOf(color);
+    if (idx === -1) return pool[0];
+    return pool[(idx + 1) % pool.length];
+  }
+
   function getBoardSizeForFloor(floor) {
     const size = BOARD_SIZE_BY_FLOOR[Math.max(0, Math.min(BOARD_SIZE_BY_FLOOR.length - 1, floor - 1))] || MIN_BOARD_SIZE;
     return Math.max(MIN_BOARD_SIZE, Math.min(MAX_BOARD_SIZE, size));
@@ -542,7 +553,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   function showFloorIntro(threat) {
     const fx = document.createElement("div");
     fx.className = "floor-intro";
-    fx.innerHTML = `<strong>${state.floorTheme.title} · Floor ${state.floor}</strong><small>${threat.label} - ${state.modifier.name}</small>`;
+    fx.innerHTML = `<strong>${state.floorTheme.title} · Floor ${state.floor}</strong><small>${threat.label} - ${state.modifier.name} · ${state.activeGemColors.length} colors</small>`;
     fxLayerEl.appendChild(fx);
 
     spawnScreenPulse("floor", 620);
@@ -739,7 +750,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       if (cell.lockedTurns > 0) return [];
       const targets = collectIndices((x) => isGem(x) && x.color === cell.color);
       if (itemPower(item) >= 3) {
-        const bonusColor = (cell.color + 1) % COLORS;
+        const bonusColor = nextGemColor(cell.color);
         targets.push(...collectIndices((x) => isGem(x) && x.color === bonusColor));
       }
       return [...new Set(targets)];
@@ -798,7 +809,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       await playSkillShowcase("Rainbow Burst", "rainbow");
       const first = randColor();
       let second = randColor();
-      if (second === first) second = (second + 1) % COLORS;
+      if (second === first) second = nextGemColor(first);
       const targets = collectIndices((x) => isGem(x) && (x.color === first || x.color === second));
       const extra = collectIndices((x) => isGem(x) && x.special).slice(0, itemPower(skill) >= 2 ? 16 : 10);
       const merged = [...new Set([...targets, ...extra])];
@@ -950,7 +961,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     if (skill === "color_shift") {
       const from = randColor();
       let to = randColor();
-      if (to === from) to = (to + 1) % COLORS;
+      if (to === from) to = nextGemColor(from);
       const candidates = collectIndices((x) => isGem(x) && x.color === from && x.lockedTurns <= 0);
       shuffle(candidates);
       const cap = state.boss.elite ? 22 : 16;
@@ -1683,7 +1694,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     swapBoardCells(state, a, b);
   }
 
-  function randColor() { return pickRandColor(COLORS); }
+  function randColor() { return randomPick(state.activeGemColors || GEM_POOL_BY_FLOOR[0]); }
   function randomPick(arr) { return pickRandom(arr); }
 
   function shuffle(arr) {
@@ -1705,7 +1716,6 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function renderHUD() {
     floorEl.textContent = `${state.floor}/${TOTAL_FLOORS}`;
-    modifierEl.textContent = state.modifier ? `${state.floorTheme.shortLabel} · ${state.modifier.name}` : state.floorTheme.shortLabel;
     if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.targetScore);
     movesLeftEl.textContent = String(state.movesLeft);
     floorScoreEl.textContent = String(state.floorScore);
@@ -1724,6 +1734,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     if (bossStateEl) bossStateEl.textContent = state.boss.casting ? `Casting in ${state.floorTheme.shortLabel}` : state.boss.phase === "ready" ? "Primed to strike on the next beat" : `Charging through ${state.floorTheme.title}`;
     if (bossThreatEl) bossThreatEl.textContent = getBossThreatLabel();
     if (bossPatternEl) bossPatternEl.textContent = state.boss.elite ? `${state.floorTheme.pattern} / Elite pressure` : state.floorTheme.pattern;
+    if (modifierEl) modifierEl.textContent = state.modifier ? `${state.floorTheme.shortLabel} · ${state.modifier.name} · ${state.activeGemColors.length}C` : `${state.floorTheme.shortLabel} · ${state.activeGemColors.length}C`;
     if (bossMeterEl) {
       bossMeterEl.classList.remove("charging", "ready", "casting");
       if (state.boss.casting) bossMeterEl.classList.add("casting");

@@ -6,6 +6,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
     targetScore: 0,
     movesLeft: 0,
     boardSize: MIN_BOARD_SIZE,
+    activeGemColors: [0, 1, 2, 3],
     board: [],
     mode: { type: "normal", item: null },
     items: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
