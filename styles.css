@@ -12,6 +12,7 @@
   --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss.png");
   --bg-modal-image: url("./assets/generated/ui/bg_modal_arcane_reward.png");
   --obstacle-image: url("./assets/generated/ui/tile_obstacle_obsidian.png");
+  --chapter-gem-filter: none;
   --gem-color-0: #ff6b6b;
   --gem-color-1: #4d96ff;
   --gem-color-2: #52d273;
@@ -33,6 +34,38 @@ body {
     linear-gradient(180deg, #0a1317 0%, var(--bg) 100%);
   color: var(--text);
   overflow: hidden;
+}
+
+body[data-theme="crystal_mines"] {
+  background:
+    linear-gradient(180deg, rgba(6, 11, 15, 0.24), rgba(5, 12, 18, 0.78)),
+    var(--bg-main-image) center top / cover no-repeat,
+    radial-gradient(920px 540px at 14% 12%, rgba(72, 220, 210, 0.18), transparent 58%),
+    linear-gradient(180deg, #081218 0%, var(--bg) 100%);
+}
+
+body[data-theme="frozen_archive"] {
+  background:
+    linear-gradient(180deg, rgba(9, 14, 20, 0.26), rgba(7, 14, 22, 0.84)),
+    var(--bg-main-image) center top / cover no-repeat,
+    radial-gradient(920px 540px at 14% 12%, rgba(140, 210, 255, 0.2), transparent 58%),
+    linear-gradient(180deg, #09131b 0%, var(--bg) 100%);
+}
+
+body[data-theme="storm_forge"] {
+  background:
+    linear-gradient(180deg, rgba(12, 10, 15, 0.24), rgba(14, 10, 14, 0.86)),
+    var(--bg-main-image) center top / cover no-repeat,
+    radial-gradient(920px 540px at 14% 12%, rgba(255, 170, 72, 0.18), transparent 58%),
+    linear-gradient(180deg, #101116 0%, var(--bg) 100%);
+}
+
+body[data-theme="void_rift"] {
+  background:
+    linear-gradient(180deg, rgba(7, 8, 18, 0.2), rgba(6, 8, 18, 0.9)),
+    var(--bg-main-image) center top / cover no-repeat,
+    radial-gradient(920px 540px at 14% 12%, rgba(180, 110, 255, 0.2), transparent 58%),
+    linear-gradient(180deg, #090b16 0%, var(--bg) 100%);
 }
 
 .app {
@@ -684,7 +717,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   height: 92%;
   object-fit: contain;
   user-select: none;
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.22)) drop-shadow(0 0 16px rgba(123, 185, 255, 0.16));
+  filter: var(--chapter-gem-filter) drop-shadow(0 0 10px rgba(255, 255, 255, 0.22)) drop-shadow(0 0 16px rgba(123, 185, 255, 0.16));
 }
 
 .gem.glass::after {

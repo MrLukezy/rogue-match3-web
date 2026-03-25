@@ -528,6 +528,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     state.activeGemColors = getGemPoolForFloor(state.floor);
     state.floorThreat = { label: threat.label, bossGain: threat.bossGain, pressure: threat.pressure };
     state.floorTheme = theme;
+    applyThemeVisuals(theme);
     const unlockedNewColor = state.activeGemColors.length > previousColorCount;
 
     state.targetScore = Math.floor(cfg.target * (threat.targetMul + route.targetMulDelta));
@@ -629,6 +630,13 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function getFloorTheme(floor) {
     return CHAPTER_THEMES.find((theme) => floor >= theme.start && floor <= theme.end) || CHAPTER_THEMES[0];
+  }
+
+  function applyThemeVisuals(theme) {
+    document.body.dataset.theme = theme.id;
+    document.documentElement.style.setProperty("--bg-board-image", `url("${theme.boardImage}")`);
+    document.documentElement.style.setProperty("--obstacle-image", `url("${theme.obstacleImage}")`);
+    document.documentElement.style.setProperty("--chapter-gem-filter", theme.gemTone || "none");
   }
 
   function getGemPoolForFloor(floor) {

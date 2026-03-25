@@ -49,6 +49,9 @@ export const CHAPTER_THEMES = [
     eliteBossName: "Crystal Burrow Tyrant",
     pattern: "Glass / Obstacle / Pressure",
     intro: "Stable crystal tunnels with early board hazards.",
+    boardImage: "./assets/generated/ui/bg_board_crystal_mines.png",
+    obstacleImage: "./assets/generated/ui/tile_obstacle_mines.png",
+    gemTone: "none",
   },
   {
     id: "frozen_archive",
@@ -60,6 +63,9 @@ export const CHAPTER_THEMES = [
     eliteBossName: "Frozen Memory Eater",
     pattern: "Lock / Glass / Recolor",
     intro: "Lock-heavy floors that reward planning over speed.",
+    boardImage: "./assets/generated/ui/bg_board_frozen_archive.png",
+    obstacleImage: "./assets/generated/ui/tile_obstacle_archive.png",
+    gemTone: "hue-rotate(12deg) saturate(0.9) brightness(1.05)",
   },
   {
     id: "storm_forge",
@@ -71,6 +77,9 @@ export const CHAPTER_THEMES = [
     eliteBossName: "Thunder Crucible Titan",
     pattern: "Pressure / Chain / Boss burst",
     intro: "High-voltage floors built around chain payoffs and punishment.",
+    boardImage: "./assets/generated/ui/bg_board_storm_forge.png",
+    obstacleImage: "./assets/generated/ui/tile_obstacle_forge.png",
+    gemTone: "saturate(1.16) brightness(1.04)",
   },
   {
     id: "void_rift",
@@ -82,6 +91,9 @@ export const CHAPTER_THEMES = [
     eliteBossName: "Voidheart Devourer",
     pattern: "Storm / Lock / Shift / Collapse",
     intro: "Endgame floors with stacked pressure and mixed hazards.",
+    boardImage: "./assets/generated/ui/bg_board_void_rift.png",
+    obstacleImage: "./assets/generated/ui/tile_obstacle_rift.png",
+    gemTone: "hue-rotate(-14deg) saturate(1.12) brightness(0.96)",
   },
 ];
 
