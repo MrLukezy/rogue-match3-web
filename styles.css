@@ -45,11 +45,14 @@ body {
 }
 
 .chapter-shell {
+  --chapter-preview-image: none;
   width: min(1280px, 100%);
   padding: 28px;
   border-radius: 28px;
   border: 1px solid rgba(112, 154, 188, 0.18);
-  background: linear-gradient(180deg, rgba(10, 19, 30, 0.9), rgba(9, 16, 26, 0.96));
+  background:
+    linear-gradient(180deg, rgba(10, 19, 30, 0.74), rgba(9, 16, 26, 0.9)),
+    var(--chapter-preview-image) center / cover no-repeat;
   box-shadow: 0 28px 64px rgba(2, 8, 18, 0.34);
 }
 
@@ -84,6 +87,13 @@ body {
 .chapter-card.locked {
   opacity: 0.52;
   cursor: not-allowed;
+}
+
+.chapter-card:hover:not(.locked),
+.chapter-card:focus-visible:not(.locked) {
+  transform: translateY(-2px);
+  border-color: rgba(160, 205, 255, 0.4);
+  box-shadow: 0 18px 40px rgba(5, 12, 22, 0.26);
 }
 
 .chapter-card .tag {
@@ -950,6 +960,35 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   background: radial-gradient(circle, rgba(255, 102, 138, 0.2) 0%, rgba(255, 82, 118, 0.12) 42%, rgba(255, 82, 118, 0) 74%);
   filter: blur(8px);
   animation: bossSigilAura 720ms ease-in-out infinite alternate;
+}
+
+.boss-portrait-wrap {
+  margin: 12px 0 14px;
+  min-height: 190px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 20%, rgba(255,255,255,0.08), rgba(255,255,255,0) 52%);
+  overflow: hidden;
+}
+
+.boss-portrait-image {
+  width: min(100%, 220px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 26px rgba(8, 6, 14, 0.34));
+  transform-origin: center bottom;
+}
+
+.boss-panel.boss-cast .boss-portrait-image,
+.boss-portrait-image.casting {
+  animation: bossPortraitCast 320ms ease-in-out 2 alternate;
+}
+
+@keyframes bossPortraitCast {
+  0% { transform: scale(1) translateY(0); filter: drop-shadow(0 12px 26px rgba(8, 6, 14, 0.34)) brightness(1); }
+  100% { transform: scale(1.08) translateY(-6px); filter: drop-shadow(0 20px 34px rgba(255, 92, 126, 0.28)) brightness(1.18); }
 }
 
 .skill-showcase {

@@ -2,6 +2,7 @@ export function getDomRefs(doc = document) {
   return {
     appRootEl: doc.getElementById("appRoot"),
     chapterScreenEl: doc.getElementById("chapterScreen"),
+    chapterShellEl: doc.getElementById("chapterShell"),
     chapterListEl: doc.getElementById("chapterList"),
     floorEl: doc.getElementById("floor"),
     modifierEl: doc.getElementById("modifier"),
@@ -17,6 +18,7 @@ export function getDomRefs(doc = document) {
     bossMeterEl: doc.getElementById("bossMeter"),
     bossBarEl: doc.getElementById("bossBar"),
     bossSkillHintEl: doc.getElementById("bossSkillHint"),
+    bossPortraitEl: doc.getElementById("bossPortrait"),
     bossTitleEl: doc.getElementById("bossTitle"),
     bossStateEl: doc.getElementById("bossState"),
     bossThreatEl: doc.getElementById("bossThreat"),

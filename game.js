@@ -113,6 +113,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   const {
     appRootEl,
     chapterScreenEl,
+    chapterShellEl,
     chapterListEl,
     floorEl,
     modifierEl,
@@ -128,6 +129,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     bossMeterEl,
     bossBarEl,
     bossSkillHintEl,
+    bossPortraitEl,
     bossTitleEl,
     bossStateEl,
     bossThreatEl,
@@ -509,6 +511,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     overlayEl.classList.add("hidden");
     chapterListEl.innerHTML = "";
     const unlocked = new Set(meta.progression.unlockedChapters || ["crystal_mines"]);
+    if (chapterShellEl) chapterShellEl.style.setProperty("--chapter-preview-image", `url("${CHAPTER_THEMES[0].chapterPreviewImage}")`);
 
     for (const chapter of CHAPTER_THEMES) {
       const btn = document.createElement("button");
@@ -517,6 +520,12 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       btn.className = `chapter-card${isUnlocked ? "" : " locked"}`;
       btn.disabled = !isUnlocked;
       btn.innerHTML = `<span class="tag">${isUnlocked ? (isCleared ? "Cleared" : "Unlocked") : "Locked"}</span><strong>${chapter.title}</strong><small>${chapter.intro}<br>Boss: ${chapter.bossName}<br>Pattern: ${chapter.pattern}</small>`;
+      btn.addEventListener("mouseenter", () => {
+        if (chapterShellEl) chapterShellEl.style.setProperty("--chapter-preview-image", `url("${chapter.chapterPreviewImage}")`);
+      });
+      btn.addEventListener("focus", () => {
+        if (chapterShellEl) chapterShellEl.style.setProperty("--chapter-preview-image", `url("${chapter.chapterPreviewImage}")`);
+      });
       btn.addEventListener("click", () => {
         if (!isUnlocked) return;
         state.selectedChapter = chapter;
@@ -654,6 +663,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     document.documentElement.style.setProperty("--bg-board-image", `url("${theme.boardImage}")`);
     document.documentElement.style.setProperty("--obstacle-image", `url("${theme.obstacleImage}")`);
     document.documentElement.style.setProperty("--chapter-gem-filter", theme.gemTone || "none");
+    if (bossPortraitEl) bossPortraitEl.src = theme.bossPortrait;
   }
 
   function getGemPoolForFloor(floor) {
@@ -1046,6 +1056,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   async function castBossSkill(skill) {
     recordCodex("bossSeen", skill);
     boardWrapEl.classList.add("boss-cast");
+    if (bossPortraitEl) bossPortraitEl.classList.add("casting");
     spawnScreenPulse("boss", 520);
 
     if (skill === "glass_storm") {
@@ -1059,6 +1070,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       applyBossPressure(skill);
       renderAll();
       await sleep(220);
+      if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
       boardWrapEl.classList.remove("boss-cast");
       return;
     }
@@ -1077,6 +1089,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       applyBossPressure(skill);
       renderAll();
       await sleep(180);
+      if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
       boardWrapEl.classList.remove("boss-cast");
       return;
     }
@@ -1098,6 +1111,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       applyBossPressure(skill);
       renderAll();
       await sleep(200);
+      if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
       boardWrapEl.classList.remove("boss-cast");
       return;
     }
@@ -1118,6 +1132,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       applyBossPressure("color_shift");
       renderAll();
       await sleep(240);
+      if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
       boardWrapEl.classList.remove("boss-cast");
     }
   }
