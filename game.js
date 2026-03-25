@@ -1970,7 +1970,7 @@
       if (state.mode.type === "target_item" && state.mode.item === id) btn.classList.add("active");
       if (getItemCount(id) <= 0) btn.classList.add("disabled");
       btn.classList.add(`rarity-${ITEM_DEFS[id].rarity}`);
-      btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${ITEM_DEFS[id].name}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">Lv.${getItemLevel(id)}</i><strong>${ITEM_DEFS[id].name}</strong><small>${ITEM_DEFS[id].desc}</small>`;
+      btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${ITEM_DEFS[id].name}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">Lv.${getItemLevel(id)}</i><strong>${ITEM_DEFS[id].name}</strong>`;
       itemWrapEl.appendChild(btn);
     }
     for (let i = carried.length; i < MAX_ITEM_TYPES; i += 1) {

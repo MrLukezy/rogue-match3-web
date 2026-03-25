@@ -317,25 +317,36 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 
 .ability {
   position: relative;
-  min-height: 80px;
-  padding: 6px 6px 4px;
+  min-height: 168px;
+  padding: 14px 10px 10px;
   text-align: center;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+  background: linear-gradient(180deg, rgba(20, 39, 63, 0.9), rgba(12, 24, 42, 0.96));
+  border: 1px solid rgba(124, 170, 230, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04), 0 14px 30px rgba(5, 11, 20, 0.28);
+  overflow: hidden;
+  border-radius: 20px;
+}
+
+.ability::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 24%, rgba(255,255,255,0.08), rgba(255,255,255,0) 48%);
 }
 
 .item-icon {
   display: block;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 2px;
+  width: 74px;
+  height: 74px;
+  margin-bottom: 10px;
   object-fit: contain;
 }
 
 .item-image {
   margin-left: auto;
   margin-right: auto;
+  filter: drop-shadow(0 0 12px rgba(255,255,255,0.22)) drop-shadow(0 0 24px rgba(120, 180, 255, 0.22));
 }
 
 .empty-item-slot {
@@ -358,24 +369,24 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 }
 
 .item-badge {
-  top: 8px;
-  right: 8px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
+  top: 10px;
+  right: 10px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
   border-radius: 999px;
   background: #ff4e61;
   color: #fff;
   font-size: 12px;
-  line-height: 22px;
+  line-height: 26px;
   font-weight: 800;
   box-shadow: 0 6px 14px rgba(255, 78, 97, 0.35);
 }
 
 .item-level {
-  top: 8px;
-  left: 8px;
-  padding: 2px 6px;
+  top: 10px;
+  left: 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   background: rgba(8, 14, 25, 0.74);
   color: #dce9ff;
@@ -384,14 +395,18 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 
 .ability strong {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
+  line-height: 1.2;
+  margin-top: 2px;
 }
 
 .ability small {
-  display: block;
+  display: none;
   color: var(--muted);
   font-size: 10px;
   line-height: 1.2;
+  max-width: 92%;
+  margin: 6px auto 0;
 }
 
 .btn:hover,
@@ -400,6 +415,12 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   transform: translateY(-1px);
   border-color: #5e86bb;
   box-shadow: 0 10px 22px rgba(6, 15, 30, 0.24);
+}
+
+.ability:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: rgba(150, 193, 255, 0.46);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 18px 34px rgba(6, 15, 30, 0.34);
 }
 
 .btn.danger { background: linear-gradient(180deg, #ff7c9c 0%, #e35d80 100%); }
@@ -423,9 +444,12 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   margin: 6px 0;
 }
 
-.ability.active { outline: 2px solid #9ec1ff; }
+.ability.active {
+  outline: 2px solid #9ec1ff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 0 0 1px rgba(158,193,255,0.28), 0 20px 38px rgba(10, 26, 48, 0.42);
+}
 .ability.disabled { opacity: 0.5; cursor: not-allowed; }
-.empty-slot { background: linear-gradient(180deg, rgba(26, 41, 56, 0.8), rgba(15, 24, 34, 0.9)); }
+.empty-slot { background: linear-gradient(180deg, rgba(26, 41, 56, 0.86), rgba(15, 24, 34, 0.96)); }
 
 .mode {
   border: 1px solid #2f4678;
@@ -450,6 +474,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   justify-content: center;
   align-items: center;
   position: relative;
+  padding-bottom: 270px;
   background:
     linear-gradient(180deg, rgba(8, 18, 31, 0.2), rgba(6, 11, 21, 0.7)),
     var(--bg-board-image) center / cover no-repeat,
@@ -467,25 +492,43 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 }
 
 .item-dock-wrap {
-  width: min(100%, 920px);
-  margin-top: 14px;
-  padding: 10px 12px 12px;
-  border-radius: 18px;
+  width: min(calc(100vw - 40px), 1160px);
+  margin-top: 0;
+  padding: 18px 18px 20px;
+  border-radius: 22px;
   border: 1px solid rgba(123, 167, 223, 0.22);
   background:
     linear-gradient(180deg, rgba(14, 24, 42, 0.84), rgba(10, 19, 33, 0.95)),
     var(--bg-board-image) center bottom / cover no-repeat;
+  box-shadow: 0 22px 42px rgba(5, 11, 20, 0.28);
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 22;
+  backdrop-filter: blur(10px);
+}
+
+.item-dock-wrap::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0));
 }
 
 .dock-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .dock-title span {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #d7e9ff;
@@ -498,7 +541,9 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 .item-dock {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
 }
 
 .board-chip,
@@ -574,18 +619,19 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 }
 
 .item-tooltip {
-  position: absolute;
+  position: fixed;
   left: 50%;
-  bottom: 6px;
+  bottom: 232px;
   transform: translateX(-50%);
-  width: min(100%, 560px);
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(120, 165, 220, 0.28);
-  background: rgba(11, 19, 33, 0.94);
-  box-shadow: 0 10px 26px rgba(4, 11, 20, 0.3);
+  width: min(calc(100vw - 56px), 720px);
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 165, 220, 0.36);
+  background: rgba(11, 19, 33, 0.96);
+  box-shadow: 0 18px 38px rgba(4, 11, 20, 0.36);
   pointer-events: none;
-  z-index: 5;
+  z-index: 23;
+  backdrop-filter: blur(8px);
 }
 
 .item-tooltip strong,
@@ -594,8 +640,10 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 }
 
 .item-tooltip small {
-  margin-top: 4px;
+  margin-top: 6px;
   color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .fx-layer {
@@ -1095,6 +1143,10 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   box-shadow: inset 0 0 0 1px rgba(82, 152, 232, 0.12), 0 10px 24px rgba(20, 52, 98, 0.22);
 }
 
+.ability.rarity-common {
+  box-shadow: inset 0 0 0 1px rgba(82, 152, 232, 0.18), 0 0 0 1px rgba(110, 174, 255, 0.18), 0 16px 30px rgba(20, 52, 98, 0.26), 0 0 28px rgba(82, 152, 232, 0.12);
+}
+
 .rarity-common .choice-rarity,
 .perk-chip.rarity-common span { background: rgba(72, 145, 255, 0.18); color: #8fc9ff; }
 
@@ -1102,6 +1154,10 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   border-color: rgba(183, 122, 255, 0.42);
   background: linear-gradient(180deg, rgba(72, 39, 128, 0.96), rgba(40, 22, 74, 0.98));
   box-shadow: inset 0 0 0 1px rgba(180, 98, 255, 0.12), 0 10px 24px rgba(51, 26, 96, 0.24);
+}
+
+.ability.rarity-rare {
+  box-shadow: inset 0 0 0 1px rgba(180, 98, 255, 0.18), 0 0 0 1px rgba(183, 122, 255, 0.2), 0 16px 30px rgba(51, 26, 96, 0.3), 0 0 30px rgba(180, 98, 255, 0.16);
 }
 
 .rarity-rare .choice-rarity,
@@ -1113,6 +1169,10 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   box-shadow: inset 0 0 0 1px rgba(255, 165, 71, 0.12), 0 10px 24px rgba(102, 54, 12, 0.24);
 }
 
+.ability.rarity-epic {
+  box-shadow: inset 0 0 0 1px rgba(255, 165, 71, 0.2), 0 0 0 1px rgba(255, 165, 71, 0.24), 0 16px 30px rgba(102, 54, 12, 0.32), 0 0 34px rgba(255, 165, 71, 0.18);
+}
+
 .rarity-epic .choice-rarity,
 .perk-chip.rarity-epic span { background: rgba(255, 146, 44, 0.2); color: #ffd39d; }
 
@@ -1120,6 +1180,10 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   border-color: rgba(255, 208, 96, 0.48);
   background: linear-gradient(180deg, rgba(118, 87, 18, 0.98), rgba(72, 49, 8, 1));
   box-shadow: inset 0 0 0 1px rgba(255, 208, 96, 0.16), 0 0 22px rgba(255, 208, 96, 0.16);
+}
+
+.ability.rarity-legendary {
+  box-shadow: inset 0 0 0 1px rgba(255, 208, 96, 0.24), 0 0 0 1px rgba(255, 208, 96, 0.3), 0 18px 34px rgba(72, 49, 8, 0.34), 0 0 38px rgba(255, 208, 96, 0.26);
 }
 
 .rarity-legendary .choice-rarity,
@@ -1254,6 +1318,11 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   .app { grid-template-columns: 1fr; }
   .board-topbar { grid-template-columns: 1fr; }
   .item-dock { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ability { min-height: 138px; }
+  .item-icon { width: 60px; height: 60px; }
+  .board-wrap { padding-bottom: 320px; }
+  .item-dock-wrap { width: min(calc(100vw - 24px), 760px); bottom: 12px; padding: 14px 14px 16px; }
+  .item-tooltip { bottom: 250px; width: min(calc(100vw - 24px), 640px); }
   .board { width: min(90vw, 680px); gap: 3px; }
   .choices { grid-template-columns: 1fr; }
 }
