@@ -92,7 +92,7 @@ import { createI18n } from "./src/ui/i18n.js";
     { id: "lucky", name: zhen("幸运掉落", "Lucky Drop"), desc: zhen("道具掉落概率更高", "Item drop chance is higher"), apply: (s) => { s.dropBoost += 0.12; } },
     { id: "frost_seal", name: zhen("霜封", "Frost Seal"), desc: zhen("若干宝石开局被锁定", "Several gems begin locked"), apply: (s) => { s.modLocks = 4; } },
     { id: "stormfront", name: zhen("风暴前线", "Stormfront"), desc: zhen("动量更快积累，但少 1 步", "Builds momentum faster but trims one move"), apply: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 1); s.chainBonus += 0.12; s.dropBoost += 0.04; } },
-    { id: "rich_vein", name: zhen("丰矿脉", "Rich Vein"), desc: zhen("本层额外得分并提高工具密度", "Gain score and extra tool density on this floor"), apply: (s) => { s.floorScore += 80; s.dropBoost += 0.08; } },
+    { id: "rich_vein", name: zhen("丰矿脉", "Rich Vein"), desc: zhen("本层额外得分并提高工具密度", "Gain score and extra tool density on this floor"), apply: (s) => { s.score += 80; s.dropBoost += 0.08; } },
   ];
 
   const PERK_DEFS = {
@@ -135,6 +135,9 @@ import { createI18n } from "./src/ui/i18n.js";
     bossMeterEl,
     bossBarEl,
     bossSkillHintEl,
+    bossHpRingEl,
+    bossHpValueEl,
+    bossHpMaxEl,
     bossPortraitEl,
     bossTitleEl,
     bossStateEl,
@@ -198,6 +201,7 @@ import { createI18n } from "./src/ui/i18n.js";
   let itemAnimFrameIndex = 0;
   let itemAnimTimer = null;
   let bossHudTimer = null;
+  let bossAiTicking = false;
   const audio = createAudioManager();
 
   bindEvents();
@@ -247,6 +251,12 @@ import { createI18n } from "./src/ui/i18n.js";
     if (bossHudTimer) clearInterval(bossHudTimer);
     bossHudTimer = setInterval(() => {
       if (state?.selectedChapter && !state.gameOver && !state.victory) {
+        if (!bossAiTicking) {
+          bossAiTicking = true;
+          Promise.resolve(tickBoss()).finally(() => {
+            bossAiTicking = false;
+          });
+        }
         renderHUD();
         renderBossSkillbook();
       }
@@ -416,7 +426,7 @@ import { createI18n } from "./src/ui/i18n.js";
     setTextBySelector(".hero-stat span", t("movesLeft"));
     setPanelRowLabel(0, t("floor"));
     setPanelRowLabel(1, t("modifier"));
-    setPanelRowLabel(2, t("floorScore"));
+    setPanelRowLabel(2, t("encounterHp"));
     setPanelRowLabel(3, t("bestFloor"));
     setPanelRowLabel(4, t("bestScore"));
     setTextBySelector(".momentum > span", t("momentum"));
@@ -427,8 +437,8 @@ import { createI18n } from "./src/ui/i18n.js";
     if (restartBtn) restartBtn.textContent = t("restartRun");
     if (codexBtn) codexBtn.textContent = t("codex");
     setTextBySelector(".score-banner span", t("totalScore"));
-    setTextBySelector(".target-chip span", t("target"));
-    setTextBySelector(".board-chip.accent span", t("floorScore"));
+    setTextBySelector(".target-chip span", t("encounterMaxHp"));
+    setTextBySelector(".board-chip.accent span", t("encounterHp"));
     setTextBySelector(".dock-title span", t("equippedItems"));
     setTextBySelector(".dock-title small", t("equippedItemsHint"));
     const encounterUiText = getEncounterUiText();
@@ -759,6 +769,14 @@ import { createI18n } from "./src/ui/i18n.js";
     };
   }
 
+  function getEncounterMaxHp(cfg, threat, route, theme = state.floorTheme, floor = state.floor) {
+    const localFloor = getThemeLocalFloor(floor, theme);
+    const baseHp = Math.floor(cfg.target * (threat.targetMul + route.targetMulDelta));
+    const laneFactor = localFloor === 1 ? 0.62 : localFloor === 2 ? 0.78 : 1;
+    const eliteFactor = ELITE_FLOORS.includes(floor) ? 1.08 : 1;
+    return Math.max(40, Math.round(baseHp * laneFactor * eliteFactor));
+  }
+
   function showChapterSelect() {
     openChapterScreen();
     overlayEl.classList.add("hidden");
@@ -890,6 +908,8 @@ import { createI18n } from "./src/ui/i18n.js";
     state.boss.elite = isElite;
     state.boss.charge = 0;
     state.boss.max = 100;
+    state.boss.maxHp = getEncounterMaxHp(cfg, threat, route, theme, state.floor);
+    state.boss.hp = state.boss.maxHp;
     state.boss.hint = i18n.getLanguage() === "zh-CN"
       ? `${lt(encounterName)}正在积蓄${lt(bossProfile.element)}能量 - ${lt(threat.label)}`
       : `${lt(encounterName)} gathers ${lt(bossProfile.element)} energy - ${lt(threat.label)}`;
@@ -897,6 +917,8 @@ import { createI18n } from "./src/ui/i18n.js";
     state.boss.casting = false;
     state.boss.lastActionEndedAt = Date.now();
     state.boss.pendingIdleMs = 0;
+    state.boss.lastChargeTickAt = Date.now();
+    state.boss.nextDecisionAt = Date.now() + 900;
 
     overlayEl.classList.add("hidden");
     if (overlayActionsEl) overlayActionsEl.innerHTML = "";
@@ -963,23 +985,51 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function getBossDisplayedCharge() {
-    const base = Number(state.boss.charge || 0);
-    if (state.boss.casting || inputLocked || state.gameOver || state.victory) return Math.min(state.boss.max, base);
-    const idleMs = Math.max(0, Date.now() - Number(state.boss.lastActionEndedAt || Date.now()));
-    return Math.min(state.boss.max, base + getBossIdleChargeGain(idleMs));
+    return Math.min(state.boss.max, Number(state.boss.charge || 0));
   }
 
   function getAvailableBossSkills() {
     const profile = getBossProfile();
     const skills = Array.isArray(profile.skills) ? profile.skills : [];
-    const charge = getBossDisplayedCharge();
+    const charge = Number(state.boss.charge || 0);
     return skills.filter((skill) => charge >= skill.cost);
   }
 
-  function pickBossSkill() {
+  function chooseWeightedSkill(skills, profile, preferBig = false) {
+    if (!skills || skills.length === 0) return null;
+    const weighted = [];
+    for (const skill of skills) {
+      const baseWeight = Number(profile.skillWeights?.[skill.id] || 10);
+      const sizeBias = preferBig ? Math.max(1, Math.floor(skill.cost / 10)) : Math.max(1, Math.floor((120 - skill.cost) / 10));
+      weighted.push({ skill, weight: Math.max(1, baseWeight + sizeBias) });
+    }
+    const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = Math.random() * total;
+    for (const entry of weighted) {
+      roll -= entry.weight;
+      if (roll <= 0) return entry.skill;
+    }
+    return weighted[weighted.length - 1].skill;
+  }
+
+  function pickBossSkill(now = Date.now()) {
+    const profile = getBossProfile();
     const available = getAvailableBossSkills();
     if (available.length === 0) return null;
-    return available[available.length - 1] || null;
+    if (profile.isMinion) return Number(state.boss.charge || 0) >= getEncounterCastThreshold(profile) ? available[0] : null;
+    if (now < Number(state.boss.nextDecisionAt || 0)) return null;
+
+    const charge = Number(state.boss.charge || 0);
+    const highest = available[available.length - 1];
+    const holdChance = charge >= 100 ? 0.1 : charge >= 80 ? 0.3 : charge >= 60 ? 0.42 : 0.22;
+    if (charge < 100 && Math.random() < holdChance) {
+      state.boss.nextDecisionAt = now + (charge >= 80 ? 900 : 700);
+      return null;
+    }
+
+    if (charge >= 100 && highest && highest.cost >= 80 && Math.random() < 0.5) return highest;
+    if (charge >= 80 && highest && highest.cost >= 80 && Math.random() < 0.3) return highest;
+    return chooseWeightedSkill(available, profile, charge >= 80);
   }
 
   function getBossThreatLevel() {
@@ -993,11 +1043,10 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function beginPlayerAction() {
-    state.boss.pendingIdleMs = Math.max(0, Date.now() - Number(state.boss.lastActionEndedAt || Date.now()));
+    state.boss.pendingIdleMs = 0;
   }
 
   function finishPlayerAction() {
-    state.boss.lastActionEndedAt = Date.now();
     state.boss.pendingIdleMs = 0;
   }
 
@@ -1325,6 +1374,25 @@ import { createI18n } from "./src/ui/i18n.js";
     state.boss.charge = Math.max(0, state.boss.charge - 1);
   }
 
+  function drainEncounterCharge(gemCount, chainCount = 1, source = "normal") {
+    if (gemCount <= 0) return 0;
+    const sourceBonus = source === "legend" ? 2 : source === "combo" ? 1 : 0;
+    const reduction = Math.min(12, Math.max(1, Math.floor(gemCount / 4) + Math.max(0, chainCount - 1) + sourceBonus));
+    state.boss.charge = Math.max(0, Number(state.boss.charge || 0) - reduction);
+    return reduction;
+  }
+
+  function damageEncounter(amount, source = "attack") {
+    const damage = Math.max(0, Math.floor(amount || 0));
+    if (damage <= 0 || Number(state.boss.hp || 0) <= 0) return 0;
+    const applied = Math.min(Number(state.boss.hp || 0), damage);
+    state.boss.hp = Math.max(0, Number(state.boss.hp || 0) - applied);
+    if (source === "attack") {
+      spawnFloatText(i18n.getLanguage() === "zh-CN" ? `伤害 ${applied}` : `Hit ${applied}`, Math.floor((boardSize * boardSize) / 2));
+    }
+    return applied;
+  }
+
   async function useLegendSkill(skill) {
     if (skill === "screen_wipe") {
       await playSkillShowcase(lt(ITEM_DEFS.screen_wipe.name), "screen");
@@ -1425,7 +1493,6 @@ import { createI18n } from "./src/ui/i18n.js";
     resolveTideFlow();
     decayTaxColor();
     if (state.feverTurns > 0) state.feverTurns -= 1;
-    await tickBoss();
     finishPlayerAction();
     checkFloorState();
     renderAll();
@@ -1868,38 +1935,57 @@ import { createI18n } from "./src/ui/i18n.js";
 
   async function tickBoss() {
     if (state.gameOver || state.victory || state.boss.casting) return;
-    const idleMs = Number(state.boss.pendingIdleMs || 0);
-    const gain = getBossIdleChargeGain(idleMs);
+    const now = Date.now();
+    const lastTickAt = Number(state.boss.lastChargeTickAt || now);
+    const elapsedMs = Math.max(0, now - lastTickAt);
     const profile = getBossProfile();
     const castThreshold = getEncounterCastThreshold(profile);
+    const gain = getBossIdleChargeGain(elapsedMs);
+    state.boss.lastChargeTickAt = now;
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
     state.boss.phase = state.boss.charge >= castThreshold ? "ready" : "charging";
     if (state.boss.charge < castThreshold) {
-      state.boss.hint = gain > 0
-        ? t("bossIdleHint", { seconds: (idleMs / 1000).toFixed(1), charge: gain })
-        : (i18n.getLanguage() === "zh-CN" ? "敌人正在等待你停手蓄能" : "The encounter is waiting to charge while you idle");
+      const rate = getBossChargeRatePerSecond();
+      state.boss.hint = i18n.getLanguage() === "zh-CN"
+        ? `${profile.isMinion ? "小怪" : "Boss"} 每秒蓄能 ${rate}，消满后会开始出招`
+        : `${profile.isMinion ? "Minion" : "Boss"} gains ${rate} charge per second and attacks once ready`;
+      return;
+    }
+
+    if (inputLocked || !overlayEl?.classList.contains("hidden")) {
+      state.boss.hint = i18n.getLanguage() === "zh-CN"
+        ? (profile.isMinion ? "小怪已满能，棋盘稳定后会立刻施放轻技能" : "Boss 已准备技能，正在等待合适时机出手")
+        : (profile.isMinion ? "Minion is fully charged and will cast as soon as the board settles" : "Boss is ready and waiting for a good casting window");
+      return;
+    }
+
+    const skill = pickBossSkill(now);
+    if (!skill) {
+      state.boss.hint = i18n.getLanguage() === "zh-CN"
+        ? (profile.isMinion ? "小怪已满能，马上就会施放轻技能" : "Boss 正在判断是连放小技能还是继续攒大招")
+        : (profile.isMinion ? "Minion is primed to fire its light skill" : "Boss is deciding between quick small casts and saving for a bigger attack");
       return;
     }
 
     state.boss.casting = true;
     state.boss.phase = "ready";
     state.boss.hint = i18n.getLanguage() === "zh-CN"
-      ? `${profile.isMinion ? "小怪" : "Boss"} 在你停手 ${(idleMs / 1000).toFixed(1)} 秒后蓄能至 ${state.boss.charge}/100`
-      : `The ${profile.isMinion ? "minion" : "boss"} charged to ${state.boss.charge}/100 after ${(idleMs / 1000).toFixed(1)}s of idle time`;
+      ? (profile.isMinion ? "小怪蓄能已满，立刻释放轻技能！" : `Boss 自主决定施放【${lt(skill.name)}】`)
+      : (profile.isMinion ? "Minion reached full charge and immediately fires a light skill!" : `Boss chooses to cast [${lt(skill.name)}]`);
     notify(i18n.getLanguage() === "zh-CN"
-      ? (profile.isMinion ? "你一出手，小怪就把满能小技能甩出来了！" : "你一出手，Boss 就跟着出招了！")
-      : (profile.isMinion ? "You acted, and the minion spent its full charge on a light skill!" : "You acted, and the boss answered immediately!"), "warn");
+      ? (profile.isMinion ? "小怪满能后主动释放了轻技能！" : "Boss 主动出招了！")
+      : (profile.isMinion ? "The minion auto-casts as soon as it fills its gauge!" : "The boss makes its own move!"), "warn");
     audio.play("bossCast", { volume: 0.24, rate: 0.84 });
     boardWrapEl.classList.add("boss-telegraph");
     renderAll();
     await sleep(360);
-
-    const skill = pickBossSkill();
-    if (skill) await castBossSkill(skill);
+    await castBossSkill(skill);
 
     boardWrapEl.classList.remove("boss-telegraph");
     state.boss.phase = "charging";
     state.boss.casting = false;
+    state.boss.lastChargeTickAt = Date.now();
+    state.boss.nextDecisionAt = Date.now() + (profile.isMinion ? 1600 : 700 + Math.floor(Math.random() * 500));
   }
 
   async function castBossSkill(skillEntry) {
@@ -1941,9 +2027,12 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function notifyBossCast(skillName, extraZh = "Boss 技能生效！", extraEn = "Boss skill activated!") {
+    const profile = getBossProfile();
+    const casterZh = profile.isMinion ? "小怪" : "Boss";
+    const casterEn = profile.isMinion ? "Minion" : "Boss";
     notify(i18n.getLanguage() === "zh-CN"
-      ? `Boss 施放【${skillName}】！${extraZh}`
-      : `Boss casts [${skillName}]! ${extraEn}`, "warn");
+      ? `${casterZh}施放【${skillName}】！${extraZh}`
+      : `${casterEn} casts [${skillName}]! ${extraEn}`, "warn");
   }
 
   async function resolveBossSkill(skill) {
@@ -1955,7 +2044,7 @@ import { createI18n } from "./src/ui/i18n.js";
     const markGlass = (count) => {
       const targets = gems.slice(0, Math.min(count, gems.length));
       for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].glass = true;
-      return targets.length;
+      return targets;
     };
 
     const markBurning = (count) => {
@@ -1965,13 +2054,13 @@ import { createI18n } from "./src/ui/i18n.js";
         state.board[idx].burning = true;
         state.board[idx].glass = false;
       }
-      return targets.length;
+      return targets;
     };
 
     const markLocks = (count, turns = 2) => {
       const targets = unlockedGems.slice(0, Math.min(count, unlockedGems.length));
       for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].lockedTurns = Math.max(state.board[idx].lockedTurns, turns);
-      return targets.length;
+      return targets;
     };
 
     const recolor = (count) => {
@@ -1982,7 +2071,7 @@ import { createI18n } from "./src/ui/i18n.js";
       shuffle(candidates);
       const size = Math.min(count, candidates.length);
       for (let i = 0; i < size; i += 1) state.board[candidates[i]].color = to;
-      return size;
+      return candidates.slice(0, size);
     };
 
     const addObstacles = (count) => {
@@ -1990,7 +2079,7 @@ import { createI18n } from "./src/ui/i18n.js";
       shuffle(candidates);
       const size = Math.min(count, candidates.length);
       for (let i = 0; i < size; i += 1) state.board[candidates[i]] = { kind: "obstacle" };
-      return size;
+      return candidates.slice(0, size);
     };
 
     const rotateRow = () => {
@@ -1999,7 +2088,7 @@ import { createI18n } from "./src/ui/i18n.js";
       const values = indices.map((idx) => state.board[idx]);
       values.unshift(values.pop());
       indices.forEach((idx, i) => { state.board[idx] = values[i]; });
-      return row;
+      return { row, indices };
     };
 
     const rotateCol = () => {
@@ -2008,7 +2097,7 @@ import { createI18n } from "./src/ui/i18n.js";
       const values = indices.map((idx) => state.board[idx]);
       values.push(values.shift());
       indices.forEach((idx, i) => { state.board[idx] = values[i]; });
-      return col;
+      return { col, indices };
     };
 
     const pulseBoard = (count = 6, power = 1.4) => {
@@ -2016,15 +2105,23 @@ import { createI18n } from "./src/ui/i18n.js";
       shakeBoard(power);
     };
 
+    const castAt = async (indices) => {
+      const exact = [...new Set((indices || []).filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < boardSize * boardSize))];
+      await playEncounterCastFX(skill, exact);
+    };
+
     switch (skill.id) {
       case "emberling_flare": {
-        const count = markBurning(1);
+        const targets = gems.slice(0, 1);
+        await castAt(targets);
+        const count = markBurning(1).length;
         setBossCastHint(lt(skill.name), `轻点燃 ${count} 枚宝石`, `lightly ignited ${count} gem`);
         notifyBossCast(lt(skill.name), "只是留下了一点可控火苗。", "It only leaves a tiny, manageable flame.");
         break;
       }
       case "frostling_burst": {
         const targets = choosePriorityGemIndices(2, { preferSpecial: true });
+        await castAt(targets);
         let frozen = 0;
         let frosted = 0;
         for (const [index, idx] of targets.entries()) {
@@ -2044,19 +2141,24 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "burrowling_toss": {
-        const obstacles = addObstacles(1);
+        const planned = collectIndices((x) => isGem(x)).slice(0, 1);
+        await castAt(planned);
+        const obstacles = addObstacles(1).length;
         setBossCastHint(lt(skill.name), `顶起 ${obstacles} 个障碍`, `raised ${obstacles} blocker`);
         notifyBossCast(lt(skill.name), "地面只轻轻隆起了一格。", "The ground only rises by a single tile.");
         break;
       }
       case "stormling_jolt": {
-        const locks = markLocks(1, 1);
+        const targets = unlockedGems.slice(0, 1);
+        await castAt(targets);
+        const locks = markLocks(1, 1).length;
         setBossCastHint(lt(skill.name), `麻痹 ${locks} 枚宝石`, `pinned ${locks} gem`);
         notifyBossCast(lt(skill.name), "只是一记短促电击。", "It is just a brief electric jab.");
         break;
       }
       case "sporeling_puff": {
         const targets = choosePriorityGemIndices(2);
+        await castAt(targets);
         let infected = 0;
         for (const idx of targets) {
           const cell = state.board[idx];
@@ -2069,12 +2171,16 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "tideling_surge": {
-        const row = rotateRow();
+        const rowPick = Math.floor(Math.random() * boardSize);
+        const rowIndices = indicesInRow(rowPick);
+        await castAt(rowIndices);
+        const { row } = rotateRow();
         setBossCastHint(lt(skill.name), `第 ${row + 1} 行被轻推 1 格`, `row ${row + 1} shifts by 1`);
         notifyBossCast(lt(skill.name), "只是一次浅潮试探。", "It is only a shallow test wave.");
         break;
       }
       case "mirrorling_glimmer": {
+        await castAt(choosePriorityGemIndices(2, { preferSpecial: true }));
         let count = recolorNearPotentialMatches(2);
         if (count <= 0) count = recolor(1);
         setBossCastHint(lt(skill.name), `伪装 ${count} 枚宝石`, `disguised ${count} gems`);
@@ -2082,19 +2188,24 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "slagling_drop": {
-        const obstacles = addObstacles(1);
+        const planned = collectIndices((x) => isGem(x)).slice(0, 1);
+        await castAt(planned);
+        const obstacles = addObstacles(1).length;
         setBossCastHint(lt(skill.name), `锻出 ${obstacles} 个熔渣障碍`, `forged ${obstacles} slag blocker`);
         notifyBossCast(lt(skill.name), "炉渣只压下了一小格。", "The slag only locks down a small patch.");
         break;
       }
       case "eclipseling_sign": {
-        const marked = applyHolyMark(choosePriorityGemIndices(1, { preferSpecial: true }));
+        const targets = choosePriorityGemIndices(1, { preferSpecial: true });
+        await castAt(targets);
+        const marked = applyHolyMark(targets);
         setBossCastHint(lt(skill.name), `标记 ${marked} 枚宝石`, `marked ${marked} gem`);
         notifyBossCast(lt(skill.name), "只是提前落下一枚审判前兆。", "It only leaves behind a single omen of judgment.");
         break;
       }
       case "voidling_ripple": {
         const selection = pickLocalizedVoidArea();
+        await castAt(selection.area);
         if (selection.center != null) await showBossTelegraph({ indices: selection.area, center: selection.center }, 280);
         const zone = applyLocalizedVoidZone(selection.area, { obstacleCount: 1, lockCount: 0, markCount: 1 });
         setBossCastHint(lt(skill.name), `局部生成 ${zone.obstacles} 裂口，烙印 ${zone.marks} 枚`, `${zone.obstacles} rift and ${zone.marks} mark in a local zone`);
@@ -2102,7 +2213,9 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "ember_spark": {
-        const count = markBurning(state.boss.elite ? 4 : 2);
+        const targets = gems.slice(0, Math.min(state.boss.elite ? 4 : 2, gems.length));
+        await castAt(targets);
+        const count = markBurning(state.boss.elite ? 4 : 2).length;
         state.boss.hint = i18n.getLanguage() === "zh-CN" ? `余烬火花：${count} 枚宝石进入灼伤态，需先熄火再消除` : `Ember Spark: ${count} gems are burning and need an extra clear`;
         notify(i18n.getLanguage() === "zh-CN" ? "Boss 施放了余烬火花！" : "Boss casts Ember Spark!", "warn");
         applyBossPressure(skill.id);
@@ -2110,6 +2223,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "tail_scorch": {
         const row = Math.floor(Math.random() * boardSize);
+        await castAt(indicesInRow(row));
         await showBossTelegraph({ rows: [row], indices: indicesInRow(row) }, 320);
         const targets = indicesInRow(row).filter((idx) => isGem(state.board[idx])).slice(0, state.boss.elite ? 5 : 3);
         for (const idx of targets) {
@@ -2122,6 +2236,8 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "cinder_spread": {
+        const burningNow = collectIndices((cell) => isGem(cell) && cell.burning);
+        await castAt(burningNow.length > 0 ? burningNow : gems.slice(0, Math.min(state.boss.elite ? 5 : 3, gems.length)));
         const existingBurning = collectIndices((cell) => isGem(cell) && cell.burning).length;
         const count = existingBurning > 0
           ? spreadExistingBurning(state.boss.elite ? 6 : 4)
@@ -2146,6 +2262,7 @@ import { createI18n } from "./src/ui/i18n.js";
             ring.push(rr * boardSize + cc);
           }
         }
+        await castAt([center, ...ring]);
         await showBossTelegraph({ indices: ring, center }, 340);
         let count = 0;
         for (const idx of ring) {
@@ -2169,8 +2286,10 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "wildfire_pounce": {
-        const burning = markBurning(state.boss.elite ? 12 : 8);
-        const locks = markLocks(state.boss.elite ? 4 : 2, 2);
+        const targets = gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length));
+        await castAt(targets);
+        const burning = markBurning(state.boss.elite ? 12 : 8).length;
+        const locks = markLocks(state.boss.elite ? 4 : 2, 2).length;
         state.boss.hint = i18n.getLanguage() === "zh-CN" ? `野火扑袭：${burning} 枚宝石进入灼伤态，${locks} 枚被锁定` : `Wildfire Pounce: ${burning} burning gems, ${locks} pinned`;
         notify(i18n.getLanguage() === "zh-CN" ? "野火扑袭吞没了棋盘！" : "Wildfire Pounce engulfs the board!", "warn");
         pulseBoard(8, 1.55);
@@ -2179,6 +2298,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "chill_script": {
         const targets = choosePriorityGemIndices(state.boss.elite ? 4 : 2, { preferSpecial: true, preferFrozen: true });
+        await castAt(targets);
         let frozen = 0;
         let frosted = 0;
         for (const idx of targets) {
@@ -2202,6 +2322,7 @@ import { createI18n } from "./src/ui/i18n.js";
         const r = rowOf(center);
         const c = colOf(center);
         const cross = [[r, c], [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+        await castAt(cross.map(([rr, cc]) => rr * boardSize + cc).filter((idx) => idx >= 0 && idx < boardSize * boardSize));
         let frozen = 0;
         let frosted = 0;
         for (const [rr, cc] of cross) {
@@ -2224,6 +2345,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "winter_seal": {
         const targets = gems.slice(0, Math.min(state.boss.elite ? 10 : 6, gems.length));
+        await castAt(targets);
         let frosted = 0;
         let upgraded = 0;
         for (const idx of targets) {
@@ -2244,6 +2366,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "glacier_column": {
         const col = Math.floor(Math.random() * boardSize);
+        await castAt([...indicesInCol(col), ...indicesInCol(Math.max(0, col - 1)), ...indicesInCol(Math.min(boardSize - 1, col + 1))]);
         const targets = indicesInCol(col).filter((idx) => isGem(state.board[idx]));
         for (const idx of targets) state.board[idx].frozen = true;
         for (const sideCol of [col - 1, col + 1]) {
@@ -2261,6 +2384,7 @@ import { createI18n } from "./src/ui/i18n.js";
       case "absolute_stillness": {
         const row = Math.floor(Math.random() * boardSize);
         const col = Math.floor(Math.random() * boardSize);
+        await castAt([...indicesInRow(row), ...indicesInCol(col)]);
         let frozen = 0;
         let frosted = 0;
         for (const idx of [...indicesInRow(row), ...indicesInCol(col)]) {
@@ -2281,19 +2405,25 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "pebble_drop": {
-        const count = addObstacles(state.boss.elite ? 3 : 2);
+        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 3 : 2, gems.length));
+        await castAt(targets);
+        const count = addObstacles(state.boss.elite ? 3 : 2).length;
         setBossCastHint(lt(skill.name), `新增 ${count} 个障碍`, `${count} obstacles added`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "bark_armor": {
-        const count = markGlass(state.boss.elite ? 6 : 4);
+        const targets = gems.slice(0, Math.min(state.boss.elite ? 6 : 4, gems.length));
+        await castAt(targets);
+        const count = markGlass(state.boss.elite ? 6 : 4).length;
         setBossCastHint(lt(skill.name), `${count} 枚宝石获得护甲`, `${count} armored gems`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "burrow_rise": {
         const existing = collectIndices((cell) => isObstacle(cell)).length;
+        const targets = existing > 0 ? collectIndices((cell) => isObstacle(cell)).slice(0, state.boss.elite ? 4 : 3) : gems.slice(0, state.boss.elite ? 3 : 2);
+        await castAt(targets);
         const count = existing > 0
           ? addObstaclesNearExisting(state.boss.elite ? 4 : 3)
           : Math.max(buildObstacleWallSegment(state.boss.elite ? 3 : 2), addObstacles(state.boss.elite ? 1 : 0));
@@ -2302,7 +2432,9 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "cave_in": {
-        const count = addObstacles(state.boss.elite ? 6 : 4);
+        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 6 : 4, gems.length));
+        await castAt(targets);
+        const count = addObstacles(state.boss.elite ? 6 : 4).length;
         markLocks(state.boss.elite ? 4 : 2, 1);
         setBossCastHint(lt(skill.name), `${count} 个格子坍塌`, `${count} tiles collapsed`);
         notifyBossCast(lt(skill.name));
@@ -2310,7 +2442,9 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "elder_root_wall": {
-        const count = addObstacles(state.boss.elite ? 8 : 6);
+        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 8 : 6, gems.length));
+        await castAt(targets);
+        const count = addObstacles(state.boss.elite ? 8 : 6).length;
         markGlass(state.boss.elite ? 6 : 4);
         setBossCastHint(lt(skill.name), `生长出 ${count} 个封锁点`, `${count} blockers grown`);
         notifyBossCast(lt(skill.name));
@@ -2319,8 +2453,10 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "static_pin": {
-        const locks = markLocks(state.boss.elite ? 3 : 2, 1);
-        const count = recolor(state.boss.elite ? 5 : 3);
+        const targets = choosePriorityGemIndices(state.boss.elite ? 5 : 3, { preferSpecial: true });
+        await castAt(targets);
+        const locks = markLocks(state.boss.elite ? 3 : 2, 1).length;
+        const count = recolor(state.boss.elite ? 5 : 3).length;
         const ash = convertTargetsToAsh(collectIndices((cell) => isGem(cell) && cell.lockedTurns <= 0 && !cell.frozen), state.boss.elite ? 2 : 1);
         setBossCastHint(lt(skill.name), `${locks} 枚短暂钉锁，${count} 枚宝石过载，${ash} 枚被击成灰`, `${locks} pinned, ${count} overloaded, ${ash} reduced to ash`);
         notifyBossCast(lt(skill.name));
@@ -2328,6 +2464,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "thunder_lance": {
         const col = Math.floor(Math.random() * boardSize);
+        await castAt(indicesInCol(col));
         await showBossTelegraph({ cols: [col], indices: indicesInCol(col) }, 320);
         const indices = indicesInCol(col);
         const values = indices.map((idx) => state.board[idx]);
@@ -2338,7 +2475,9 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "overload_mark": {
-        const count = recolor(state.boss.elite ? 12 : 8);
+        const targets = choosePriorityGemIndices(state.boss.elite ? 12 : 8, { preferSpecial: true });
+        await castAt(targets);
+        const count = recolor(state.boss.elite ? 12 : 8).length;
         markLocks(state.boss.elite ? 3 : 2, 1);
         setBossCastHint(lt(skill.name), `${count} 枚宝石被改变`, `${count} gems altered`);
         notifyBossCast(lt(skill.name));
@@ -2347,6 +2486,7 @@ import { createI18n } from "./src/ui/i18n.js";
       case "chain_burst": {
         const row = Math.floor(Math.random() * boardSize);
         const col = Math.floor(Math.random() * boardSize);
+        await castAt([...indicesInRow(row), ...indicesInCol(col)]);
         await showBossTelegraph({ rows: [row], cols: [col], indices: [...indicesInRow(row), ...indicesInCol(col)] }, 320);
         shiftRow(row);
         shiftCol(col);
@@ -2356,6 +2496,7 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "duel_of_storms": {
+        await castAt(collectIndices((cell) => isGem(cell)).slice(0, state.boss.elite ? 12 : 8));
         const shifts = state.boss.elite ? 4 : 3;
         for (let i = 0; i < shifts; i += 1) rotateCol();
         recolor(state.boss.elite ? 14 : 10);
@@ -2367,6 +2508,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "toxin_dust": {
         const targets = gems.slice(0, Math.min(state.boss.elite ? 8 : 5, gems.length));
+        await castAt(targets);
         for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
         setBossCastHint(lt(skill.name), `${targets.length} 枚宝石被感染`, `${targets.length} gems infected`);
         notifyBossCast(lt(skill.name));
@@ -2375,6 +2517,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "thorn_bind": {
         const infected = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0);
+        await castAt(infected.length ? infected.slice(0, state.boss.elite ? 5 : 3) : gems.slice(0, state.boss.elite ? 5 : 3));
         if (infected.length < (state.boss.elite ? 5 : 3)) {
           for (const idx of gems.slice(0, Math.min((state.boss.elite ? 5 : 3) - infected.length, gems.length))) {
             if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
@@ -2388,6 +2531,8 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "spore_bloom": {
+        const poisonTargets = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0);
+        await castAt(poisonTargets.length ? poisonTargets : gems.slice(0, state.boss.elite ? 12 : 8));
         const hadPoison = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0).length > 0;
         const count = hadPoison ? spreadPoison() : (() => {
           const targets = gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length));
@@ -2401,6 +2546,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "rot_garden": {
         const infectedTargets = gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length));
+        await castAt(infectedTargets);
         for (const idx of infectedTargets) if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
         const infectedCells = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0 && !cell.special);
         shuffle(infectedCells);
@@ -2412,6 +2558,7 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "royal_pollution": {
+        await castAt(gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length)));
         const colorCounts = new Map();
         for (const idx of gems) {
           const cell = state.board[idx];
@@ -2422,7 +2569,7 @@ import { createI18n } from "./src/ui/i18n.js";
         const dominantColor = [...colorCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? randColor();
         state.taxColor = dominantColor;
         state.taxColorTurns = 2;
-        const locks = markLocks(state.boss.elite ? 6 : 4, 2);
+        const locks = markLocks(state.boss.elite ? 6 : 4, 2).length;
         setBossCastHint(lt(skill.name), `${gems.length} 感染，颜色税锁定 2 回合`, `${gems.length} infected, color tax for 2 turns`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
@@ -2430,7 +2577,9 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "splash_shift": {
-        const row = rotateRow();
+        const rowPick = Math.floor(Math.random() * boardSize);
+        await castAt(indicesInRow(rowPick));
+        const { row } = rotateRow();
         const rowTargets = indicesInRow(row).filter((idx) => isGem(state.board[idx]));
         for (const idx of rowTargets.slice(0, state.boss.elite ? 4 : 2)) state.board[idx].slippery = true;
         setBossCastHint(lt(skill.name), `第 ${row + 1} 行被潮水推移`, `row ${row + 1} washed aside`);
@@ -2438,7 +2587,9 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "undertow_pull": {
-        const col = rotateCol();
+        const colPick = Math.floor(Math.random() * boardSize);
+        await castAt(indicesInCol(colPick));
+        const { col } = rotateCol();
         const colTargets = indicesInCol(col).filter((idx) => isGem(state.board[idx]));
         for (const idx of colTargets.slice(0, state.boss.elite ? 4 : 2)) state.board[idx].slippery = true;
         setBossCastHint(lt(skill.name), `第 ${col + 1} 列被暗流拖拽`, `column ${col + 1} dragged`);
@@ -2446,6 +2597,7 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "tide_pool": {
+        await castAt(gems.slice(0, state.boss.elite ? 8 : 5));
         const rows = state.boss.elite ? 2 : 1;
         for (let i = 0; i < rows; i += 1) rotateRow();
         const marked = markTideRows(rows);
@@ -2458,11 +2610,12 @@ import { createI18n } from "./src/ui/i18n.js";
         const cols = Array.from({ length: boardSize }, (_, idx) => idx);
         shuffle(cols);
         const selectedCols = cols.slice(0, shifts);
+        await castAt(selectedCols.flatMap((col) => indicesInCol(col)));
         await showBossTelegraph({ cols: selectedCols, indices: selectedCols.flatMap((col) => indicesInCol(col)) }, 340);
         for (const col of selectedCols) shiftCol(col);
         state.tideCols = selectedCols.slice(0, 1);
         const tideCols = state.tideCols.length;
-        const coral = addObstacles(state.boss.elite ? 2 : 1);
+        const coral = addObstacles(state.boss.elite ? 2 : 1).length;
         setBossCastHint(lt(skill.name), `列被推移，${tideCols} 条潮流列与 ${coral} 处珊瑚锚点形成`, `${tideCols} tide cols and ${coral} coral anchors formed`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
@@ -2475,6 +2628,7 @@ import { createI18n } from "./src/ui/i18n.js";
         shuffle(colPool);
         const selectedRows = rowPool.slice(0, 2);
         const selectedCols = colPool.slice(0, 2);
+        await castAt([...selectedRows.flatMap((row) => indicesInRow(row)), ...selectedCols.flatMap((col) => indicesInCol(col))]);
         await showBossTelegraph({ rows: selectedRows, cols: selectedCols, indices: [...selectedRows.flatMap((row) => indicesInRow(row)), ...selectedCols.flatMap((col) => indicesInCol(col))] }, 360);
         for (const row of selectedRows) shiftRow(row);
         for (const col of selectedCols) shiftCol(col);
@@ -2482,7 +2636,7 @@ import { createI18n } from "./src/ui/i18n.js";
         state.tideCols = selectedCols.slice(0, 1);
         const rows = state.tideRows.length;
         const cols = state.tideCols.length;
-        const coral = addObstacles(state.boss.elite ? 4 : 3);
+        const coral = addObstacles(state.boss.elite ? 4 : 3).length;
         setBossCastHint(lt(skill.name), `全盘错位，并留下 ${rows} 条潮流行、${cols} 条潮流列`, `full-board displacement with ${rows} tide row and ${cols} tide col left behind`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
@@ -2490,13 +2644,16 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "mirror_glint": {
+        await castAt(choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true }));
         const count = recolorNearPotentialMatches(state.boss.elite ? 8 : 5);
         setBossCastHint(lt(skill.name), `${count} 枚宝石被伪装`, `${count} gems disguised`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "false_match": {
-        const row = rotateRow();
+        const rowPick = Math.floor(Math.random() * boardSize);
+        await castAt(indicesInRow(rowPick));
+        const { row } = rotateRow();
         const rowTargets = indicesInRow(row).filter((idx) => isGem(state.board[idx]));
         shuffle(rowTargets);
         let changed = 0;
@@ -2513,15 +2670,19 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "prism_shuffle": {
-        const count = recolor(state.boss.elite ? 12 : 8);
+        await castAt(choosePriorityGemIndices(state.boss.elite ? 12 : 8, { preferSpecial: true }));
+        const count = recolor(state.boss.elite ? 12 : 8).length;
         rotateRow();
         setBossCastHint(lt(skill.name), `${count} 枚宝石被棱镜扭转`, `${count} gems refracted`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "mirror_maze": {
-        const row = rotateRow();
-        const col = rotateCol();
+        const rowPick = Math.floor(Math.random() * boardSize);
+        const colPick = Math.floor(Math.random() * boardSize);
+        await castAt([...indicesInRow(rowPick), ...indicesInCol(colPick)]);
+        const { row } = rotateRow();
+        const { col } = rotateCol();
         const crossTargets = [...new Set([...indicesInRow(row), ...indicesInCol(col)])].filter((idx) => isGem(state.board[idx]));
         shuffle(crossTargets);
         let locks = 0;
@@ -2535,6 +2696,7 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "thousand_masks": {
+        await castAt(collectIndices((cell) => isGem(cell)).slice(0, state.boss.elite ? 18 : 12));
         recolor(state.boss.elite ? 18 : 12);
         rotateRow();
         rotateCol();
@@ -2545,34 +2707,44 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "iron_slag": {
-        const count = addObstacles(state.boss.elite ? 3 : 2);
+        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 3 : 2, gems.length));
+        await castAt(targets);
+        const count = addObstacles(state.boss.elite ? 3 : 2).length;
         setBossCastHint(lt(skill.name), `锻造出 ${count} 个炽热障碍`, `${count} hot blocks forged`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "anvil_slam": {
-        const count = markLocks(state.boss.elite ? 5 : 3, 2);
+        const targets = unlockedGems.slice(0, Math.min(state.boss.elite ? 5 : 3, unlockedGems.length));
+        await castAt(targets);
+        const count = markLocks(state.boss.elite ? 5 : 3, 2).length;
         setBossCastHint(lt(skill.name), `${count} 个格子被压制`, `${count} tiles pinned`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "furnace_core": {
-        const obstacles = addObstacles(state.boss.elite ? 5 : 3);
-        const locks = markLocks(state.boss.elite ? 3 : 2, 1);
+        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 5 : 3, gems.length));
+        await castAt(targets);
+        const obstacles = addObstacles(state.boss.elite ? 5 : 3).length;
+        const locks = markLocks(state.boss.elite ? 3 : 2, 1).length;
         setBossCastHint(lt(skill.name), `${obstacles} 障碍，${locks} 枚被热压定住`, `${obstacles} blocks, ${locks} heat-pinned`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "heavy_press": {
-        const obstacles = addObstacles(state.boss.elite ? 6 : 4);
+        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 6 : 4, gems.length));
+        await castAt(targets);
+        const obstacles = addObstacles(state.boss.elite ? 6 : 4).length;
         setBossCastHint(lt(skill.name), `${obstacles} 处区域被压缩`, `${obstacles} sections compressed`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "steelflame_domain": {
-        const obstacles = addObstacles(state.boss.elite ? 8 : 6);
-        const locks = markLocks(state.boss.elite ? 5 : 3, 2);
+        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 8 : 6, gems.length));
+        await castAt(targets);
+        const obstacles = addObstacles(state.boss.elite ? 8 : 6).length;
+        const locks = markLocks(state.boss.elite ? 5 : 3, 2).length;
         setBossCastHint(lt(skill.name), `${obstacles} 障碍，${locks} 锁定`, `${obstacles} blocks, ${locks} pinned`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
@@ -2581,6 +2753,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "radiance_mark": {
         const targets = choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true });
+        await castAt(targets);
         const count = applyHolyMark(targets);
         setBossCastHint(lt(skill.name), `${count} 枚宝石被烙印`, `${count} gems branded`);
         notifyBossCast(lt(skill.name));
@@ -2592,6 +2765,7 @@ import { createI18n } from "./src/ui/i18n.js";
         const fallback = collectIndices((cell) => isGem(cell) && cell.lockedTurns <= 0 && !cell.frozen);
         shuffle(fallback);
         const targets = [...new Set([...preferred, ...fallback])].slice(0, state.boss.elite ? 5 : 3);
+        await castAt(targets);
         let count = 0;
         for (const idx of targets) {
           if (!isGem(state.board[idx])) continue;
@@ -2605,6 +2779,7 @@ import { createI18n } from "./src/ui/i18n.js";
       case "judgment_wheel": {
         const marked = collectIndices((cell) => isGem(cell) && (cell.holyMarked || cell.lockedTurns > 0));
         shuffle(marked);
+        await castAt(marked.slice(0, state.boss.elite ? 14 : 10));
         let count = 0;
         for (const idx of marked.slice(0, state.boss.elite ? 14 : 10)) {
           const cell = state.board[idx];
@@ -2621,6 +2796,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "abyss_gaze": {
         const selection = pickLocalizedVoidArea();
+        await castAt(selection.area);
         if (selection.center != null) await showBossTelegraph({ indices: selection.area, center: selection.center }, 360);
         const zone = applyLocalizedVoidZone(selection.area, { obstacleCount: state.boss.elite ? 4 : 2, lockCount: state.boss.elite ? 4 : 2, markCount: state.boss.elite ? 3 : 2 });
         setBossCastHint(lt(skill.name), `深渊凝视压暗一区：${zone.obstacles} 裂口，${zone.locks} 封锁`, `${zone.obstacles} rifts and ${zone.locks} seals open in one dark zone`);
@@ -2629,9 +2805,11 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "revelation_zero": {
-        const marked = applyHolyMark(choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true }));
-        const locks = markLocks(state.boss.elite ? 6 : 4, 2);
-        const recolored = recolor(state.boss.elite ? 16 : 12);
+        const markTargets = choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true });
+        await castAt(markTargets);
+        const marked = applyHolyMark(markTargets);
+        const locks = markLocks(state.boss.elite ? 6 : 4, 2).length;
+        const recolored = recolor(state.boss.elite ? 16 : 12).length;
         setBossCastHint(lt(skill.name), `${marked} 烙印，${locks} 封锁，${recolored} 重判`, `${marked} marked, ${locks} sealed, ${recolored} judged`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
@@ -2643,6 +2821,7 @@ import { createI18n } from "./src/ui/i18n.js";
         const r = rowOf(areaCenter);
         const c = colOf(areaCenter);
         const area = [[r, c], [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].filter(([rr, cc]) => inside(rr, cc)).map(([rr, cc]) => rr * boardSize + cc);
+        await castAt(area);
         const useLockTheme = Math.random() < 0.5;
         let affected = 0;
         for (const idx of area.slice(0, 3)) {
@@ -2667,6 +2846,7 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       case "dragon_breath": {
         const row = Math.floor(Math.random() * boardSize);
+        await castAt(indicesInRow(row));
         await showBossTelegraph({ rows: [row], indices: indicesInRow(row) }, 340);
         const targets = indicesInRow(row).filter((idx) => isGem(state.board[idx]));
         shuffle(targets);
@@ -2689,8 +2869,10 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "world_crack": {
-        const obstacles = addObstacles(state.boss.elite ? 6 : 4);
-        const recolored = recolor(state.boss.elite ? 12 : 8);
+        const targets = choosePriorityGemIndices(state.boss.elite ? 8 : 6, { preferSpecial: true });
+        await castAt(targets);
+        const obstacles = addObstacles(state.boss.elite ? 6 : 4).length;
+        const recolored = recolor(state.boss.elite ? 12 : 8).length;
         for (const idx of choosePriorityGemIndices(state.boss.elite ? 6 : 4, {})) {
           if (isGem(state.board[idx])) state.board[idx].voidMarked = true;
         }
@@ -2703,6 +2885,7 @@ import { createI18n } from "./src/ui/i18n.js";
       case "emperor_decree": {
         const pickA = pickLocalizedVoidArea();
         const pickB = pickLocalizedVoidArea();
+        await castAt([...pickA.area, ...pickB.area]);
         if (pickA.center != null) await showBossTelegraph({ indices: pickA.area, center: pickA.center }, 260);
         if (pickB.center != null) await showBossTelegraph({ indices: pickB.area, center: pickB.center }, 260);
         const zoneA = applyLocalizedVoidZone(pickA.area, { obstacleCount: state.boss.elite ? 2 : 1, lockCount: state.boss.elite ? 3 : 2, markCount: state.boss.elite ? 4 : 3 });
@@ -2713,9 +2896,10 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "star_abyss_end": {
-        const recolored = recolor(state.boss.elite ? 20 : 14);
         const phaseOnePick = pickLocalizedVoidArea();
         const phaseTwoPick = pickLocalizedVoidArea();
+        await castAt([...phaseOnePick.area, ...phaseTwoPick.area]);
+        const recolored = recolor(state.boss.elite ? 20 : 14).length;
         if (phaseOnePick.center != null) await showBossTelegraph({ indices: phaseOnePick.area, center: phaseOnePick.center }, 260);
         if (phaseTwoPick.center != null) await showBossTelegraph({ indices: phaseTwoPick.area, center: phaseTwoPick.center }, 260);
         const phaseOne = applyLocalizedVoidZone(phaseOnePick.area, { obstacleCount: state.boss.elite ? 3 : 2, lockCount: state.boss.elite ? 3 : 2, markCount: state.boss.elite ? 4 : 3 });
@@ -2777,9 +2961,11 @@ import { createI18n } from "./src/ui/i18n.js";
 
       let gain = calcGain(gemTargets.length, obstacles, chain, source, expandedInfo.chainCount, glassBroken);
       if (source === "legend") gain = Math.floor(gain * 1.3);
+      const inflicted = await playEncounterDamageFX(gemTargets, gain);
       state.floorScore += gain;
       state.score += gain;
       updateMomentum(gemTargets.length, chain);
+      const chargeReduced = drainEncounterCharge(gemTargets.length, chain, source);
       spawnFloatText(`+${gain}`, gemTargets[0] ?? valid[0]);
 
       for (const idx of valid) {
@@ -2810,6 +2996,14 @@ import { createI18n } from "./src/ui/i18n.js";
       }
       if (ashCreated > 0) {
         spawnFloatText(i18n.getLanguage() === "zh-CN" ? `雷击成灰 ${ashCreated}` : `Ash ${ashCreated}`, gemTargets[0] ?? valid[0]);
+      }
+      if (chargeReduced > 0) {
+        spawnFloatText(i18n.getLanguage() === "zh-CN" ? `压制 -${chargeReduced}` : `Charge -${chargeReduced}`, Math.floor((boardSize * boardSize) / 2));
+      }
+      if (inflicted > 0) {
+        state.boss.hint = i18n.getLanguage() === "zh-CN"
+          ? `${lt(getEncounterName(state.floorTheme))} 受到 ${inflicted} 点伤害，剩余 ${state.boss.hp}/${state.boss.maxHp}`
+          : `${lt(getEncounterName(state.floorTheme))} takes ${inflicted} damage and drops to ${state.boss.hp}/${state.boss.maxHp}`;
       }
 
       clearAnim.clear();
@@ -3132,7 +3326,7 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function checkFloorState() {
-    if (state.floorScore >= state.targetScore) return onFloorCleared();
+    if (Number(state.boss.hp || 0) <= 0) return onFloorCleared();
     if (state.movesLeft <= 0) return onDefeat();
   }
 
@@ -3332,7 +3526,6 @@ import { createI18n } from "./src/ui/i18n.js";
         desc: zhen("立即获得 +180 分，但下一层失去 2 步。", "Gain +180 score now, but lose 2 moves next floor."),
         apply: () => {
           state.score += 180;
-          state.floorScore += 40;
           state.nextFloorMovePenalty += 2;
           notify(i18n.getLanguage() === "zh-CN" ? "贪欲祭坛启动：高收益，高压力。" : "Greed Altar activated: high reward, high pressure.", "warn");
         },
@@ -3461,7 +3654,6 @@ import { createI18n } from "./src/ui/i18n.js";
           desc: zhen("获得 +240 分和 +1 彩虹爆发，但下一层 -1 步。", "Gain +240 score and +1 Rainbow Burst, but suffer -1 move next floor."),
           apply: () => {
             state.score += 240;
-            state.floorScore += 60;
             state.nextFloorMovePenalty += 1;
             addItemCharges("rainbow_burst", 1, true);
             notify(i18n.getLanguage() === "zh-CN" ? "裂隙以代价赐予了力量。" : "The rift grants power at a cost.", "warn");
@@ -3646,6 +3838,171 @@ import { createI18n } from "./src/ui/i18n.js";
     runFloatText({ boardEl, fxLayerEl, text, index });
   }
 
+  function getCellCenter(index) {
+    const cellEl = boardEl?.querySelector(`.cell[data-index="${index}"]`);
+    if (!cellEl) return null;
+    const rect = cellEl.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
+  function getEncounterPortraitCenter() {
+    if (!bossPortraitEl) return null;
+    const rect = bossPortraitEl.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
+  function getBoardCenter() {
+    if (!boardWrapEl) return null;
+    const rect = boardWrapEl.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
+  function getEncounterBoltPalette(modifier = "player") {
+    const themeId = state.floorTheme?.id || "ember_hollows";
+    const palettes = {
+      ember_hollows: modifier === "player"
+        ? { core: "rgba(255,245,220,0.96)", mid: "rgba(255,177,82,0.92)", glow: "rgba(255,98,64,0.34)" }
+        : { core: "rgba(255,231,214,0.96)", mid: "rgba(255,118,74,0.92)", glow: "rgba(255,86,120,0.34)" },
+      frost_spire: modifier === "player"
+        ? { core: "rgba(240,250,255,0.98)", mid: "rgba(138,214,255,0.92)", glow: "rgba(110,164,255,0.3)" }
+        : { core: "rgba(239,250,255,0.98)", mid: "rgba(140,224,255,0.92)", glow: "rgba(130,168,255,0.34)" },
+      stone_grove: modifier === "player"
+        ? { core: "rgba(255,243,218,0.96)", mid: "rgba(202,168,114,0.9)", glow: "rgba(120,98,62,0.28)" }
+        : { core: "rgba(241,226,196,0.96)", mid: "rgba(164,130,88,0.92)", glow: "rgba(96,82,62,0.32)" },
+      storm_peaks: modifier === "player"
+        ? { core: "rgba(246,249,255,0.98)", mid: "rgba(136,194,255,0.94)", glow: "rgba(98,122,255,0.32)" }
+        : { core: "rgba(245,238,255,0.98)", mid: "rgba(167,136,255,0.92)", glow: "rgba(88,126,255,0.34)" },
+      venom_bloom: modifier === "player"
+        ? { core: "rgba(248,255,228,0.96)", mid: "rgba(172,225,108,0.92)", glow: "rgba(74,152,76,0.32)" }
+        : { core: "rgba(237,255,228,0.96)", mid: "rgba(112,214,118,0.92)", glow: "rgba(78,138,82,0.34)" },
+      tidal_depths: modifier === "player"
+        ? { core: "rgba(236,250,255,0.98)", mid: "rgba(112,224,255,0.92)", glow: "rgba(68,154,255,0.28)" }
+        : { core: "rgba(230,248,255,0.98)", mid: "rgba(98,194,255,0.92)", glow: "rgba(64,124,236,0.34)" },
+      mirror_circus: modifier === "player"
+        ? { core: "rgba(255,241,255,0.98)", mid: "rgba(255,170,236,0.92)", glow: "rgba(186,112,255,0.3)" }
+        : { core: "rgba(255,236,250,0.98)", mid: "rgba(238,128,224,0.92)", glow: "rgba(142,108,255,0.34)" },
+      iron_forge: modifier === "player"
+        ? { core: "rgba(255,244,225,0.98)", mid: "rgba(255,186,102,0.94)", glow: "rgba(192,94,46,0.3)" }
+        : { core: "rgba(255,234,214,0.98)", mid: "rgba(255,138,84,0.92)", glow: "rgba(168,78,42,0.34)" },
+      eclipse_sanctum: modifier === "player"
+        ? { core: "rgba(255,251,228,0.98)", mid: "rgba(255,220,116,0.92)", glow: "rgba(186,132,255,0.28)" }
+        : { core: "rgba(252,239,255,0.98)", mid: "rgba(226,166,255,0.92)", glow: "rgba(122,96,196,0.34)" },
+      void_throne: modifier === "player"
+        ? { core: "rgba(248,236,255,0.98)", mid: "rgba(192,132,255,0.92)", glow: "rgba(102,84,214,0.34)" }
+        : { core: "rgba(242,230,255,0.98)", mid: "rgba(162,108,255,0.92)", glow: "rgba(76,62,162,0.4)" },
+    };
+    return palettes[themeId] || palettes.ember_hollows;
+  }
+
+  function getEncounterHitPalette() {
+    const themeId = state.floorTheme?.id || "ember_hollows";
+    const palettes = {
+      ember_hollows: { glow: "rgba(255, 102, 84, 0.24)", flash: "rgba(255, 132, 82, 0.4)", portrait: "rgba(255, 98, 64, 0.42)" },
+      frost_spire: { glow: "rgba(122, 210, 255, 0.24)", flash: "rgba(182, 236, 255, 0.38)", portrait: "rgba(118, 176, 255, 0.42)" },
+      stone_grove: { glow: "rgba(198, 166, 112, 0.22)", flash: "rgba(224, 204, 160, 0.34)", portrait: "rgba(144, 110, 78, 0.34)" },
+      storm_peaks: { glow: "rgba(146, 148, 255, 0.24)", flash: "rgba(176, 202, 255, 0.38)", portrait: "rgba(118, 128, 255, 0.42)" },
+      venom_bloom: { glow: "rgba(118, 214, 116, 0.24)", flash: "rgba(198, 244, 152, 0.34)", portrait: "rgba(78, 154, 86, 0.38)" },
+      tidal_depths: { glow: "rgba(96, 208, 255, 0.24)", flash: "rgba(154, 236, 255, 0.36)", portrait: "rgba(72, 154, 255, 0.38)" },
+      mirror_circus: { glow: "rgba(236, 132, 255, 0.22)", flash: "rgba(255, 188, 244, 0.34)", portrait: "rgba(172, 108, 255, 0.38)" },
+      iron_forge: { glow: "rgba(255, 148, 84, 0.24)", flash: "rgba(255, 208, 132, 0.34)", portrait: "rgba(196, 94, 48, 0.4)" },
+      eclipse_sanctum: { glow: "rgba(255, 220, 118, 0.22)", flash: "rgba(255, 245, 182, 0.34)", portrait: "rgba(196, 140, 255, 0.38)" },
+      void_throne: { glow: "rgba(172, 110, 255, 0.24)", flash: "rgba(220, 178, 255, 0.34)", portrait: "rgba(110, 88, 214, 0.44)" },
+    };
+    return palettes[themeId] || palettes.ember_hollows;
+  }
+
+  function estimateSkillImpactIndices(skill) {
+    if (!skill) return [];
+    const randomGemIndices = (count) => collectIndices((cell) => isGem(cell)).slice(0, count);
+    const randomRow = () => indicesInRow(Math.floor(Math.random() * boardSize));
+    const randomCol = () => indicesInCol(Math.floor(Math.random() * boardSize));
+    const cross = () => {
+      const row = Math.floor(Math.random() * boardSize);
+      const col = Math.floor(Math.random() * boardSize);
+      return [...new Set([...indicesInRow(row), ...indicesInCol(col)])];
+    };
+    const localCluster = () => {
+      const center = choosePriorityGemIndices(1, { preferSpecial: true })[0] ?? collectIndices((cell) => isGem(cell))[0] ?? 0;
+      const r = rowOf(center);
+      const c = colOf(center);
+      const area = [];
+      for (let rr = r - 1; rr <= r + 1; rr += 1) {
+        for (let cc = c - 1; cc <= c + 1; cc += 1) {
+          if (inside(rr, cc)) area.push(rr * boardSize + cc);
+        }
+      }
+      return area;
+    };
+    const id = skill.id;
+    if (["tail_scorch", "splash_shift", "false_match", "prism_shuffle", "tideling_surge"].includes(id)) return randomRow();
+    if (["thunder_lance", "glacier_column", "undertow_pull"].includes(id)) return randomCol();
+    if (["absolute_stillness", "chain_burst", "mirror_maze"].includes(id)) return cross();
+    if (["foxfire_ring", "frost_page", "voidling_ripple", "abyss_gaze", "emperor_decree"].includes(id)) return localCluster();
+    if (["wildfire_pounce", "winter_seal", "duel_of_storms", "royal_pollution", "abyss_tsunami", "thousand_masks", "steelflame_domain", "revelation_zero", "star_abyss_end"].includes(id)) return randomGemIndices(8);
+    if (["cave_in", "elder_root_wall", "heavy_press", "world_crack"].includes(id)) return randomGemIndices(6);
+    return choosePriorityGemIndices(4, { preferSpecial: true });
+  }
+
+  function spawnEncounterBolt(start, end, modifier = "player", duration = 420) {
+    if (!fxLayerEl || !start || !end) return;
+    const bolt = document.createElement("i");
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const palette = getEncounterBoltPalette(modifier);
+    bolt.className = `fx-encounter-bolt ${modifier}`;
+    bolt.style.left = `${start.x}px`;
+    bolt.style.top = `${start.y}px`;
+    bolt.style.setProperty("--fx-dx", `${dx}px`);
+    bolt.style.setProperty("--fx-dy", `${dy}px`);
+    bolt.style.setProperty("--fx-duration", `${duration}ms`);
+    bolt.style.setProperty("--bolt-core", palette.core);
+    bolt.style.setProperty("--bolt-mid", palette.mid);
+    bolt.style.setProperty("--bolt-glow", palette.glow);
+    fxLayerEl.appendChild(bolt);
+    setTimeout(() => bolt.remove(), duration + 60);
+  }
+
+  async function playEncounterDamageFX(indices, damage) {
+    const target = getEncounterPortraitCenter();
+    if (!target || !indices?.length) {
+      const applied = damageEncounter(damage, "attack");
+      if (applied > 0) spawnFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, Math.floor((boardSize * boardSize) / 2));
+      return applied;
+    }
+    const shots = indices.slice(0, 6);
+    shots.forEach((idx, order) => {
+      const start = getCellCenter(idx);
+      if (!start) return;
+      spawnEncounterBolt(start, target, "player", 320 + order * 28);
+    });
+    await sleep(420);
+    const shell = bossPortraitEl?.parentElement;
+    if (shell) shell.classList.add("hit");
+    if (bossPortraitEl) bossPortraitEl.classList.add("hit");
+    const applied = damageEncounter(damage, "fx");
+    if (applied > 0) spawnFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, Math.floor((boardSize * boardSize) / 2));
+    await sleep(220);
+    if (shell) shell.classList.remove("hit");
+    if (bossPortraitEl) bossPortraitEl.classList.remove("hit");
+    return applied;
+  }
+
+  async function playEncounterCastFX(skill, impactIndices = null) {
+    const start = getEncounterPortraitCenter();
+    if (!start) return;
+    const shell = bossPortraitEl?.parentElement;
+    if (shell) shell.classList.add("casting");
+    const exactIndices = Array.isArray(impactIndices) && impactIndices.length > 0 ? impactIndices : estimateSkillImpactIndices(skill);
+    const impactPoints = exactIndices.map(getCellCenter).filter(Boolean);
+    const fallback = getBoardCenter();
+    const targets = impactPoints.length > 0 ? impactPoints.slice(0, 6) : (fallback ? [fallback] : []);
+    targets.forEach((target, i) => {
+      spawnEncounterBolt(start, target, "enemy", 340 + i * 26);
+    });
+    await sleep(430);
+    if (shell) shell.classList.remove("casting");
+  }
+
   function spawnScreenPulse(theme = "boss", duration = 420) {
     runScreenPulse({ fxLayerEl, theme, duration });
   }
@@ -3719,10 +4076,10 @@ import { createI18n } from "./src/ui/i18n.js";
     const encounterUiText = getEncounterUiText();
     const chapterLength = state.selectedChapter ? state.selectedChapter.end - state.selectedChapter.start + 1 : TOTAL_FLOORS;
     floorEl.textContent = state.selectedChapter ? `${getChapterLocalFloor()}/${chapterLength}` : `${state.floor}/${TOTAL_FLOORS}`;
-    if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.targetScore);
+    if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.boss.maxHp || 0);
     movesLeftEl.textContent = String(state.movesLeft);
-    floorScoreEl.textContent = String(state.floorScore);
-    if (boardFloorScoreEl) boardFloorScoreEl.textContent = String(state.floorScore);
+    floorScoreEl.textContent = String(state.boss.hp || 0);
+    if (boardFloorScoreEl) boardFloorScoreEl.textContent = String(state.boss.hp || 0);
     scoreEl.textContent = String(state.score);
     bestFloorEl.textContent = String(meta.bestFloor);
     bestScoreEl.textContent = String(meta.bestScore);
@@ -3733,6 +4090,9 @@ import { createI18n } from "./src/ui/i18n.js";
     const displayedCharge = getBossDisplayedCharge();
     const profile = getBossProfile();
     const castThreshold = getEncounterCastThreshold(profile);
+    const hp = Math.max(0, Number(state.boss.hp || 0));
+    const maxHp = Math.max(1, Number(state.boss.maxHp || 1));
+    const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
     setTextBySelector(".boss-card .eyebrow", encounterUiText.pressure);
     setTextBySelector(".boss-skillbook h3", encounterUiText.attacks);
     setTextBySelector(".boss-copy", encounterUiText.copy);
@@ -3742,6 +4102,20 @@ import { createI18n } from "./src/ui/i18n.js";
       const nextSkills = getAvailableBossSkills().map((skill) => `${lt(skill.name)}(${skill.cost})`).join(" · ");
       bossSkillHintEl.textContent = nextSkills ? `${state.boss.hint} · ${t("readyPrefix")}${nextSkills}` : state.boss.hint;
     }
+    if (bossHpRingEl) {
+      bossHpRingEl.style.setProperty("--hp-pct", `${hpPct}%`);
+      bossHpRingEl.style.setProperty("--hp-angle", `${(hpPct / 100) * 360}deg`);
+      bossHpRingEl.classList.toggle("empty", hp <= 0);
+    }
+    const hitPalette = getEncounterHitPalette();
+    const portraitShell = bossPortraitEl?.parentElement;
+    if (portraitShell?.style) {
+      portraitShell.style.setProperty("--encounter-hit-glow", hitPalette.glow);
+      portraitShell.style.setProperty("--encounter-hit-flash", hitPalette.flash);
+      portraitShell.style.setProperty("--encounter-hit-portrait", hitPalette.portrait);
+    }
+    if (bossHpValueEl) bossHpValueEl.textContent = String(hp);
+    if (bossHpMaxEl) bossHpMaxEl.textContent = `/${maxHp}`;
     if (bossTitleEl) bossTitleEl.textContent = lt(getEncounterName(state.floorTheme));
     if (bossStateEl) {
       const tier = getBossThreatLevel();
@@ -3750,7 +4124,7 @@ import { createI18n } from "./src/ui/i18n.js";
           ? t("bossCastingNow", { name: lt(state.floorTheme.shortLabel), element: lt(profile.element) })
           : charge >= castThreshold
             ? (profile.isMinion
-                ? (i18n.getLanguage() === "zh-CN" ? "小怪已满能，操作后会释放轻技能" : "Minion fully charged and will cast after your action")
+                ? (i18n.getLanguage() === "zh-CN" ? "小怪已满能，会立刻自行释放轻技能" : "Minion is fully charged and auto-casts immediately")
                 : t("bossReadyTier", { tier }))
             : t("bossChargingIdle");
     }
@@ -3785,15 +4159,34 @@ import { createI18n } from "./src/ui/i18n.js";
       const entry = document.createElement("div");
       entry.className = "boss-skill-entry";
       if (charge >= skill.cost) entry.classList.add("ready");
+      const pct = Math.max(0, Math.min(100, Math.round((charge / Math.max(1, skill.cost)) * 100)));
+      entry.style.setProperty("--skill-charge", `${pct}%`);
+
+      const meter = document.createElement("div");
+      meter.className = "boss-skill-meter";
+      const fill = document.createElement("i");
+      fill.className = "boss-skill-meter-fill";
+      fill.style.height = `${pct}%`;
+      meter.appendChild(fill);
+
+      const body = document.createElement("div");
+      body.className = "boss-skill-body";
 
       const title = document.createElement("strong");
-      title.textContent = `${lt(skill.name)} · ${skill.cost}`;
+      title.textContent = `${lt(skill.name)} · ${charge}/${skill.cost}`;
 
       const desc = document.createElement("small");
       desc.textContent = lt(skill.desc) || t("chapterBossAttackFallback");
 
-      entry.appendChild(title);
-      entry.appendChild(desc);
+      const threshold = document.createElement("span");
+      threshold.className = "boss-skill-threshold";
+      threshold.textContent = i18n.getLanguage() === "zh-CN" ? `阈值 ${skill.cost}` : `Need ${skill.cost}`;
+
+      body.appendChild(title);
+      body.appendChild(desc);
+      body.appendChild(threshold);
+      entry.appendChild(meter);
+      entry.appendChild(body);
       bossSkillbookListEl.appendChild(entry);
     }
   }

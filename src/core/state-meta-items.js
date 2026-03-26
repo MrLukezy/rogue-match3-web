@@ -52,7 +52,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
       boss_shunt: false,
       purifier_sigil: false,
     },
-    boss: { charge: 0, max: 100, hint: "Idle", elite: false, phase: "charging", casting: false, lastActionEndedAt: 0, pendingIdleMs: 0 },
+    boss: { charge: 0, max: 100, hp: 0, maxHp: 0, hint: "Idle", elite: false, phase: "charging", casting: false, lastActionEndedAt: 0, pendingIdleMs: 0, lastChargeTickAt: 0, nextDecisionAt: 0 },
     eventCurseFloors: 0,
     nextFloorMovePenalty: 0,
     nextFloorMoveBonus: 0,

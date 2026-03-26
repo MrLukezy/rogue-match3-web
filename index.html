@@ -35,7 +35,7 @@
           </div>
           <div class="row"><span>Floor</span><strong id="floor">1/7</strong></div>
           <div class="row"><span>Modifier</span><strong id="modifier">-</strong></div>
-          <div class="row"><span>Floor Score</span><strong id="floorScore">0</strong></div>
+          <div class="row"><span>Current HP</span><strong id="floorScore">0</strong></div>
           <div class="row"><span>Best Floor</span><strong id="bestFloor">0</strong></div>
           <div class="row"><span>Best Score</span><strong id="bestScore">0</strong></div>
           <div class="momentum">
@@ -65,7 +65,7 @@
           <button id="codexBtn" class="btn">Codex</button>
         </div>
         <div id="modeText" class="mode">Mode: Standard swap</div>
-        <div id="message" class="message">Swap neighboring gems, create matches, and outpace the boss.</div>
+        <div id="message" class="message">Swap neighboring gems, create matches, and outpace the encounter.</div>
       </aside>
 
       <main class="board-wrap" id="boardWrap">
@@ -75,11 +75,11 @@
             <strong id="score">0</strong>
           </div>
           <div class="board-chip target-chip">
-            <span>Target</span>
+            <span>Max HP</span>
             <strong id="boardTargetScore">0</strong>
           </div>
           <div class="board-chip accent">
-            <span>Floor Score</span>
+            <span>Current HP</span>
             <strong id="boardFloorScore">0</strong>
           </div>
         </div>
@@ -97,11 +97,13 @@
 
       <aside class="panel boss-panel">
         <div class="boss-card">
-          <p class="eyebrow">Boss Pressure</p>
+          <p class="eyebrow">Encounter Pressure</p>
           <h2>Encounter Gauge</h2>
           <div class="boss-crest">
-            <div class="boss-sigil">
-              <img src="./assets/generated/boss/anim/boss_sigil_f1.png" alt="Boss sigil" class="boss-sigil-image" data-anim-boss="1" />
+            <div class="boss-icon-stack">
+              <div class="boss-sigil">
+                <img src="./assets/generated/boss/anim/boss_sigil_f1.png" alt="Encounter sigil" class="boss-sigil-image" data-anim-boss="1" />
+              </div>
             </div>
             <div>
               <strong id="bossTitle">Warden of the Deep</strong>
@@ -109,7 +111,15 @@
             </div>
           </div>
           <div class="boss-portrait-wrap">
-            <img id="bossPortrait" src="./assets/generated/boss/chapter01_ember_cub.png" alt="Boss portrait" class="boss-portrait-image" />
+            <div class="boss-portrait-shell">
+              <div id="bossHpRing" class="boss-hp-ring" aria-label="Encounter HP">
+                <div class="boss-hp-ring-inner">
+                  <strong id="bossHpValue">0</strong>
+                  <small id="bossHpMax">/0</small>
+                </div>
+              </div>
+              <img id="bossPortrait" src="./assets/generated/boss/chapter01_ember_cub.png" alt="Encounter portrait" class="boss-portrait-image" />
+            </div>
           </div>
           <div id="bossMeter" class="momentum boss">
             <span>Energy</span>
@@ -127,10 +137,10 @@
             </div>
           </div>
           <div class="boss-skillbook">
-            <h3>Boss Attacks</h3>
+            <h3>Encounter Skills</h3>
             <div id="bossSkillbookList"></div>
           </div>
-          <p class="boss-copy">Watch the energy bar on the right side. Higher energy unlocks stronger chapter-themed boss skills.</p>
+          <p class="boss-copy">Watch the energy bar on the right side. Higher energy unlocks stronger encounter skills.</p>
         </div>
       </aside>
     </div>
