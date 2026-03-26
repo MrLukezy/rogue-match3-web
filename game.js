@@ -23,7 +23,7 @@ import {
   RARITY_LABELS,
 } from "./src/config/items-config.js";
 import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES, GEM_POOL_BY_FLOOR, GEM_COLOR_NAMES } from "./src/config/gems-config.js";
-import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_SKILLS } from "./src/config/boss-ui-config.js";
+import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_PROFILES } from "./src/config/boss-ui-config.js";
 import { BLESSING_DEFS } from "./src/config/blessings-config.js";
 import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
 import { renderBoardView } from "./src/render/board-render.js";
@@ -79,6 +79,7 @@ import {
   shakeBoard as runShakeBoard,
 } from "./src/fx/board-fx.js";
 import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
+import { createAudioManager } from "./src/audio/audio-manager.js";
 
 (() => {
   const MODIFIERS = [
@@ -134,12 +135,14 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     bossStateEl,
     bossThreatEl,
     bossPatternEl,
+    bossSkillbookListEl,
     modeTextEl,
     boardWrapEl,
     boardEl,
     fxLayerEl,
     itemTooltipEl,
     messageEl,
+    audioToggleBtn,
     restartBtn,
     codexBtn,
     guideBtn,
@@ -172,6 +175,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   let guideActive = false;
   let itemAnimFrameIndex = 0;
   let itemAnimTimer = null;
+  const audio = createAudioManager();
 
   bindEvents();
   startItemIconAnimation();
@@ -265,6 +269,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   function bindEvents() {
+    audio.bindToggle(audioToggleBtn);
+    audio.installAutoUnlock(document);
     bindCoreEvents({
       restartBtn,
       boardEl,
@@ -288,6 +294,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function openCodex() {
     renderCodex();
+    audio.play("uiClick");
     codexModalEl.classList.remove("hidden");
   }
 
@@ -297,10 +304,12 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     guideModalDescEl.textContent = entryId && GUIDE_DEFS[entryId]
       ? "This tile type has appeared for the first time in your current run."
       : "Every tile type, board condition, and special gem is listed here.";
+    audio.play("uiClick");
     guideModalEl.classList.remove("hidden");
   }
 
   function closeGuideModal() {
+    audio.play("uiClick", { volume: 0.3 });
     guideModalEl.classList.add("hidden");
     guideActive = false;
     maybeShowNextGuide();
@@ -426,9 +435,9 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       ["Line Triggers", c.specialTrigger.line_h + c.specialTrigger.line_v],
       ["Bomb Triggers", c.specialTrigger.bomb],
       ["Rainbow Triggers", c.specialTrigger.rainbow],
-      ["Boss: Glass Storm", c.bossSeen.glass_storm],
-      ["Boss: Hex Lock", c.bossSeen.hex_lock],
-      ["Boss: Color Shift", c.bossSeen.color_shift],
+      ["Boss: Ember Spark", c.bossSeen.ember_spark],
+      ["Boss: Absolute Stillness", c.bossSeen.absolute_stillness],
+      ["Boss: Star Abyss End", c.bossSeen.star_abyss_end],
       ["Screen Pulse Uses", c.skillUse.screen_wipe],
       ["Rainbow Burst Uses", c.skillUse.rainbow_burst],
       ["Time Freeze Uses", c.skillUse.time_freeze],
@@ -489,6 +498,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     meta.codex.runs += 1;
     saveMeta();
     showChapterSelect();
+    audio.startMusic();
     notify("Choose a chapter to begin the run.", "ok");
   }
 
@@ -511,7 +521,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     openChapterScreen();
     overlayEl.classList.add("hidden");
     chapterListEl.innerHTML = "";
-    const unlocked = new Set(meta.progression.unlockedChapters || ["crystal_mines"]);
+    const unlocked = new Set(meta.progression.unlockedChapters || ["ember_hollows"]);
     if (chapterScreenEl) chapterScreenEl.style.setProperty("--chapter-preview-image", `url("${CHAPTER_THEMES[0].chapterPreviewImage}")`);
 
     for (const chapter of CHAPTER_THEMES) {
@@ -529,6 +539,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       });
       btn.addEventListener("click", () => {
         if (!isUnlocked) return;
+        audio.play("uiClick");
         state.selectedChapter = chapter;
         state.floorTheme = chapter;
         state.routePlan = { id: "main", title: "Main Path", floorsRemaining: 0, moveBonus: 0, movePenalty: 0, targetMulDelta: 0, pressureDelta: 0, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
@@ -629,10 +640,13 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     if (state.modLocks > 0) placeLocks(Math.max(0, state.modLocks + Math.max(0, threat.pressure - 1) - purifierOffset));
 
     const isElite = ELITE_FLOORS.includes(state.floor);
+    const bossProfile = getBossProfile(theme);
     state.boss.elite = isElite;
     state.boss.charge = 0;
-    state.boss.max = Math.max(3, (isElite ? 5 : 7) + threat.bossMaxDelta);
-    state.boss.hint = isElite ? `${theme.eliteBossName} ready - ${threat.label}` : `${theme.bossName} idle - ${threat.label}`;
+    state.boss.max = 100;
+    state.boss.hint = isElite
+      ? `${theme.eliteBossName} gathers ${bossProfile.element} energy - ${threat.label}`
+      : `${theme.bossName} gathers ${bossProfile.element} energy - ${threat.label}`;
     state.boss.phase = "charging";
     state.boss.casting = false;
 
@@ -643,6 +657,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
     renderAll();
     showFloorIntro(threat);
+    audio.play("floorStart");
     if (unlockedNewColor) {
       const newest = state.activeGemColors[state.activeGemColors.length - 1];
       notify(`New gem unlocked: ${GEM_COLOR_NAMES[newest]}. +1 move and +18 momentum to ease the transition.`, "ok");
@@ -657,6 +672,47 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function getFloorTheme(floor) {
     return CHAPTER_THEMES.find((theme) => floor >= theme.start && floor <= theme.end) || CHAPTER_THEMES[0];
+  }
+
+  function getBossProfile(theme = state.floorTheme) {
+    return BOSS_PROFILES[theme?.id] || BOSS_PROFILES.ember_hollows;
+  }
+
+  function getBossEnergyGain() {
+    const profile = getBossProfile();
+    const permanentDampener = state.floor <= 6 ? Number(meta.progression.upgrades.boss_dampener || 0) : 0;
+    const base = Number(profile.baseGain || 8);
+    const threat = Number(state.floorThreat.bossGain || 0);
+    const elite = state.boss.elite ? 2 : 0;
+    const blessing = state.blessings.boss_shunt ? 2 : 0;
+    return Math.max(6, base + threat + elite - blessing - permanentDampener);
+  }
+
+  function getAvailableBossSkills() {
+    const profile = getBossProfile();
+    const skills = Array.isArray(profile.skills) ? profile.skills : [];
+    return skills.filter((skill) => state.boss.charge >= skill.cost);
+  }
+
+  function pickBossSkill() {
+    const profile = getBossProfile();
+    const available = getAvailableBossSkills();
+    if (available.length === 0) return null;
+    const bag = [];
+    for (const skill of available) {
+      const weight = Number(profile.skillWeights?.[skill.id] || 10) + Math.floor(skill.cost / 20) * 2;
+      for (let i = 0; i < weight; i += 1) bag.push(skill);
+    }
+    return randomPick(bag);
+  }
+
+  function getBossThreatLevel() {
+    if (state.boss.charge >= 100) return 5;
+    if (state.boss.charge >= 80) return 4;
+    if (state.boss.charge >= 60) return 3;
+    if (state.boss.charge >= 40) return 2;
+    if (state.boss.charge >= 20) return 1;
+    return 0;
   }
 
   function applyThemeVisuals(theme) {
@@ -713,15 +769,36 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   function applyThemePressure(theme, threat) {
-    if (theme.id === "frozen_archive") {
+    if (theme.id === "frost_spire") {
       state.modLocks += 2 + Math.min(2, threat.pressure);
       state.modGlass += 1;
     }
-    if (theme.id === "storm_forge") {
+    if (theme.id === "storm_peaks") {
       state.chainBonus += 0.08;
       state.dropBoost += 0.06;
     }
-    if (theme.id === "void_rift") {
+    if (theme.id === "stone_grove") {
+      placeObstacles(1 + Math.max(0, threat.pressure - 1));
+    }
+    if (theme.id === "venom_bloom") {
+      state.taxColor = randColor();
+      state.dropBoost += 0.03;
+    }
+    if (theme.id === "tidal_depths") {
+      state.chainBonus += 0.04;
+    }
+    if (theme.id === "mirror_circus") {
+      state.modGlass += 1;
+    }
+    if (theme.id === "iron_forge") {
+      placeObstacles(1 + Math.max(0, threat.pressure - 2));
+      state.modGlass += 1;
+    }
+    if (theme.id === "eclipse_sanctum") {
+      state.modLocks += 1;
+      state.chainBonus += 0.05;
+    }
+    if (theme.id === "void_throne") {
       if (state.taxColor == null) state.taxColor = randColor();
       state.modGlass += 1;
       placeObstacles(1 + Math.max(0, threat.pressure - 2));
@@ -740,6 +817,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     if (!btn) return;
     const item = btn.dataset.item;
     if (!item || getItemCount(item) <= 0 || !hasItemType(item)) return;
+    audio.play("uiClick", { volume: 0.34 });
 
     if (!ITEM_DEFS[item].target) {
       inputLocked = true;
@@ -805,10 +883,17 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   async function attemptSwap(a, b) {
     const ca = state.board[a];
     const cb = state.board[b];
-    if (!isGem(ca) || !isGem(cb)) return notify("Obstacle tiles cannot be swapped.", "warn");
-    if (ca.lockedTurns > 0 || cb.lockedTurns > 0) return notify("A locked gem cannot be swapped.", "warn");
+    if (!isGem(ca) || !isGem(cb)) {
+      audio.play("uiError");
+      return notify("Obstacle tiles cannot be swapped.", "warn");
+    }
+    if (ca.lockedTurns > 0 || cb.lockedTurns > 0) {
+      audio.play("uiError");
+      return notify("A locked gem cannot be swapped.", "warn");
+    }
 
     inputLocked = true;
+    audio.play("swap");
     await playSwapAnimation(a, b);
 
     if (ca.special && cb.special) {
@@ -827,6 +912,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       await playSwapAnimation(a, b);
       inputLocked = false;
       renderAll();
+      audio.play("uiError", { volume: 0.34 });
       return notify("Invalid swap: no match formed.", "warn");
     }
 
@@ -839,9 +925,13 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   async function useTargetItem(item, idx) {
     if (getItemCount(item) <= 0) return;
     const targets = getItemTargets(item, idx);
-    if (targets.length === 0) return notify("That item cannot be used there.", "warn");
+    if (targets.length === 0) {
+      audio.play("uiError");
+      return notify("That item cannot be used there.", "warn");
+    }
 
     inputLocked = true;
+    audio.play("itemCast");
     spendItemCharge(item);
     state.mode = { type: "normal", item: null };
     recordCodex("itemUse", item);
@@ -892,6 +982,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   async function useShuffle() {
+    audio.play("itemCast", { volume: 0.34, rate: 0.95 });
     const power = itemPower("shuffle");
     const gems = collectIndices(isGem).map((i) => state.board[i]);
     shuffle(gems);
@@ -997,6 +1088,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     fx.className = `skill-showcase ${theme}`;
     fx.textContent = name;
     fxLayerEl.appendChild(fx);
+    audio.play("itemCast", { volume: 0.38, rate: theme === "screen" ? 0.92 : 1.05 });
 
     spawnScreenPulse(theme === "screen" ? "skill-screen" : "skill-rainbow", 520);
     boardWrapEl.classList.add("boss-cast");
@@ -1030,129 +1122,512 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   async function tickBoss() {
     if (state.gameOver || state.victory || state.boss.casting) return;
-    const permanentDampener = state.floor <= 6 ? Number(meta.progression.upgrades.boss_dampener || 0) : 0;
-    const gain = Math.max(1, state.floorThreat.bossGain + (state.boss.elite ? 1 : 0) - (state.blessings.boss_shunt ? 1 : 0) - permanentDampener);
+    const gain = getBossEnergyGain();
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
-    state.boss.phase = state.boss.charge >= state.boss.max ? "ready" : "charging";
-    if (state.boss.charge < state.boss.max) return;
+    state.boss.phase = state.boss.charge >= 20 ? "ready" : "charging";
+    if (state.boss.charge < 20) return;
 
     state.boss.casting = true;
     state.boss.phase = "ready";
-    state.boss.hint = "Boss skill fully charged!";
+    state.boss.hint = `Boss energy reached ${state.boss.charge}/100`;
     notify("Boss is about to cast!", "warn");
+    audio.play("bossCast", { volume: 0.24, rate: 0.84 });
     boardWrapEl.classList.add("boss-telegraph");
     renderAll();
     await sleep(360);
 
-    const skillPool = state.floorTheme.id === "void_rift" ? BOSS_SKILLS : BOSS_SKILLS.filter((skill) => skill !== "rift_collapse");
-    const skill = randomPick(skillPool);
-    await castBossSkill(skill);
+    const skill = pickBossSkill();
+    if (skill) await castBossSkill(skill);
 
     boardWrapEl.classList.remove("boss-telegraph");
-    state.boss.charge = 0;
     state.boss.phase = "charging";
     state.boss.casting = false;
   }
 
-  async function castBossSkill(skill) {
-    recordCodex("bossSeen", skill);
+  async function castBossSkill(skillEntry) {
+    const skill = typeof skillEntry === "string" ? { id: skillEntry, cost: 20, name: skillEntry } : skillEntry;
+    recordCodex("bossSeen", skill.id);
+    audio.play("bossCast", { volume: 0.44, rate: skill.id === "star_abyss_end" ? 0.82 : 1 });
     boardWrapEl.classList.add("boss-cast");
     if (bossPortraitEl) bossPortraitEl.classList.add("casting");
     spawnScreenPulse("boss", 520);
-
-    if (skill === "glass_storm") {
-      const amount = state.boss.elite ? 14 : 9;
-      placeGlass(amount);
-      state.boss.hint = `Glass Storm: +${amount} glass`;
-      notify("Boss casts Glass Storm!", "warn");
-      spawnFloatText("Boss: Glass Storm", Math.floor((boardSize * boardSize) / 2));
-      for (let i = 0; i < 8; i += 1) spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
-      shakeBoard(1.45);
-      applyBossPressure(skill);
-      renderAll();
-      await sleep(220);
-      if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
-      boardWrapEl.classList.remove("boss-cast");
-      return;
-    }
-
-    if (skill === "hex_lock") {
-      const gems = collectIndices((x) => isGem(x) && x.lockedTurns <= 0);
-      shuffle(gems);
-      const lockCount = Math.min(gems.length, state.boss.elite ? 7 : 5);
-      for (let i = 0; i < lockCount; i += 1) {
-        state.board[gems[i]].lockedTurns = 2;
-      }
-      state.boss.hint = `Hex Lock: ${lockCount} tiles locked`;
-      notify("Boss casts Hex Lock!", "warn");
-      spawnFloatText("Boss: Hex Lock", Math.floor((boardSize * boardSize) / 2));
-      shakeBoard(1.35);
-      applyBossPressure(skill);
-      renderAll();
-      await sleep(180);
-      if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
-      boardWrapEl.classList.remove("boss-cast");
-      return;
-    }
-
-    if (skill === "color_shift") {
-      const from = randColor();
-      let to = randColor();
-      if (to === from) to = nextGemColor(from);
-      const candidates = collectIndices((x) => isGem(x) && x.color === from && x.lockedTurns <= 0);
-      shuffle(candidates);
-      const cap = state.boss.elite ? 22 : 16;
-      const count = Math.min(cap, candidates.length);
-      for (let i = 0; i < count; i += 1) state.board[candidates[i]].color = to;
-      state.boss.hint = "Color Shift: board recolored";
-      notify("Boss casts Color Shift!", "warn");
-      spawnFloatText("Boss: Color Shift", Math.floor((boardSize * boardSize) / 2));
-      for (let i = 0; i < 5; i += 1) spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
-      shakeBoard(1.4);
-      applyBossPressure(skill);
-      renderAll();
-      await sleep(200);
-      if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
-      boardWrapEl.classList.remove("boss-cast");
-      return;
-    }
-
-    if (skill === "rift_collapse") {
-      const gems = collectIndices((x) => isGem(x) && x.lockedTurns <= 0);
-      shuffle(gems);
-      const collapseCount = Math.min(gems.length, state.boss.elite ? 8 : 5);
-      for (let i = 0; i < collapseCount; i += 1) {
-        state.board[gems[i]] = { kind: "obstacle" };
-      }
-      placeLocks(state.boss.elite ? 5 : 3);
-      state.boss.hint = `Rift Collapse: ${collapseCount} tiles corrupted`;
-      notify("Boss casts Rift Collapse!", "warn");
-      spawnFloatText("Boss: Rift Collapse", Math.floor((boardSize * boardSize) / 2));
-      for (let i = 0; i < 6; i += 1) spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
-      shakeBoard(1.55);
-      applyBossPressure("color_shift");
-      renderAll();
-      await sleep(240);
-      if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
-      boardWrapEl.classList.remove("boss-cast");
-    }
+    await resolveBossSkill(skill);
+    state.boss.charge = Math.max(0, state.boss.charge - Number(skill.cost || 20));
+    renderAll();
+    await sleep(220);
+    if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
+    boardWrapEl.classList.remove("boss-cast");
   }
 
   function applyBossPressure(skill) {
     const pressure = state.floorThreat.pressure || 0;
-    if (skill === "glass_storm") {
+    if (["ember_spark", "tail_scorch", "cinder_spread", "foxfire_ring", "wildfire_pounce", "toxin_dust", "thorn_bind", "spore_bloom", "rot_garden", "royal_pollution"].includes(skill)) {
       const reduction = state.perks.pressure_valve ? 1 : 0;
       const loss = Math.max(0, 1 + Math.min(1, pressure) - reduction);
       state.movesLeft = Math.max(0, state.movesLeft - loss);
       if (loss > 0) spawnFloatText(`-${loss} Move`, Math.floor((boardSize * boardSize) / 2));
       return;
     }
-    if (skill === "color_shift") {
+    if (["glacier_column", "absolute_stillness", "cave_in", "elder_root_wall", "chain_burst", "duel_of_storms", "tail_wave", "abyss_tsunami", "mirror_maze", "thousand_masks", "heavy_press", "steelflame_domain", "abyss_gaze", "revelation_zero", "world_crack", "emperor_decree", "star_abyss_end"].includes(skill)) {
       const reduction = state.perks.pressure_valve ? 1 : 0;
       const loss = Math.max(0, (state.boss.elite ? 2 : 1) + pressure - reduction);
       state.movesLeft = Math.max(0, state.movesLeft - loss);
       if (loss > 0) spawnFloatText(`-${loss} Move`, Math.floor((boardSize * boardSize) / 2));
     }
+  }
+
+  async function resolveBossSkill(skill) {
+    const gems = collectIndices((x) => isGem(x));
+    const unlockedGems = collectIndices((x) => isGem(x) && x.lockedTurns <= 0);
+    shuffle(gems);
+    shuffle(unlockedGems);
+
+    const markGlass = (count) => {
+      const targets = gems.slice(0, Math.min(count, gems.length));
+      for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].glass = true;
+      return targets.length;
+    };
+
+    const markLocks = (count, turns = 2) => {
+      const targets = unlockedGems.slice(0, Math.min(count, unlockedGems.length));
+      for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].lockedTurns = Math.max(state.board[idx].lockedTurns, turns);
+      return targets.length;
+    };
+
+    const recolor = (count) => {
+      const from = randColor();
+      let to = randColor();
+      if (to === from) to = nextGemColor(from);
+      const candidates = collectIndices((x) => isGem(x) && x.color === from && x.lockedTurns <= 0);
+      shuffle(candidates);
+      const size = Math.min(count, candidates.length);
+      for (let i = 0; i < size; i += 1) state.board[candidates[i]].color = to;
+      return size;
+    };
+
+    const addObstacles = (count) => {
+      const candidates = collectIndices((x) => isGem(x));
+      shuffle(candidates);
+      const size = Math.min(count, candidates.length);
+      for (let i = 0; i < size; i += 1) state.board[candidates[i]] = { kind: "obstacle" };
+      return size;
+    };
+
+    const rotateRow = () => {
+      const row = Math.floor(Math.random() * boardSize);
+      const indices = indicesInRow(row);
+      const values = indices.map((idx) => state.board[idx]);
+      values.unshift(values.pop());
+      indices.forEach((idx, i) => { state.board[idx] = values[i]; });
+      return row;
+    };
+
+    const rotateCol = () => {
+      const col = Math.floor(Math.random() * boardSize);
+      const indices = indicesInCol(col);
+      const values = indices.map((idx) => state.board[idx]);
+      values.push(values.shift());
+      indices.forEach((idx, i) => { state.board[idx] = values[i]; });
+      return col;
+    };
+
+    const pulseBoard = (count = 6, power = 1.4) => {
+      for (let i = 0; i < count; i += 1) spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
+      shakeBoard(power);
+    };
+
+    switch (skill.id) {
+      case "ember_spark": {
+        const count = markGlass(state.boss.elite ? 4 : 2);
+        state.boss.hint = `Ember Spark: ${count} gems ignited`;
+        notify("Boss casts Ember Spark!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "tail_scorch": {
+        const row = Math.floor(Math.random() * boardSize);
+        const targets = indicesInRow(row).filter((idx) => isGem(state.board[idx])).slice(0, state.boss.elite ? 5 : 3);
+        for (const idx of targets) state.board[idx].glass = true;
+        state.boss.hint = `Tail Scorch: row ${row + 1} heated`;
+        notify("Boss sweeps the board with Tail Scorch!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "cinder_spread": {
+        const count = recolor(state.boss.elite ? 14 : 9);
+        state.boss.hint = `Cinder Spread: ${count} gems turned volatile`;
+        notify("Cinders spread across the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "foxfire_ring": {
+        const count = markGlass(state.boss.elite ? 8 : 6);
+        markLocks(state.boss.elite ? 3 : 2, 1);
+        state.boss.hint = `Foxfire Ring: ${count} gems surrounded`;
+        notify("Foxfire Ring surrounds key tiles!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "wildfire_pounce": {
+        const glass = markGlass(state.boss.elite ? 12 : 8);
+        const locks = markLocks(state.boss.elite ? 4 : 2, 2);
+        state.boss.hint = `Wildfire Pounce: ${glass} burn, ${locks} pinned`;
+        notify("Wildfire Pounce engulfs the board!", "warn");
+        pulseBoard(8, 1.55);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "chill_script": {
+        const count = markLocks(state.boss.elite ? 4 : 2, 2);
+        state.boss.hint = `Chill Script: ${count} gems frozen`;
+        notify("Boss casts Chill Script!", "warn");
+        break;
+      }
+      case "frost_page": {
+        const count = markLocks(state.boss.elite ? 6 : 4, 2);
+        markGlass(state.boss.elite ? 3 : 2);
+        state.boss.hint = `Frost Page: ${count} tiles sealed`;
+        notify("Frost Page seals the board!", "warn");
+        break;
+      }
+      case "winter_seal": {
+        const count = markGlass(state.boss.elite ? 10 : 6);
+        state.boss.hint = `Winter Seal: ${count} gems layered in frost`;
+        notify("Winter Seal coats the board in frost!", "warn");
+        break;
+      }
+      case "glacier_column": {
+        const col = Math.floor(Math.random() * boardSize);
+        const targets = indicesInCol(col).filter((idx) => isGem(state.board[idx]));
+        for (const idx of targets) state.board[idx].lockedTurns = Math.max(state.board[idx].lockedTurns, 2);
+        state.boss.hint = `Glacier Column: column ${col + 1} frozen`;
+        notify("A Glacier Column freezes the board path!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "absolute_stillness": {
+        const locks = markLocks(state.boss.elite ? 7 : 5, 2);
+        const glass = markGlass(state.boss.elite ? 8 : 5);
+        state.boss.hint = `Absolute Stillness: ${locks} frozen, ${glass} iced`;
+        notify("Absolute Stillness locks the board in place!", "warn");
+        pulseBoard(8, 1.5);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "pebble_drop": {
+        const count = addObstacles(state.boss.elite ? 3 : 2);
+        state.boss.hint = `Pebble Drop: ${count} obstacles added`;
+        notify("Pebble Drop litters the board!", "warn");
+        break;
+      }
+      case "bark_armor": {
+        const count = markGlass(state.boss.elite ? 6 : 4);
+        state.boss.hint = `Bark Armor: ${count} armored gems`;
+        notify("Bark Armor hardens key gems!", "warn");
+        break;
+      }
+      case "burrow_rise": {
+        const count = addObstacles(state.boss.elite ? 4 : 3);
+        state.boss.hint = `Burrow Rise: ${count} stone pillars raised`;
+        notify("Burrow Rise breaks board routes!", "warn");
+        break;
+      }
+      case "cave_in": {
+        const count = addObstacles(state.boss.elite ? 6 : 4);
+        markLocks(state.boss.elite ? 4 : 2, 1);
+        state.boss.hint = `Cave-In: ${count} tiles collapsed`;
+        notify("A Cave-In crushes the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "elder_root_wall": {
+        const count = addObstacles(state.boss.elite ? 8 : 6);
+        markGlass(state.boss.elite ? 6 : 4);
+        state.boss.hint = `Elder Root Wall: ${count} blockers grown`;
+        notify("Elder Root Wall seals off the board!", "warn");
+        pulseBoard(8, 1.55);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "static_pin": {
+        const count = recolor(state.boss.elite ? 8 : 5);
+        state.boss.hint = `Static Pin: ${count} gems overloaded`;
+        notify("Static Pin destabilizes your setup!", "warn");
+        break;
+      }
+      case "thunder_lance": {
+        const col = rotateCol();
+        state.boss.hint = `Thunder Lance: column ${col + 1} displaced`;
+        notify("Thunder Lance tears through the board!", "warn");
+        break;
+      }
+      case "overload_mark": {
+        const count = recolor(state.boss.elite ? 12 : 8);
+        markLocks(state.boss.elite ? 3 : 2, 1);
+        state.boss.hint = `Overload Mark: ${count} gems altered`;
+        notify("Overload Mark punishes explosive turns!", "warn");
+        break;
+      }
+      case "chain_burst": {
+        const row = rotateRow();
+        const col = rotateCol();
+        state.boss.hint = `Chain Burst: row ${row + 1} / col ${col + 1} shifted`;
+        notify("Chain Burst scrambles the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "duel_of_storms": {
+        const shifts = state.boss.elite ? 4 : 3;
+        for (let i = 0; i < shifts; i += 1) rotateCol();
+        recolor(state.boss.elite ? 14 : 10);
+        state.boss.hint = "Duel of Storms: board heavily displaced";
+        notify("Duel of Storms overwhelms the board!", "warn");
+        pulseBoard(8, 1.55);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "toxin_dust": {
+        const count = recolor(state.boss.elite ? 7 : 4);
+        state.boss.hint = `Toxin Dust: ${count} gems contaminated`;
+        notify("Toxin Dust corrupts the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "thorn_bind": {
+        const count = markLocks(state.boss.elite ? 5 : 3, 2);
+        state.boss.hint = `Thorn Bind: ${count} gems entangled`;
+        notify("Thorn Bind traps your options!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "spore_bloom": {
+        const count = recolor(state.boss.elite ? 14 : 10);
+        state.boss.hint = `Spore Bloom: ${count} gems infected`;
+        notify("Spore Bloom spreads across the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "rot_garden": {
+        const glass = markGlass(state.boss.elite ? 10 : 7);
+        const obstacles = addObstacles(state.boss.elite ? 3 : 2);
+        state.boss.hint = `Rot Garden: ${glass} decay, ${obstacles} growths`;
+        notify("Rot Garden chokes the board with poison!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "royal_pollution": {
+        const recolored = recolor(state.boss.elite ? 18 : 12);
+        const locks = markLocks(state.boss.elite ? 5 : 3, 2);
+        state.boss.hint = `Royal Pollution: ${recolored} corrupted, ${locks} bound`;
+        notify("Royal Pollution smothers the board!", "warn");
+        pulseBoard(8, 1.55);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "splash_shift": {
+        const row = rotateRow();
+        state.boss.hint = `Splash Shift: row ${row + 1} washed aside`;
+        notify("Splash Shift moves the current!", "warn");
+        break;
+      }
+      case "undertow_pull": {
+        const col = rotateCol();
+        state.boss.hint = `Undertow Pull: column ${col + 1} dragged`;
+        notify("Undertow Pull drags the board!", "warn");
+        break;
+      }
+      case "tide_pool": {
+        const rows = state.boss.elite ? 2 : 1;
+        for (let i = 0; i < rows; i += 1) rotateRow();
+        state.boss.hint = `Tide Pool: ${rows} row currents formed`;
+        notify("Tide Pool distorts the board flow!", "warn");
+        break;
+      }
+      case "tail_wave": {
+        const shifts = state.boss.elite ? 3 : 2;
+        for (let i = 0; i < shifts; i += 1) rotateCol();
+        addObstacles(state.boss.elite ? 3 : 2);
+        state.boss.hint = "Tail Wave: columns displaced and coral raised";
+        notify("Tail Wave crashes through the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "abyss_tsunami": {
+        for (let i = 0; i < 2; i += 1) rotateRow();
+        for (let i = 0; i < 2; i += 1) rotateCol();
+        addObstacles(state.boss.elite ? 4 : 3);
+        state.boss.hint = "Abyss Tsunami: full-board displacement";
+        notify("Abyss Tsunami devastates the board!", "warn");
+        pulseBoard(8, 1.55);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "mirror_glint": {
+        const count = recolor(state.boss.elite ? 8 : 5);
+        state.boss.hint = `Mirror Glint: ${count} gems disguised`;
+        notify("Mirror Glint distorts the board!", "warn");
+        break;
+      }
+      case "false_match": {
+        const row = rotateRow();
+        state.boss.hint = `False Match: row ${row + 1} faked`;
+        notify("False Match breaks your reading!", "warn");
+        break;
+      }
+      case "prism_shuffle": {
+        const count = recolor(state.boss.elite ? 12 : 8);
+        rotateRow();
+        state.boss.hint = `Prism Shuffle: ${count} gems refracted`;
+        notify("Prism Shuffle twists colors and placement!", "warn");
+        break;
+      }
+      case "mirror_maze": {
+        rotateRow();
+        rotateCol();
+        markLocks(state.boss.elite ? 4 : 2, 1);
+        state.boss.hint = "Mirror Maze: routes bent out of shape";
+        notify("Mirror Maze warps your routes!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "thousand_masks": {
+        recolor(state.boss.elite ? 18 : 12);
+        rotateRow();
+        rotateCol();
+        state.boss.hint = "Thousand Masks: total illusion assault";
+        notify("Thousand Masks overwhelms perception!", "warn");
+        pulseBoard(8, 1.55);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "iron_slag": {
+        const count = addObstacles(state.boss.elite ? 3 : 2);
+        state.boss.hint = `Iron Slag: ${count} hot blocks forged`;
+        notify("Iron Slag clogs the board!", "warn");
+        break;
+      }
+      case "anvil_slam": {
+        const count = markLocks(state.boss.elite ? 5 : 3, 2);
+        state.boss.hint = `Anvil Slam: ${count} tiles pinned`;
+        notify("Anvil Slam crushes your tempo!", "warn");
+        break;
+      }
+      case "furnace_core": {
+        const obstacles = addObstacles(state.boss.elite ? 5 : 3);
+        const glass = markGlass(state.boss.elite ? 6 : 4);
+        state.boss.hint = `Furnace Core: ${obstacles} blocks, ${glass} heated gems`;
+        notify("Furnace Core overheats the board!", "warn");
+        break;
+      }
+      case "heavy_press": {
+        const obstacles = addObstacles(state.boss.elite ? 6 : 4);
+        state.boss.hint = `Heavy Press: ${obstacles} sections compressed`;
+        notify("Heavy Press locks down the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "steelflame_domain": {
+        const obstacles = addObstacles(state.boss.elite ? 8 : 6);
+        const locks = markLocks(state.boss.elite ? 5 : 3, 2);
+        state.boss.hint = `Steelflame Domain: ${obstacles} blocks, ${locks} pinned`;
+        notify("Steelflame Domain seals the arena!", "warn");
+        pulseBoard(8, 1.55);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "radiance_mark": {
+        const count = markGlass(state.boss.elite ? 8 : 5);
+        state.boss.hint = `Radiance Mark: ${count} gems branded`;
+        notify("Radiance Mark shines across the board!", "warn");
+        break;
+      }
+      case "eclipse_wing": {
+        const count = markLocks(state.boss.elite ? 5 : 3, 2);
+        state.boss.hint = `Eclipse Wing: ${count} gems subdued`;
+        notify("Eclipse Wing sweeps the board!", "warn");
+        break;
+      }
+      case "judgment_wheel": {
+        const count = recolor(state.boss.elite ? 14 : 10);
+        state.boss.hint = `Judgment Wheel: ${count} gems judged`;
+        notify("Judgment Wheel alters the field!", "warn");
+        break;
+      }
+      case "abyss_gaze": {
+        const obstacles = addObstacles(state.boss.elite ? 4 : 2);
+        const locks = markLocks(state.boss.elite ? 4 : 2, 2);
+        state.boss.hint = `Abyss Gaze: ${obstacles} voids opened`;
+        notify("Abyss Gaze tears holes in the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "revelation_zero": {
+        const recolored = recolor(state.boss.elite ? 16 : 12);
+        const locks = markLocks(state.boss.elite ? 6 : 4, 2);
+        const glass = markGlass(state.boss.elite ? 8 : 5);
+        state.boss.hint = `Revelation Zero: ${recolored} judged, ${locks} sealed`;
+        notify("Revelation Zero triggers final judgment!", "warn");
+        pulseBoard(8, 1.55);
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "void_scale": {
+        markGlass(1);
+        markLocks(1, 2);
+        addObstacles(1);
+        state.boss.hint = "Void Scale: mixed corruption applied";
+        notify("Void Scale applies mixed corruption!", "warn");
+        break;
+      }
+      case "dragon_breath": {
+        const row = Math.floor(Math.random() * boardSize);
+        const targets = indicesInRow(row).slice(0, Math.min(boardSize, state.boss.elite ? 6 : 5));
+        for (const idx of targets) {
+          if (isGem(state.board[idx])) state.board[idx].glass = true;
+          else state.board[idx] = { kind: "obstacle" };
+        }
+        state.boss.hint = `Dragon Breath: row ${row + 1} scorched`;
+        notify("Dragon Breath tears across the board!", "warn");
+        break;
+      }
+      case "world_crack": {
+        const obstacles = addObstacles(state.boss.elite ? 6 : 4);
+        const recolored = recolor(state.boss.elite ? 12 : 8);
+        state.boss.hint = `World Crack: ${obstacles} voids, ${recolored} warped gems`;
+        notify("World Crack breaks reality under the board!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "emperor_decree": {
+        const locks = markLocks(state.boss.elite ? 5 : 3, 2);
+        const glass = markGlass(state.boss.elite ? 8 : 6);
+        const obstacles = addObstacles(state.boss.elite ? 4 : 2);
+        state.boss.hint = `Emperor Decree: ${locks} bound, ${obstacles} voids raised`;
+        notify("Emperor Decree combines multiple chapter threats!", "warn");
+        applyBossPressure(skill.id);
+        break;
+      }
+      case "star_abyss_end": {
+        const recolored = recolor(state.boss.elite ? 20 : 14);
+        const locks = markLocks(state.boss.elite ? 7 : 5, 2);
+        const obstacles = addObstacles(state.boss.elite ? 7 : 5);
+        const glass = markGlass(state.boss.elite ? 10 : 8);
+        state.boss.hint = `Star Abyss End: ${recolored} warped, ${obstacles} voids`;
+        notify("Star Abyss End engulfs the final board!", "warn");
+        pulseBoard(10, 1.6);
+        applyBossPressure(skill.id);
+        break;
+      }
+      default: {
+        const count = recolor(6);
+        state.boss.hint = `${skill.name}: ${count} gems altered`;
+        notify(`Boss casts ${skill.name}!`, "warn");
+        break;
+      }
+    }
+
+    spawnFloatText(`Boss: ${skill.name}`, Math.floor((boardSize * boardSize) / 2));
+    renderAll();
   }
 
   async function resolveAction(initialTargets, source, spawnMap = null, preferSpawnIndex = null) {
@@ -1168,6 +1643,11 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       if (expandedInfo.chainCount > 1) {
         spawnFloatText(`Chain Skill x${expandedInfo.chainCount}`, valid[0]);
       }
+
+      audio.play("matchClear", {
+        volume: Math.min(0.58, 0.24 + valid.length * 0.012 + (expandedInfo.chainCount > 1 ? 0.06 : 0)),
+        rate: Math.max(0.82, 1.06 - (chain - 1) * 0.04),
+      });
 
       clearAnim = new Set(valid);
       spawnShatterFX(valid);
@@ -1427,6 +1907,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       state.feverTurns = (state.perks.fever_loop ? 4 : 3) + (state.blessings.fever_engine ? 1 : 0);
       spawnFloatText("FEVER!", Math.floor((boardSize * boardSize) / 2));
       notify("FEVER started: score and drops are boosted!", "ok");
+      audio.play("fever");
     }
   }
 
@@ -1449,6 +1930,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     const picked = randomPick(weighted);
     if (!addItemCharges(picked, 1, itemSlotAvailable())) return;
     spawnFloatText(`+${ITEM_DEFS[picked].name}`, Math.floor(Math.random() * boardSize * boardSize));
+    audio.play("itemGain", { volume: 0.32 });
   }
 
   function breakAdjacentObstacles(gemIndices) {
@@ -1475,9 +1957,10 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     grantMetaShards(1 + (state.routePlan?.shardBonus || 0));
     saveMeta();
     const localFloor = getChapterLocalFloor();
+    const chapterLength = state.selectedChapter ? state.selectedChapter.end - state.selectedChapter.start + 1 : 3;
     if (state.selectedChapter && state.floor >= state.selectedChapter.end) return onVictory();
-    if (localFloor === 1) return showRewardChoices();
-    if (localFloor === 2) return showEventNode();
+    if (localFloor < chapterLength - 1) return showRewardChoices();
+    if (localFloor === chapterLength - 1) return showEventNode();
     showRewardChoices();
   }
 
@@ -1497,6 +1980,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       btn.innerHTML = `<span class="choice-rarity">Blessing</span><strong>${def.title}</strong><small>${def.desc}</small>`;
       btn.addEventListener("click", () => {
         def.apply(state);
+        audio.play("rewardPick");
         overlayEl.classList.add("hidden");
         notify(`Blessing acquired: ${def.title}`, "ok");
         renderAll();
@@ -1522,6 +2006,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     }
     updateMeta();
     renderAll();
+    audio.play("victory");
     overlayTitleEl.textContent = `${state.selectedChapter?.title || "Chapter"} Cleared!`;
     overlayDescEl.textContent = `You defeated ${state.floorTheme.bossName} and cleared this chapter challenge with a final score of ${state.score}. ${unlockSummaryText()}`;
     choiceWrapEl.innerHTML = "";
@@ -1552,6 +2037,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     grantMetaShards(Math.max(2, state.floor - 1));
     updateMeta();
     renderAll();
+    audio.play("defeat");
     overlayTitleEl.textContent = "Run Failed";
     overlayDescEl.textContent = `Chapter ${state.selectedChapter?.title || "Run"} ended on floor ${getChapterLocalFloor()}. Final score: ${state.score}.`;
     choiceWrapEl.innerHTML = "";
@@ -1582,6 +2068,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       btn.innerHTML = `<strong>${ev.title}</strong><small>${ev.desc}</small>`;
       btn.addEventListener("click", () => {
         ev.apply();
+        audio.play("rewardPick", { volume: 0.42 });
         overlayEl.classList.add("hidden");
         startFloor(state.floor + 1);
       });
@@ -1594,10 +2081,16 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   function buildBranchRoutes() {
     const theme = state.floorTheme.id;
     const names = {
-      crystal_mines: ["Survey Route", "Greed Route", "Blast Route"],
-      frozen_archive: ["Calm Route", "Scholar Route", "Risk Route"],
-      storm_forge: ["Shielded Route", "Harvest Route", "Overdrive Route"],
-      void_rift: ["Anchored Route", "Rift Route", "Cataclysm Route"],
+      ember_hollows: ["Spark Route", "Greed Route", "Blaze Route"],
+      frost_spire: ["Calm Route", "Scholar Route", "Risk Route"],
+      stone_grove: ["Tunnel Route", "Greed Route", "Collapse Route"],
+      storm_peaks: ["Shielded Route", "Harvest Route", "Overdrive Route"],
+      venom_bloom: ["Purge Route", "Pollen Route", "Rot Route"],
+      tidal_depths: ["Anchor Route", "Current Route", "Maelstrom Route"],
+      mirror_circus: ["Focus Route", "Prize Route", "Hall Route"],
+      iron_forge: ["Quench Route", "Ore Route", "Hammer Route"],
+      eclipse_sanctum: ["Dawn Route", "Halo Route", "Night Route"],
+      void_throne: ["Seal Route", "Rift Route", "Cataclysm Route"],
     }[theme] || ["Safe Route", "Greedy Route", "Trial Route"];
 
     return [
@@ -1671,18 +2164,18 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     ];
 
     const chapterEvents = {
-      crystal_mines: [
+      ember_hollows: [
         {
-          title: "Prospector Cache",
-          desc: "Open an old mine crate to gain +1 Hammer and +1 Row Sweep.",
+          title: "Kindling Cache",
+          desc: "Gain +1 Hammer and +1 Row Sweep from the ember camp.",
           apply: () => {
             addItemCharges("hammer", 1, true);
             addItemCharges("row", 1, true);
-            notify("Prospector tools added to your kit.", "ok");
+            notify("Kindling tools added to your kit.", "ok");
           },
         },
       ],
-      frozen_archive: [
+      frost_spire: [
         {
           title: "Frozen Lantern",
           desc: "Stabilize the archive: remove all current locks and gain +25 momentum.",
@@ -1693,7 +2186,20 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
           },
         },
       ],
-      storm_forge: [
+      stone_grove: [
+        {
+          title: "Burrow Map",
+          desc: "Gain +2 moves next floor and remove 2 random obstacles now.",
+          apply: () => {
+            state.nextFloorMoveBonus += 2;
+            const obstacles = collectIndices((x) => isObstacle(x));
+            shuffle(obstacles);
+            for (const idx of obstacles.slice(0, 2)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
+            notify("The burrow map reveals weak stone sections.", "ok");
+          },
+        },
+      ],
+      storm_peaks: [
         {
           title: "Forge Overdrive",
           desc: "Gain +1 Color Bomb and boost the next cursed floor payoff.",
@@ -1704,7 +2210,66 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
           },
         },
       ],
-      void_rift: [
+      venom_bloom: [
+        {
+          title: "Purifier Nectar",
+          desc: "Remove all current locks and clear your taxed color for the floor.",
+          apply: () => {
+            for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
+            state.taxColor = null;
+            notify("Purifier Nectar cleanses the bloom.", "ok");
+          },
+        },
+      ],
+      tidal_depths: [
+        {
+          title: "Tidal Compass",
+          desc: "Gain +3 moves next floor and +1 Shuffle charge.",
+          apply: () => {
+            state.nextFloorMoveBonus += 3;
+            addItemCharges("shuffle", 1, true);
+            notify("The tides briefly align in your favor.", "ok");
+          },
+        },
+      ],
+      mirror_circus: [
+        {
+          title: "True Lens",
+          desc: "Gain +30 momentum and convert 3 random glass gems into normal gems.",
+          apply: () => {
+            state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 30);
+            const glass = collectIndices((x) => isGem(x) && x.glass);
+            shuffle(glass);
+            for (const idx of glass.slice(0, 3)) state.board[idx].glass = false;
+            notify("The true lens cuts through illusion.", "ok");
+          },
+        },
+      ],
+      iron_forge: [
+        {
+          title: "Cooling Valve",
+          desc: "Remove 3 obstacles now and start next floor with the boss at 0 energy.",
+          apply: () => {
+            const obstacles = collectIndices((x) => isObstacle(x));
+            shuffle(obstacles);
+            for (const idx of obstacles.slice(0, 3)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
+            state.boss.charge = 0;
+            notify("Cooling valves release the furnace pressure.", "ok");
+          },
+        },
+      ],
+      eclipse_sanctum: [
+        {
+          title: "Halo Fragment",
+          desc: "Gain +1 Rainbow Burst and +25 momentum.",
+          apply: () => {
+            addItemCharges("rainbow_burst", 1, true);
+            state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
+            notify("A halo fragment empowers your kit.", "ok");
+          },
+        },
+      ],
+      void_throne: [
         {
           title: "Void Bargain",
           desc: "Gain +240 score and +1 Rainbow Burst, but suffer -1 move next floor.",
@@ -1737,6 +2302,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
       btn.innerHTML = `<span class="choice-rarity">${RARITY_LABELS[reward.rarity] || "Common"}</span><strong>${reward.title}</strong><small>${reward.desc}</small>`;
       btn.addEventListener("click", () => {
         reward.apply();
+        audio.play("rewardPick");
         overlayEl.classList.add("hidden");
         startFloor(state.floor + 1);
       });
@@ -1955,6 +2521,7 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
   function renderAll() {
     renderHUD();
+    renderBossSkillbook();
     renderItems();
     renderPerks();
     renderGuideList();
@@ -1963,7 +2530,8 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
   }
 
   function renderHUD() {
-    floorEl.textContent = state.selectedChapter ? `${getChapterLocalFloor()}/3` : `${state.floor}/${TOTAL_FLOORS}`;
+    const chapterLength = state.selectedChapter ? state.selectedChapter.end - state.selectedChapter.start + 1 : TOTAL_FLOORS;
+    floorEl.textContent = state.selectedChapter ? `${getChapterLocalFloor()}/${chapterLength}` : `${state.floor}/${TOTAL_FLOORS}`;
     if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.targetScore);
     movesLeftEl.textContent = String(state.movesLeft);
     floorScoreEl.textContent = String(state.floorScore);
@@ -1977,11 +2545,27 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 
     const bossPct = Math.max(0, Math.min(100, (state.boss.charge / state.boss.max) * 100));
     if (bossBarEl) bossBarEl.style.width = `${bossPct}%`;
-    if (bossSkillHintEl) bossSkillHintEl.textContent = state.boss.hint;
+    if (bossSkillHintEl) {
+      const nextSkills = getAvailableBossSkills().map((skill) => `${skill.name}(${skill.cost})`).join(" · ");
+      bossSkillHintEl.textContent = nextSkills ? `${state.boss.hint} · Ready: ${nextSkills}` : state.boss.hint;
+    }
     if (bossTitleEl) bossTitleEl.textContent = state.boss.elite ? state.floorTheme.eliteBossName : state.floorTheme.bossName;
-    if (bossStateEl) bossStateEl.textContent = state.boss.casting ? `Casting in ${state.floorTheme.shortLabel}` : state.boss.phase === "ready" ? "Primed to strike on the next beat" : `Charging through ${state.floorTheme.title}`;
+    if (bossStateEl) {
+      const profile = getBossProfile();
+      const tier = getBossThreatLevel();
+      bossStateEl.textContent = state.boss.casting
+        ? `Casting ${profile.element} skill in ${state.floorTheme.shortLabel}`
+        : state.boss.phase === "ready"
+          ? `Energy tier ${tier}/5 ready to strike`
+          : `Charging ${profile.element} power through ${state.floorTheme.title}`;
+    }
     if (bossThreatEl) bossThreatEl.textContent = getBossThreatLabel();
-    if (bossPatternEl) bossPatternEl.textContent = state.boss.elite ? `${state.floorTheme.pattern} / Elite pressure` : state.floorTheme.pattern;
+    if (bossPatternEl) {
+      const profile = getBossProfile();
+      bossPatternEl.textContent = state.boss.elite
+        ? `${state.floorTheme.pattern} / ${profile.element} elite / ${state.boss.charge}/100`
+        : `${state.floorTheme.pattern} / ${profile.element} / ${state.boss.charge}/100`;
+    }
     if (modifierEl) modifierEl.textContent = state.modifier ? `${state.floorTheme.shortLabel} · ${state.routePlan.title} · ${state.modifier.name} · ${state.activeGemColors.length}C` : `${state.floorTheme.shortLabel} · ${state.routePlan.title} · ${state.activeGemColors.length}C`;
     if (bossMeterEl) {
       bossMeterEl.classList.remove("charging", "ready", "casting");
@@ -1994,12 +2578,37 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
     if (state.mode.type === "target_item") modeTextEl.textContent = `Mode: Target item (${ITEM_DEFS[state.mode.item].name})`;
   }
 
+  function renderBossSkillbook() {
+    if (!bossSkillbookListEl) return;
+    const profile = getBossProfile();
+    const charge = Number(state.boss.charge || 0);
+    bossSkillbookListEl.innerHTML = "";
+
+    for (const skill of profile.skills || []) {
+      const entry = document.createElement("div");
+      entry.className = "boss-skill-entry";
+      if (charge >= skill.cost) entry.classList.add("ready");
+
+      const title = document.createElement("strong");
+      title.textContent = `${skill.name} · ${skill.cost}`;
+
+      const desc = document.createElement("small");
+      desc.textContent = skill.desc || "Chapter-themed boss attack.";
+
+      entry.appendChild(title);
+      entry.appendChild(desc);
+      bossSkillbookListEl.appendChild(entry);
+    }
+  }
+
   function getBossThreatLabel() {
     if (state.boss.casting) return "Cataclysmic";
-    const pct = state.boss.charge / state.boss.max;
-    if (pct >= 0.95) return "Critical";
-    if (pct >= 0.7) return "Severe";
+    const pct = state.boss.charge / Math.max(1, state.boss.max);
+    if (pct >= 1) return "Ultimate";
+    if (pct >= 0.8) return "Critical";
+    if (pct >= 0.6) return "Severe";
     if (pct >= 0.4) return "Rising";
+    if (pct >= 0.2) return "Active";
     return "Low";
   }
 

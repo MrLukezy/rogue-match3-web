@@ -22,6 +22,7 @@
         <div class="title-block">
           <img src="./assets/generated/ui/logo_rogue_match3_crest.png" alt="Rogue Match-3 crest" class="title-crest" />
           <h1>Rogue Match-3</h1>
+          <button id="audioToggleBtn" class="mini-btn audio-toggle" type="button" aria-pressed="true">🔊 Audio</button>
         </div>
         <p class="sub">Roguelite relic drafting meets fast match-3 tower climbing.</p>
 
@@ -106,10 +107,10 @@
             </div>
           </div>
           <div class="boss-portrait-wrap">
-            <img id="bossPortrait" src="./assets/generated/boss/boss_mine_warden.png" alt="Boss portrait" class="boss-portrait-image" />
+            <img id="bossPortrait" src="./assets/generated/boss/chapter01_ember_cub.png" alt="Boss portrait" class="boss-portrait-image" />
           </div>
           <div id="bossMeter" class="momentum boss">
-            <span>Charge</span>
+            <span>Energy</span>
             <div class="bar"><i id="bossBar"></i></div>
             <strong id="bossSkillHint">-</strong>
           </div>
@@ -125,20 +126,9 @@
           </div>
           <div class="boss-skillbook">
             <h3>Boss Attacks</h3>
-            <div class="boss-skill-entry">
-              <strong>Glass Storm</strong>
-              <small>Seeds fresh glass across the board and can cut your move budget.</small>
-            </div>
-            <div class="boss-skill-entry">
-              <strong>Hex Lock</strong>
-              <small>Locks active gems so they cannot be swapped until the lock fades.</small>
-            </div>
-            <div class="boss-skill-entry">
-              <strong>Color Shift</strong>
-              <small>Recolors large parts of the board and spikes pressure on elite floors.</small>
-            </div>
+            <div id="bossSkillbookList"></div>
           </div>
-          <p class="boss-copy">Watch the charge on the right side and plan around incoming boss skills.</p>
+          <p class="boss-copy">Watch the energy bar on the right side. Higher energy unlocks stronger chapter-themed boss skills.</p>
         </div>
       </aside>
     </div>
@@ -174,6 +164,6 @@
       </div>
     </div>
 
-    <script src="./game.bundle.js"></script>
+    <script type="module" src="./game.js"></script>
   </body>
 </html>

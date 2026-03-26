@@ -198,6 +198,16 @@ body[data-theme="void_rift"] {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.audio-toggle {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.audio-toggle[data-muted="true"] {
+  opacity: 0.74;
 }
 
 .title-crest {
@@ -1432,6 +1442,12 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(76, 34, 48, 0.9), rgba(36, 20, 27, 0.96));
   border: 1px solid rgba(255, 147, 177, 0.14);
+}
+
+.boss-skill-entry.ready {
+  background: linear-gradient(180deg, rgba(42, 76, 116, 0.95), rgba(24, 39, 63, 0.98));
+  border-color: rgba(121, 198, 255, 0.38);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
 }
 
 .boss-skill-entry + .boss-skill-entry {
