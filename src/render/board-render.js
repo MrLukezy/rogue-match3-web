@@ -25,10 +25,12 @@ export function renderBoardView({
       block.className = "obstacle";
       cell.appendChild(block);
     } else if (isGem(value)) {
+      if (value.burning) cell.classList.add("cell-burning");
       const gem = document.createElement("div");
       gem.className = `gem g-${value.color}`;
       if (value.special) gem.classList.add(`sp-${value.special}`);
       if (value.glass) gem.classList.add("glass");
+      if (value.burning) gem.classList.add("burning");
       if (value.lockedTurns > 0) gem.classList.add("locked");
       if (fallAnim.has(i)) gem.classList.add("fall-in");
 
@@ -38,6 +40,17 @@ export function renderBoardView({
       icon.src = getAnimatedGemImage(value.color);
       icon.alt = `gem-${value.color}`;
       gem.appendChild(icon);
+
+      if (value.burning) {
+        const burnAura = document.createElement("span");
+        burnAura.className = "gem-burn-aura";
+        gem.appendChild(burnAura);
+
+        const burnTag = document.createElement("span");
+        burnTag.className = "gem-status burn";
+        burnTag.textContent = "SCORCH";
+        gem.appendChild(burnTag);
+      }
 
       cell.appendChild(gem);
     }

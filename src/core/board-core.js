@@ -1,6 +1,6 @@
 export function createBoard(boardSize, randColor) {
   const arr = Array(boardSize * boardSize).fill(null);
-  for (let i = 0; i < arr.length; i += 1) arr[i] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
+  for (let i = 0; i < arr.length; i += 1) arr[i] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, lockedTurns: 0 };
   return arr;
 }
 
@@ -41,7 +41,7 @@ export function refillBoard(state, randColor) {
   const born = [];
   for (let i = 0; i < state.board.length; i += 1) {
     if (state.board[i] === null) {
-      state.board[i] = { kind: "gem", color: randColor(), special: null, glass: false, lockedTurns: 0 };
+      state.board[i] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, lockedTurns: 0 };
       born.push(i);
     }
   }

@@ -1,3 +1,5 @@
+const zhen = (zh, en) => ({ zh, en });
+
 export const UI_IMAGES = {
   obstacle: "./assets/generated/ui/tile_obstacle_obsidian.png",
   emptySlot: "./assets/generated/ui/icon_empty_slot_relic.png",
@@ -14,135 +16,17 @@ export const BOSS_ANIM_FRAMES = [
   "./assets/generated/boss/anim/boss_sigil_f8.png",
 ];
 
+const skill = (id, cost, zhName, enName, zhDesc, enDesc) => ({ id, cost, name: zhen(zhName, enName), desc: zhen(zhDesc, enDesc) });
+
 export const BOSS_PROFILES = {
-  ember_hollows: {
-    title: "Ember Cub",
-    element: "fire",
-    baseGain: 8,
-    skillWeights: { ember_spark: 10, tail_scorch: 12, cinder_spread: 14, foxfire_ring: 16, wildfire_pounce: 18 },
-    skills: [
-      { id: "ember_spark", cost: 20, name: "Ember Spark", desc: "Ignites a few gems with light burn pressure." },
-      { id: "tail_scorch", cost: 40, name: "Tail Scorch", desc: "Sweeps one row with flame and heats nearby gems." },
-      { id: "cinder_spread", cost: 60, name: "Cinder Spread", desc: "Recolors part of the board into unstable cinders." },
-      { id: "foxfire_ring", cost: 80, name: "Foxfire Ring", desc: "Surrounds key gems with foxfire and light pinning." },
-      { id: "wildfire_pounce", cost: 100, name: "Wildfire Pounce", desc: "Large burn burst that pins and scorches the board." },
-    ],
-  },
-  frost_spire: {
-    title: "Frost Archivist",
-    element: "ice",
-    baseGain: 9,
-    skillWeights: { chill_script: 10, frost_page: 12, winter_seal: 14, glacier_column: 16, absolute_stillness: 18 },
-    skills: [
-      { id: "chill_script", cost: 20, name: "Chill Script", desc: "Freezes a few gems to slow movement." },
-      { id: "frost_page", cost: 40, name: "Frost Page", desc: "Spreads freeze to a larger cluster." },
-      { id: "winter_seal", cost: 60, name: "Winter Seal", desc: "Adds frost layers that require extra clearing." },
-      { id: "glacier_column", cost: 80, name: "Glacier Column", desc: "Freezes an entire path column." },
-      { id: "absolute_stillness", cost: 100, name: "Absolute Stillness", desc: "Mass freeze and frost for a full control spike." },
-    ],
-  },
-  stone_grove: {
-    title: "Stone Burrower",
-    element: "earth",
-    baseGain: 10,
-    skillWeights: { pebble_drop: 10, bark_armor: 12, burrow_rise: 14, cave_in: 16, elder_root_wall: 18 },
-    skills: [
-      { id: "pebble_drop", cost: 20, name: "Pebble Drop", desc: "Adds a couple of stone blockers." },
-      { id: "bark_armor", cost: 40, name: "Bark Armor", desc: "Hardens gems with extra protective layers." },
-      { id: "burrow_rise", cost: 60, name: "Burrow Rise", desc: "Raises obstacles to interrupt routes." },
-      { id: "cave_in", cost: 80, name: "Cave-In", desc: "Drops heavy blockers and disrupts safe space." },
-      { id: "elder_root_wall", cost: 100, name: "Elder Root Wall", desc: "Creates a large wall of growth and stone." },
-    ],
-  },
-  storm_peaks: {
-    title: "Storm Duelist",
-    element: "lightning",
-    baseGain: 11,
-    skillWeights: { static_pin: 10, thunder_lance: 12, overload_mark: 14, chain_burst: 16, duel_of_storms: 18 },
-    skills: [
-      { id: "static_pin", cost: 20, name: "Static Pin", desc: "Overloads a few gems and destabilizes patterns." },
-      { id: "thunder_lance", cost: 40, name: "Thunder Lance", desc: "Shifts a column with a focused lightning strike." },
-      { id: "overload_mark", cost: 60, name: "Overload Mark", desc: "Punishes strong setups with recolor pressure." },
-      { id: "chain_burst", cost: 80, name: "Chain Burst", desc: "Displaces rows and columns to break tempo." },
-      { id: "duel_of_storms", cost: 100, name: "Duel of Storms", desc: "A heavy storm sequence that scrambles the board." },
-    ],
-  },
-  venom_bloom: {
-    title: "Venom Bloom Queen",
-    element: "poison",
-    baseGain: 12,
-    skillWeights: { toxin_dust: 10, thorn_bind: 12, spore_bloom: 14, rot_garden: 16, royal_pollution: 18 },
-    skills: [
-      { id: "toxin_dust", cost: 20, name: "Toxin Dust", desc: "Contaminates a few gems with poison pressure." },
-      { id: "thorn_bind", cost: 40, name: "Thorn Bind", desc: "Pins key gems with toxic vines." },
-      { id: "spore_bloom", cost: 60, name: "Spore Bloom", desc: "Spreads infection across more of the board." },
-      { id: "rot_garden", cost: 80, name: "Rot Garden", desc: "Adds decay and growth zones that clog space." },
-      { id: "royal_pollution", cost: 100, name: "Royal Pollution", desc: "A massive poison burst with corruption and binds." },
-    ],
-  },
-  tidal_depths: {
-    title: "Tidal Leviathan",
-    element: "water",
-    baseGain: 13,
-    skillWeights: { splash_shift: 10, undertow_pull: 12, tide_pool: 14, tail_wave: 16, abyss_tsunami: 18 },
-    skills: [
-      { id: "splash_shift", cost: 20, name: "Splash Shift", desc: "Pushes a row with a light tide movement." },
-      { id: "undertow_pull", cost: 40, name: "Undertow Pull", desc: "Drags a column out of position." },
-      { id: "tide_pool", cost: 60, name: "Tide Pool", desc: "Creates flowing rows that disturb stable plans." },
-      { id: "tail_wave", cost: 80, name: "Tail Wave", desc: "Large displacement plus coral-like blockers." },
-      { id: "abyss_tsunami", cost: 100, name: "Abyss Tsunami", desc: "Full-board water displacement with heavy disruption." },
-    ],
-  },
-  mirror_circus: {
-    title: "Mirror Trickster",
-    element: "illusion",
-    baseGain: 14,
-    skillWeights: { mirror_glint: 10, false_match: 12, prism_shuffle: 14, mirror_maze: 16, thousand_masks: 18 },
-    skills: [
-      { id: "mirror_glint", cost: 20, name: "Mirror Glint", desc: "Disguises a few gems to mislead quick reads." },
-      { id: "false_match", cost: 40, name: "False Match", desc: "Creates a deceptive row pattern." },
-      { id: "prism_shuffle", cost: 60, name: "Prism Shuffle", desc: "Twists colors and positions together." },
-      { id: "mirror_maze", cost: 80, name: "Mirror Maze", desc: "Bends routes with positional illusion pressure." },
-      { id: "thousand_masks", cost: 100, name: "Thousand Masks", desc: "Mass illusion assault that scrambles recognition." },
-    ],
-  },
-  iron_forge: {
-    title: "Iron Forge Colossus",
-    element: "forge",
-    baseGain: 15,
-    skillWeights: { iron_slag: 10, anvil_slam: 12, furnace_core: 14, heavy_press: 16, steelflame_domain: 18 },
-    skills: [
-      { id: "iron_slag", cost: 20, name: "Iron Slag", desc: "Forges new hot blockers onto the board." },
-      { id: "anvil_slam", cost: 40, name: "Anvil Slam", desc: "Pins several tiles with crushing force." },
-      { id: "furnace_core", cost: 60, name: "Furnace Core", desc: "Adds heat and blockers from the forge heart." },
-      { id: "heavy_press", cost: 80, name: "Heavy Press", desc: "Compresses space with serious board lockdown." },
-      { id: "steelflame_domain", cost: 100, name: "Steelflame Domain", desc: "Mass forge pressure with obstacles and locks." },
-    ],
-  },
-  eclipse_sanctum: {
-    title: "Eclipse Seraph",
-    element: "light-dark",
-    baseGain: 16,
-    skillWeights: { radiance_mark: 10, eclipse_wing: 12, judgment_wheel: 14, abyss_gaze: 16, revelation_zero: 18 },
-    skills: [
-      { id: "radiance_mark", cost: 20, name: "Radiance Mark", desc: "Brands gems with light pressure and board tax." },
-      { id: "eclipse_wing", cost: 40, name: "Eclipse Wing", desc: "Sweeps the board with lock-heavy holy shadow." },
-      { id: "judgment_wheel", cost: 60, name: "Judgment Wheel", desc: "Rejudges board colors in a dual-phase strike." },
-      { id: "abyss_gaze", cost: 80, name: "Abyss Gaze", desc: "Opens void pressure with dark lockdown." },
-      { id: "revelation_zero", cost: 100, name: "Revelation Zero", desc: "Mass light-dark execution with severe disruption." },
-    ],
-  },
-  void_throne: {
-    title: "Void Dragon Emperor",
-    element: "void",
-    baseGain: 18,
-    skillWeights: { void_scale: 10, dragon_breath: 12, world_crack: 14, emperor_decree: 16, star_abyss_end: 18 },
-    skills: [
-      { id: "void_scale", cost: 20, name: "Void Scale", desc: "Applies mixed void corruption to a small area." },
-      { id: "dragon_breath", cost: 40, name: "Dragon Breath", desc: "A sweeping breath that scorches a full lane." },
-      { id: "world_crack", cost: 60, name: "World Crack", desc: "Splits the board with void tears and warped gems." },
-      { id: "emperor_decree", cost: 80, name: "Emperor Decree", desc: "Combines multiple chapter threats in one order." },
-      { id: "star_abyss_end", cost: 100, name: "Star Abyss End", desc: "Final catastrophic void burst with mixed endgame pressure." },
-    ],
-  },
+  ember_hollows: { title: zhen("余烬幼兽", "Ember Cub"), element: zhen("火焰", "fire"), baseGain: 8, skillWeights: { ember_spark: 10, tail_scorch: 12, cinder_spread: 14, foxfire_ring: 16, wildfire_pounce: 18 }, skills: [skill("ember_spark",20,"余烬火花","Ember Spark","点燃少量宝石；灼伤宝石首次清除只会熄火，存活到下回合会向周围蔓延。","Ignites a few gems; the first clear only snuffs the flames, and survivors spread fire next turn."),skill("tail_scorch",40,"尾焰灼烧","Tail Scorch","灼烧一整行宝石；未扑灭的火焰会继续扩散。","Scorches a row of gems, and unresolved fire keeps spreading."),skill("cinder_spread",60,"灰烬扩散","Cinder Spread","重染棋盘并让布局更难组织。","Recolors part of the board and makes setups harder to maintain."),skill("foxfire_ring",80,"狐火之环","Foxfire Ring","点燃关键宝石并附带短暂锁定，火势会继续蔓延。","Ignites key gems, adds short pinning, and lets the flames spread."),skill("wildfire_pounce",100,"野火扑袭","Wildfire Pounce","大范围点燃并锁定棋盘，多枚宝石若未扑灭会在下回合烧向周围。","Ignites and pins the board in a wide burst; surviving flames spread to nearby gems next turn.")] },
+  frost_spire: { title: zhen("霜典馆长", "Frost Archivist"), element: zhen("寒冰", "ice"), baseGain: 9, skillWeights: { chill_script: 10, frost_page: 12, winter_seal: 14, glacier_column: 16, absolute_stillness: 18 }, skills: [skill("chill_script",20,"寒霜刻文","Chill Script","冻结少量宝石，拖慢节奏。","Freezes a few gems to slow movement."),skill("frost_page",40,"霜页扩散","Frost Page","将冻结扩散到更大范围。","Spreads freeze to a larger cluster."),skill("winter_seal",60,"冬之封印","Winter Seal","添加需要额外清除的冰霜层。","Adds frost layers that require extra clearing."),skill("glacier_column",80,"冰川立柱","Glacier Column","冻结整条路径列。","Freezes an entire path column."),skill("absolute_stillness",100,"绝对静止","Absolute Stillness","大范围冻结与冰霜压制。","Mass freeze and frost for a full control spike.")] },
+  stone_grove: { title: zhen("岩穴掘行者", "Stone Burrower"), element: zhen("大地", "earth"), baseGain: 10, skillWeights: { pebble_drop: 10, bark_armor: 12, burrow_rise: 14, cave_in: 16, elder_root_wall: 18 }, skills: [skill("pebble_drop",20,"碎石坠落","Pebble Drop","添加少量岩石障碍。","Adds a couple of stone blockers."),skill("bark_armor",40,"树皮护甲","Bark Armor","为宝石附加额外保护层。","Hardens gems with extra protective layers."),skill("burrow_rise",60,"地穴升起","Burrow Rise","抬升障碍，打断通路。","Raises obstacles to interrupt routes."),skill("cave_in",80,"洞穴坍塌","Cave-In","投下沉重障碍，打乱安全区域。","Drops heavy blockers and disrupts safe space."),skill("elder_root_wall",100,"古根之墙","Elder Root Wall","创造大片根须与岩石之墙。","Creates a large wall of growth and stone.")] },
+  storm_peaks: { title: zhen("风暴决斗者", "Storm Duelist"), element: zhen("雷电", "lightning"), baseGain: 11, skillWeights: { static_pin: 10, thunder_lance: 12, overload_mark: 14, chain_burst: 16, duel_of_storms: 18 }, skills: [skill("static_pin",20,"静电钉锁","Static Pin","过载少量宝石并扰乱模式。","Overloads a few gems and destabilizes patterns."),skill("thunder_lance",40,"雷枪贯穿","Thunder Lance","以聚焦雷击推动一列。","Shifts a column with a focused lightning strike."),skill("overload_mark",60,"过载烙印","Overload Mark","对强势布局施加重染压力。","Punishes strong setups with recolor pressure."),skill("chain_burst",80,"连锁冲裂","Chain Burst","错动行列，打断节奏。","Displaces rows and columns to break tempo."),skill("duel_of_storms",100,"风暴决斗","Duel of Storms","高压风暴连段，彻底搅乱棋盘。","A heavy storm sequence that scrambles the board.")] },
+  venom_bloom: { title: zhen("毒绽女王", "Venom Bloom Queen"), element: zhen("剧毒", "poison"), baseGain: 12, skillWeights: { toxin_dust: 10, thorn_bind: 12, spore_bloom: 14, rot_garden: 16, royal_pollution: 18 }, skills: [skill("toxin_dust",20,"毒尘散播","Toxin Dust","污染少量宝石并施加毒压。","Contaminates a few gems with poison pressure."),skill("thorn_bind",40,"毒藤束缚","Thorn Bind","用剧毒藤蔓束缚关键宝石。","Pins key gems with toxic vines."),skill("spore_bloom",60,"孢子绽放","Spore Bloom","将感染扩散到更多区域。","Spreads infection across more of the board."),skill("rot_garden",80,"腐败花圃","Rot Garden","制造腐朽与生长区域，挤压空间。","Adds decay and growth zones that clog space."),skill("royal_pollution",100,"王庭污染","Royal Pollution","巨量毒爆并附带腐化束缚。","A massive poison burst with corruption and binds.")] },
+  tidal_depths: { title: zhen("潮汐巨兽", "Tidal Leviathan"), element: zhen("潮水", "water"), baseGain: 13, skillWeights: { splash_shift: 10, undertow_pull: 12, tide_pool: 14, tail_wave: 16, abyss_tsunami: 18 }, skills: [skill("splash_shift",20,"浪花位移","Splash Shift","轻度推动一行。","Pushes a row with a light tide movement."),skill("undertow_pull",40,"暗流牵引","Undertow Pull","将一列拖离原位。","Drags a column out of position."),skill("tide_pool",60,"潮池回旋","Tide Pool","创造流动行，扰乱稳定计划。","Creates flowing rows that disturb stable plans."),skill("tail_wave",80,"尾浪横扫","Tail Wave","大范围位移并生成珊瑚式障碍。","Large displacement plus coral-like blockers."),skill("abyss_tsunami",100,"深渊海啸","Abyss Tsunami","全盘水流错位并施加强力干扰。","Full-board water displacement with heavy disruption.")] },
+  mirror_circus: { title: zhen("镜幕戏法师", "Mirror Trickster"), element: zhen("幻象", "illusion"), baseGain: 14, skillWeights: { mirror_glint: 10, false_match: 12, prism_shuffle: 14, mirror_maze: 16, thousand_masks: 18 }, skills: [skill("mirror_glint",20,"镜光迷彩","Mirror Glint","伪装少量宝石，误导快速判断。","Disguises a few gems to mislead quick reads."),skill("false_match",40,"伪装连线","False Match","制造一条具有欺骗性的行模式。","Creates a deceptive row pattern."),skill("prism_shuffle",60,"棱镜乱序","Prism Shuffle","同时扭曲颜色与位置。","Twists colors and positions together."),skill("mirror_maze",80,"镜中迷宫","Mirror Maze","以位置幻象弯曲通路。","Bends routes with positional illusion pressure."),skill("thousand_masks",100,"千面假相","Thousand Masks","大规模幻象冲击，扰乱识别。","Mass illusion assault that scrambles recognition.")] },
+  iron_forge: { title: zhen("铁炉巨像", "Iron Forge Colossus"), element: zhen("熔炉", "forge"), baseGain: 15, skillWeights: { iron_slag: 10, anvil_slam: 12, furnace_core: 14, heavy_press: 16, steelflame_domain: 18 }, skills: [skill("iron_slag",20,"铁渣锻铸","Iron Slag","在棋盘上锻造新的炽热障碍。","Forges new hot blockers onto the board."),skill("anvil_slam",40,"铁砧重击","Anvil Slam","以巨力压制多枚格子。","Pins several tiles with crushing force."),skill("furnace_core",60,"熔炉核心","Furnace Core","从炉心喷出热量与障碍。","Adds heat and blockers from the forge heart."),skill("heavy_press",80,"重压冲床","Heavy Press","极大压缩空间，形成封锁。","Compresses space with serious board lockdown."),skill("steelflame_domain",100,"钢焰领域","Steelflame Domain","大范围熔炉压制并附带障碍与锁定。","Mass forge pressure with obstacles and locks.")] },
+  eclipse_sanctum: { title: zhen("蚀光炽天使", "Eclipse Seraph"), element: zhen("光暗", "light-dark"), baseGain: 16, skillWeights: { radiance_mark: 10, eclipse_wing: 12, judgment_wheel: 14, abyss_gaze: 16, revelation_zero: 18 }, skills: [skill("radiance_mark",20,"辉耀印记","Radiance Mark","以圣光施压并提高棋盘税负。","Brands gems with light pressure and board tax."),skill("eclipse_wing",40,"蚀翼横扫","Eclipse Wing","用锁定感极强的圣影掠过棋盘。","Sweeps the board with lock-heavy holy shadow."),skill("judgment_wheel",60,"审判轮回","Judgment Wheel","以双相打击重判棋盘颜色。","Rejudges board colors in a dual-phase strike."),skill("abyss_gaze",80,"深渊凝视","Abyss Gaze","以黑暗封锁开启虚空压力。","Opens void pressure with dark lockdown."),skill("revelation_zero",100,"启示归零","Revelation Zero","大规模光暗处决，伴随严重干扰。","Mass light-dark execution with severe disruption.")] },
+  void_throne: { title: zhen("虚空龙帝", "Void Dragon Emperor"), element: zhen("虚空", "void"), baseGain: 18, skillWeights: { void_scale: 10, dragon_breath: 12, world_crack: 14, emperor_decree: 16, star_abyss_end: 18 }, skills: [skill("void_scale",20,"虚空鳞蚀","Void Scale","对小范围施加混合虚空腐化。","Applies mixed void corruption to a small area."),skill("dragon_breath",40,"龙息横灼","Dragon Breath","一口龙息横扫整条路径。","A sweeping breath that scorches a full lane."),skill("world_crack",60,"裂界崩痕","World Crack","以虚空裂隙撕开棋盘。","Splits the board with void tears and warped gems."),skill("emperor_decree",80,"帝皇敕令","Emperor Decree","一次号令中叠加多个章节威胁。","Combines multiple chapter threats in one order."),skill("star_abyss_end",100,"星渊终末","Star Abyss End","终局级虚空灾变爆发。","Final catastrophic void burst with mixed endgame pressure.")] },
 };
