@@ -196,10 +196,12 @@ import { createI18n } from "./src/ui/i18n.js";
   let guideActive = false;
   let itemAnimFrameIndex = 0;
   let itemAnimTimer = null;
+  let bossHudTimer = null;
   const audio = createAudioManager();
 
   bindEvents();
   startItemIconAnimation();
+  startBossHudTicker();
   startRun();
 
   function createInitialState() {
@@ -238,6 +240,16 @@ import { createI18n } from "./src/ui/i18n.js";
       itemAnimFrameIndex = (itemAnimFrameIndex + 1) % 8;
       syncAnimatedItemImages(document);
     }, 145);
+  }
+
+  function startBossHudTicker() {
+    if (bossHudTimer) clearInterval(bossHudTimer);
+    bossHudTimer = setInterval(() => {
+      if (state?.selectedChapter && !state.gameOver && !state.victory) {
+        renderHUD();
+        renderBossSkillbook();
+      }
+    }, 250);
   }
 
   function hasItemType(id) {
@@ -850,6 +862,8 @@ import { createI18n } from "./src/ui/i18n.js";
       : (i18n.getLanguage() === "zh-CN" ? `${lt(theme.bossName)}正在积蓄${lt(bossProfile.element)}能量 - ${lt(threat.label)}` : `${lt(theme.bossName)} gathers ${lt(bossProfile.element)} energy - ${lt(threat.label)}`);
     state.boss.phase = "charging";
     state.boss.casting = false;
+    state.boss.lastActionEndedAt = Date.now();
+    state.boss.pendingIdleMs = 0;
 
     overlayEl.classList.add("hidden");
     if (overlayActionsEl) overlayActionsEl.innerHTML = "";
@@ -869,6 +883,7 @@ import { createI18n } from "./src/ui/i18n.js";
       ? `第 ${state.floor} 层开始：${lt(theme.title)} / ${state.routePlan.title} / ${lt(state.modifier.name)} / ${lt(threat.label)}。`
       : `Floor ${state.floor} begins: ${lt(theme.title)} / ${state.routePlan.title} / ${lt(state.modifier.name)} / ${lt(threat.label)}.`, "ok");
     scanGuideDiscoveries();
+    maybeShowBossChargeGuide();
   }
 
   function getFloorThreat(floor) {
@@ -893,31 +908,72 @@ import { createI18n } from "./src/ui/i18n.js";
     return Math.max(6, base + threat + elite - blessing - permanentDampener);
   }
 
+  function getBossChargeRatePerSecond() {
+    return Math.max(4, Math.round(getBossEnergyGain() * 0.5));
+  }
+
+  function getBossIdleChargeGain(idleMs = 0) {
+    if (!idleMs || idleMs <= 0) return 0;
+    return Math.max(0, Math.floor((idleMs / 1000) * getBossChargeRatePerSecond()));
+  }
+
+  function getBossDisplayedCharge() {
+    const base = Number(state.boss.charge || 0);
+    if (state.boss.casting || inputLocked || state.gameOver || state.victory) return Math.min(state.boss.max, base);
+    const idleMs = Math.max(0, Date.now() - Number(state.boss.lastActionEndedAt || Date.now()));
+    return Math.min(state.boss.max, base + getBossIdleChargeGain(idleMs));
+  }
+
   function getAvailableBossSkills() {
     const profile = getBossProfile();
     const skills = Array.isArray(profile.skills) ? profile.skills : [];
-    return skills.filter((skill) => state.boss.charge >= skill.cost);
+    const charge = getBossDisplayedCharge();
+    return skills.filter((skill) => charge >= skill.cost);
   }
 
   function pickBossSkill() {
-    const profile = getBossProfile();
     const available = getAvailableBossSkills();
     if (available.length === 0) return null;
-    const bag = [];
-    for (const skill of available) {
-      const weight = Number(profile.skillWeights?.[skill.id] || 10) + Math.floor(skill.cost / 20) * 2;
-      for (let i = 0; i < weight; i += 1) bag.push(skill);
-    }
-    return randomPick(bag);
+    return available[available.length - 1] || null;
   }
 
   function getBossThreatLevel() {
-    if (state.boss.charge >= 100) return 5;
-    if (state.boss.charge >= 80) return 4;
-    if (state.boss.charge >= 60) return 3;
-    if (state.boss.charge >= 40) return 2;
-    if (state.boss.charge >= 20) return 1;
+    const charge = getBossDisplayedCharge();
+    if (charge >= 100) return 5;
+    if (charge >= 80) return 4;
+    if (charge >= 60) return 3;
+    if (charge >= 40) return 2;
+    if (charge >= 20) return 1;
     return 0;
+  }
+
+  function beginPlayerAction() {
+    state.boss.pendingIdleMs = Math.max(0, Date.now() - Number(state.boss.lastActionEndedAt || Date.now()));
+  }
+
+  function finishPlayerAction() {
+    state.boss.lastActionEndedAt = Date.now();
+    state.boss.pendingIdleMs = 0;
+  }
+
+  function maybeShowBossChargeGuide() {
+    if (meta.codex.guideSeen.boss_charge_rule) return false;
+    meta.codex.guideSeen.boss_charge_rule = 1;
+    saveMeta();
+    overlayTitleEl.textContent = t("bossGuideTitle");
+    overlayDescEl.textContent = t("bossGuideDesc");
+    choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = `<button type="button" class="btn overlay-btn" data-action="boss-guide-close">${t("bossGuideAction")}</button>`;
+    const btn = overlayActionsEl.querySelector('[data-action="boss-guide-close"]');
+    if (btn) {
+      btn.addEventListener("click", () => {
+        overlayEl.classList.add("hidden");
+        finishPlayerAction();
+        renderAll();
+      });
+    }
+    overlayEl.classList.remove("hidden");
+    return true;
   }
 
   function applyThemeVisuals(theme) {
@@ -1098,6 +1154,7 @@ import { createI18n } from "./src/ui/i18n.js";
     }
 
     inputLocked = true;
+    beginPlayerAction();
     audio.play("swap");
     await playSwapAnimation(a, b);
 
@@ -1136,6 +1193,7 @@ import { createI18n } from "./src/ui/i18n.js";
     }
 
     inputLocked = true;
+    beginPlayerAction();
     audio.play("itemCast");
     spendItemCharge(item);
     state.mode = { type: "normal", item: null };
@@ -1187,6 +1245,7 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   async function useShuffle() {
+    beginPlayerAction();
     audio.play("itemCast", { volume: 0.34, rate: 0.95 });
     const power = itemPower("shuffle");
     const gems = collectIndices(isGem).map((i) => state.board[i]);
@@ -1318,6 +1377,7 @@ import { createI18n } from "./src/ui/i18n.js";
     decayTaxColor();
     if (state.feverTurns > 0) state.feverTurns -= 1;
     await tickBoss();
+    finishPlayerAction();
     checkFloorState();
     renderAll();
     scanGuideDiscoveries();
@@ -1471,15 +1531,23 @@ import { createI18n } from "./src/ui/i18n.js";
 
   async function tickBoss() {
     if (state.gameOver || state.victory || state.boss.casting) return;
-    const gain = getBossEnergyGain();
+    const idleMs = Number(state.boss.pendingIdleMs || 0);
+    const gain = getBossIdleChargeGain(idleMs);
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
     state.boss.phase = state.boss.charge >= 20 ? "ready" : "charging";
-    if (state.boss.charge < 20) return;
+    if (state.boss.charge < 20) {
+      state.boss.hint = gain > 0
+        ? t("bossIdleHint", { seconds: (idleMs / 1000).toFixed(1), charge: gain })
+        : (i18n.getLanguage() === "zh-CN" ? "Boss 正在等待你停手蓄能" : "The boss is waiting to charge while you idle");
+      return;
+    }
 
     state.boss.casting = true;
     state.boss.phase = "ready";
-    state.boss.hint = i18n.getLanguage() === "zh-CN" ? `Boss 能量达到 ${state.boss.charge}/100` : `Boss energy reached ${state.boss.charge}/100`;
-    notify(i18n.getLanguage() === "zh-CN" ? "Boss 即将施法！" : "Boss is about to cast!", "warn");
+    state.boss.hint = i18n.getLanguage() === "zh-CN"
+      ? `Boss 在你停手 ${(idleMs / 1000).toFixed(1)} 秒后蓄能至 ${state.boss.charge}/100`
+      : `The boss charged to ${state.boss.charge}/100 after ${(idleMs / 1000).toFixed(1)}s of idle time`;
+    notify(i18n.getLanguage() === "zh-CN" ? "你一出手，Boss 就跟着出招了！" : "You acted, and the boss answered immediately!", "warn");
     audio.play("bossCast", { volume: 0.24, rate: 0.84 });
     boardWrapEl.classList.add("boss-telegraph");
     renderAll();
@@ -3016,28 +3084,31 @@ import { createI18n } from "./src/ui/i18n.js";
     momentumBarEl.style.width = `${(state.momentum / MOMENTUM_MAX) * 100}%`;
     feverTurnsEl.textContent = `${t("fever")} ${state.feverTurns}`;
 
-    const bossPct = Math.max(0, Math.min(100, (state.boss.charge / state.boss.max) * 100));
+    const displayedCharge = getBossDisplayedCharge();
+    const bossPct = Math.max(0, Math.min(100, (displayedCharge / state.boss.max) * 100));
     if (bossBarEl) bossBarEl.style.width = `${bossPct}%`;
     if (bossSkillHintEl) {
-      const nextSkills = getAvailableBossSkills().map((skill) => `${skill.name}(${skill.cost})`).join(" · ");
+      const nextSkills = getAvailableBossSkills().map((skill) => `${lt(skill.name)}(${skill.cost})`).join(" · ");
       bossSkillHintEl.textContent = nextSkills ? `${state.boss.hint} · ${t("readyPrefix")}${nextSkills}` : state.boss.hint;
     }
     if (bossTitleEl) bossTitleEl.textContent = lt(state.boss.elite ? state.floorTheme.eliteBossName : state.floorTheme.bossName);
     if (bossStateEl) {
       const profile = getBossProfile();
       const tier = getBossThreatLevel();
+      const charge = getBossDisplayedCharge();
       bossStateEl.textContent = state.boss.casting
-          ? (i18n.getLanguage() === "zh-CN" ? `正在于${lt(state.floorTheme.shortLabel)}施放${lt(profile.element)}技能` : `Casting ${lt(profile.element)} skill in ${lt(state.floorTheme.shortLabel)}`)
-          : state.boss.phase === "ready"
-            ? (i18n.getLanguage() === "zh-CN" ? `能量等级 ${tier}/5，准备出击` : `Energy tier ${tier}/5 ready to strike`)
-            : (i18n.getLanguage() === "zh-CN" ? `正在通过${lt(state.floorTheme.title)}积蓄${lt(profile.element)}之力` : `Charging ${lt(profile.element)} power through ${lt(state.floorTheme.title)}`);
+          ? t("bossCastingNow", { name: lt(state.floorTheme.shortLabel), element: lt(profile.element) })
+          : charge >= 20
+            ? t("bossReadyTier", { tier })
+            : t("bossChargingIdle");
     }
     if (bossThreatEl) bossThreatEl.textContent = getBossThreatLabel();
     if (bossPatternEl) {
       const profile = getBossProfile();
+      const charge = getBossDisplayedCharge();
       bossPatternEl.textContent = state.boss.elite
-        ? `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} elite / ${state.boss.charge}/100`
-        : `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} / ${state.boss.charge}/100`;
+        ? `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} elite / ${charge}/100`
+        : `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} / ${charge}/100`;
     }
     if (modifierEl) modifierEl.textContent = state.modifier ? `${lt(state.floorTheme.shortLabel)} · ${state.routePlan.title} · ${lt(state.modifier.name)} · ${state.activeGemColors.length}C` : `${lt(state.floorTheme.shortLabel)} · ${state.routePlan.title} · ${state.activeGemColors.length}C`;
     if (bossMeterEl) {
@@ -3054,7 +3125,7 @@ import { createI18n } from "./src/ui/i18n.js";
   function renderBossSkillbook() {
     if (!bossSkillbookListEl) return;
     const profile = getBossProfile();
-    const charge = Number(state.boss.charge || 0);
+    const charge = getBossDisplayedCharge();
     bossSkillbookListEl.innerHTML = "";
 
     for (const skill of profile.skills || []) {
