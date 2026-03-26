@@ -1,15 +1,17 @@
 export const MAX_ITEM_TYPES = 5;
 
+const zhen = (zh, en) => ({ zh, en });
+
 export const ITEM_DEFS = {
-  hammer: { name: "Hammer", image: "./assets/generated/items/item_hammer.png", desc: "Break a single tile", target: true, rarity: "common" },
-  row: { name: "Row Sweep", image: "./assets/generated/items/item_row_sweep.png", desc: "Clear one full row", target: true, rarity: "common" },
-  cross: { name: "Cross Burst", image: "./assets/generated/items/item_cross_burst.png", desc: "Clear row and column", target: true, rarity: "rare" },
-  color: { name: "Color Bomb", image: "./assets/generated/items/item_color_bomb.png", desc: "Clear the chosen color", target: true, rarity: "rare" },
-  shuffle: { name: "Shuffle", image: "./assets/generated/items/item_shuffle.png", desc: "Re-roll the board", target: false, rarity: "common" },
-  screen_wipe: { name: "Screen Pulse", image: "./assets/generated/items/item_screen_pulse.png", desc: "Instantly clear every gem", target: false, rarity: "epic" },
-  rainbow_burst: { name: "Rainbow Burst", image: "./assets/generated/items/item_rainbow_burst.png", desc: "Clear two random colors and trigger specials", target: false, rarity: "epic" },
-  time_freeze: { name: "Time Freeze", image: "./assets/generated/items/item_time_freeze.png", desc: "Gain moves, unlock gems, and stabilize momentum", target: false, rarity: "epic" },
-  boss_breaker: { name: "Boss Breaker", image: "./assets/generated/items/item_boss_breaker.png", desc: "Smash charge and shatter a wide section of the board", target: false, rarity: "legendary" },
+  hammer: { name: zhen("锤子", "Hammer"), image: "./assets/generated/items/item_hammer.png", desc: zhen("破坏一个格子", "Break a single tile"), target: true, rarity: "common" },
+  row: { name: zhen("横扫", "Row Sweep"), image: "./assets/generated/items/item_row_sweep.png", desc: zhen("清除一整行", "Clear one full row"), target: true, rarity: "common" },
+  cross: { name: zhen("十字爆发", "Cross Burst"), image: "./assets/generated/items/item_cross_burst.png", desc: zhen("清除一行一列", "Clear row and column"), target: true, rarity: "rare" },
+  color: { name: zhen("彩色炸弹", "Color Bomb"), image: "./assets/generated/items/item_color_bomb.png", desc: zhen("清除选中颜色", "Clear the chosen color"), target: true, rarity: "rare" },
+  shuffle: { name: zhen("洗牌", "Shuffle"), image: "./assets/generated/items/item_shuffle.png", desc: zhen("重新洗盘", "Re-roll the board"), target: false, rarity: "common" },
+  screen_wipe: { name: zhen("全屏脉冲", "Screen Pulse"), image: "./assets/generated/items/item_screen_pulse.png", desc: zhen("立即清除所有宝石", "Instantly clear every gem"), target: false, rarity: "epic" },
+  rainbow_burst: { name: zhen("彩虹爆发", "Rainbow Burst"), image: "./assets/generated/items/item_rainbow_burst.png", desc: zhen("清除两种随机颜色并触发特殊效果", "Clear two random colors and trigger specials"), target: false, rarity: "epic" },
+  time_freeze: { name: zhen("时间冻结", "Time Freeze"), image: "./assets/generated/items/item_time_freeze.png", desc: zhen("获得步数、解锁宝石并稳定动量", "Gain moves, unlock gems, and stabilize momentum"), target: false, rarity: "epic" },
+  boss_breaker: { name: zhen("Boss 粉碎者", "Boss Breaker"), image: "./assets/generated/items/item_boss_breaker.png", desc: zhen("砸碎充能并击碎棋盘大范围区域", "Smash charge and shatter a wide section of the board"), target: false, rarity: "legendary" },
 };
 
 export const ITEM_ANIM_FRAMES = {
@@ -27,4 +29,9 @@ export const ITEM_ANIM_FRAMES = {
 export const ITEM_ORDER = ["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker"];
 export const ITEM_BASE_COUNTS = { hammer: 2, shuffle: 1 };
 export const ITEM_BASE_LEVEL = 1;
-export const RARITY_LABELS = { common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary" };
+export const RARITY_LABELS = {
+  common: zhen("普通", "Common"),
+  rare: zhen("稀有", "Rare"),
+  epic: zhen("史诗", "Epic"),
+  legendary: zhen("传说", "Legendary"),
+};

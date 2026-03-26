@@ -1,5 +1,6 @@
 const DEFAULT_AUDIO_STATE = {
   muted: false,
+  masterVolume: 1,
 };
 
 export function createAudioManager({ storage = window.localStorage, storageKey = "rogue-match3-audio" } = {}) {
@@ -48,7 +49,7 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
     musicEl = new Audio(cfg.src);
     musicEl.loop = true;
     musicEl.preload = "auto";
-    musicEl.volume = cfg.volume;
+    musicEl.volume = cfg.volume * state.masterVolume;
     musicEl.muted = state.muted;
     return musicEl;
   }
@@ -58,6 +59,13 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
     toggleButton.textContent = state.muted ? "🔇 Muted" : "🔊 Audio";
     toggleButton.setAttribute("aria-pressed", state.muted ? "false" : "true");
     toggleButton.dataset.muted = state.muted ? "true" : "false";
+  }
+
+  function syncMusicVolume() {
+    if (!musicEl) return;
+    const cfg = manifest.bgm;
+    musicEl.volume = (cfg.volume ?? 0.3) * state.masterVolume;
+    musicEl.muted = state.muted;
   }
 
   async function unlock() {
@@ -100,7 +108,7 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
   async function toggleMute(forceMuted = !state.muted) {
     state.muted = Boolean(forceMuted);
     saveState();
-    if (musicEl) musicEl.muted = state.muted;
+    syncMusicVolume();
     syncToggleButton();
     if (state.muted) {
       stopMusic();
@@ -137,11 +145,24 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
 
     const audio = new Audio(cfg.src);
     audio.preload = "auto";
-    audio.volume = Math.max(0, Math.min(1, options.volume ?? cfg.volume ?? 0.4));
+    const baseVolume = Math.max(0, Math.min(1, options.volume ?? cfg.volume ?? 0.4));
+    audio.volume = Math.max(0, Math.min(1, baseVolume * state.masterVolume));
     audio.playbackRate = Math.max(0.65, Math.min(1.5, options.rate ?? 1));
     audio.currentTime = 0;
     audio.play().catch(() => {});
     return audio;
+  }
+
+  function setMasterVolume(nextVolume) {
+    const value = Math.max(0, Math.min(1, Number(nextVolume) || 0));
+    state.masterVolume = value;
+    saveState();
+    syncMusicVolume();
+    return state.masterVolume;
+  }
+
+  function getMasterVolume() {
+    return Number(state.masterVolume ?? 1);
   }
 
   return {
@@ -152,6 +173,8 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
     startMusic,
     stopMusic,
     toggleMute,
+    setMasterVolume,
+    getMasterVolume,
     isMuted: () => state.muted,
     syncToggleButton,
   };

@@ -8,6 +8,8 @@ export function renderItemsView({
   getAnimatedItemImage,
   MAX_ITEM_TYPES,
   UI_IMAGES,
+  t,
+  lt,
 }) {
   itemWrapEl.innerHTML = "";
   const carried = getCarriedItems();
@@ -20,19 +22,19 @@ export function renderItemsView({
     if (state.mode.type === "target_item" && state.mode.item === id) btn.classList.add("active");
     if (getItemCount(id) <= 0) btn.classList.add("disabled");
     btn.classList.add(`rarity-${ITEM_DEFS[id].rarity}`);
-    btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${ITEM_DEFS[id].name}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">Lv.${getItemLevel(id)}</i><strong>${ITEM_DEFS[id].name}</strong>`;
+    btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${lt(ITEM_DEFS[id].name)}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">${t("itemLevel", { level: getItemLevel(id) })}</i><strong>${lt(ITEM_DEFS[id].name)}</strong>`;
     itemWrapEl.appendChild(btn);
   }
 
   for (let i = carried.length; i < MAX_ITEM_TYPES; i += 1) {
     const slot = document.createElement("div");
     slot.className = "ability disabled empty-slot";
-    slot.innerHTML = `<div class="item-icon empty-item-slot"><img class="empty-slot-image" src="${UI_IMAGES.emptySlot}" alt="Empty slot"></div><strong>Empty Slot</strong><small>New item types can be drafted here.</small>`;
+    slot.innerHTML = `<div class="item-icon empty-item-slot"><img class="empty-slot-image" src="${UI_IMAGES.emptySlot}" alt="${t("emptySlot")}"></div><strong>${t("emptySlot")}</strong><small>${t("emptySlotDesc")}</small>`;
     itemWrapEl.appendChild(slot);
   }
 }
 
-export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, RARITY_LABELS }) {
+export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, RARITY_LABELS, t, lt }) {
   if (!perkWrapEl) return;
   perkWrapEl.innerHTML = "";
   const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
@@ -47,7 +49,7 @@ export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, R
   if (owned.length === 0 && blessings.length === 0) {
     const empty = document.createElement("div");
     empty.className = "perk-empty";
-    empty.textContent = "Draft rogue skills after each floor to shape your run.";
+    empty.textContent = t("draftSkillsEmpty");
     perkWrapEl.appendChild(empty);
     return;
   }
@@ -55,14 +57,14 @@ export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, R
   for (const [, def] of blessings) {
     const el = document.createElement("div");
     el.className = `perk-chip rarity-${def.rarity}`;
-    el.innerHTML = `<span>Blessing</span><strong>${def.title}</strong><small>${def.desc}</small>`;
+    el.innerHTML = `<span>${t("blessing")}</span><strong>${lt(def.title)}</strong><small>${lt(def.desc)}</small>`;
     perkWrapEl.appendChild(el);
   }
 
   for (const [, def] of owned) {
     const el = document.createElement("div");
     el.className = `perk-chip rarity-${def.rarity}`;
-    el.innerHTML = `<span>${RARITY_LABELS[def.rarity]}</span><strong>${def.title}</strong><small>${def.desc}</small>`;
+    el.innerHTML = `<span>${lt(RARITY_LABELS[def.rarity])}</span><strong>${lt(def.title)}</strong><small>${lt(def.desc)}</small>`;
     perkWrapEl.appendChild(el);
   }
 }

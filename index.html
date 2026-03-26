@@ -8,6 +8,7 @@
   </head>
   <body>
     <div id="chapterScreen" class="chapter-screen hidden">
+      <button id="chapterSettingsBtn" class="settings-fab corner-btn" type="button" aria-label="Open settings">⚙</button>
       <div id="chapterShell" class="chapter-shell">
         <div class="chapter-header">
           <h1>Choose Chapter</h1>
@@ -18,6 +19,7 @@
     </div>
 
     <div id="appRoot" class="app hidden">
+      <button id="appSettingsBtn" class="settings-fab corner-btn" type="button" aria-label="Open settings">⚙</button>
       <aside class="panel left-panel">
         <div class="title-block">
           <img src="./assets/generated/ui/logo_rogue_match3_crest.png" alt="Rogue Match-3 crest" class="title-crest" />
@@ -135,6 +137,7 @@
 
     <div id="overlay" class="overlay hidden" role="dialog" aria-modal="true">
       <div class="modal">
+        <button id="overlaySettingsBtn" class="settings-fab modal-corner-btn" type="button" aria-label="Open settings">⚙</button>
         <h3 id="overlayTitle">Choose a reward</h3>
         <p id="overlayDesc">Clear floors to gain items, perks, and run-defining boosts.</p>
         <div id="choiceWrap" class="choices"></div>
@@ -144,6 +147,7 @@
 
     <div id="guideModal" class="overlay hidden" role="dialog" aria-modal="true">
       <div class="modal guide-modal">
+        <button id="guideSettingsBtn" class="settings-fab modal-corner-btn" type="button" aria-label="Open settings">⚙</button>
         <h3 id="guideModalTitle">Tile Guide</h3>
         <p id="guideModalDesc">Every tile type and board condition is listed here.</p>
         <div id="guideModalContent" class="guide-modal-content"></div>
@@ -155,11 +159,40 @@
 
     <div id="codexModal" class="overlay hidden" role="dialog" aria-modal="true">
       <div class="modal">
+        <button id="codexSettingsBtn" class="settings-fab modal-corner-btn" type="button" aria-label="Open settings">⚙</button>
         <h3>Codex Stats</h3>
         <p>Track your triggers, item usage, and best run moments across all sessions.</p>
         <div id="codexContent" class="codex"></div>
         <div class="actions-row" style="margin-top:10px;">
           <button id="codexCloseBtn" class="btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="settingsModal" class="overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal settings-modal">
+        <button id="settingsCloseBtn" class="settings-close-btn" type="button" aria-label="Close settings">✕</button>
+        <h3 id="settingsTitle">Settings</h3>
+        <p id="settingsDesc">Adjust language and audio for your run.</p>
+        <div class="settings-section">
+          <div class="settings-label-row">
+            <strong id="settingsLanguageLabel">Language</strong>
+            <small id="settingsLanguageHint">Applied immediately across the UI</small>
+          </div>
+          <div class="lang-switch" id="languageSwitch">
+            <button id="langZhBtn" class="mini-btn lang-btn" type="button" data-lang="zh-CN">简体中文</button>
+            <button id="langEnBtn" class="mini-btn lang-btn" type="button" data-lang="en">English</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-label-row">
+            <strong id="settingsVolumeLabel">Volume</strong>
+            <small id="settingsVolumeValue">100%</small>
+          </div>
+          <input id="volumeSlider" class="volume-slider" type="range" min="0" max="100" step="1" value="100" />
+          <div class="settings-inline-actions">
+            <button id="settingsMuteBtn" class="btn" type="button">Mute</button>
+          </div>
         </div>
       </div>
     </div>

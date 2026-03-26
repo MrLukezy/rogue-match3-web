@@ -2,8 +2,10 @@ export function getDomRefs(doc = document) {
   return {
     appRootEl: doc.getElementById("appRoot"),
     chapterScreenEl: doc.getElementById("chapterScreen"),
+    chapterSettingsBtn: doc.getElementById("chapterSettingsBtn"),
     chapterShellEl: doc.getElementById("chapterShell"),
     chapterListEl: doc.getElementById("chapterList"),
+    appSettingsBtn: doc.getElementById("appSettingsBtn"),
     floorEl: doc.getElementById("floor"),
     modifierEl: doc.getElementById("modifier"),
     movesLeftEl: doc.getElementById("movesLeft"),
@@ -37,18 +39,34 @@ export function getDomRefs(doc = document) {
     itemWrapEl: doc.getElementById("itemWrap"),
     perkWrapEl: doc.getElementById("perkWrap"),
     overlayEl: doc.getElementById("overlay"),
+    overlaySettingsBtn: doc.getElementById("overlaySettingsBtn"),
     overlayTitleEl: doc.getElementById("overlayTitle"),
     overlayDescEl: doc.getElementById("overlayDesc"),
     choiceWrapEl: doc.getElementById("choiceWrap"),
     overlayActionsEl: doc.getElementById("overlayActions"),
     codexModalEl: doc.getElementById("codexModal"),
+    codexSettingsBtn: doc.getElementById("codexSettingsBtn"),
     codexContentEl: doc.getElementById("codexContent"),
     codexCloseBtn: doc.getElementById("codexCloseBtn"),
     guideModalEl: doc.getElementById("guideModal"),
+    guideSettingsBtn: doc.getElementById("guideSettingsBtn"),
     guideModalTitleEl: doc.getElementById("guideModalTitle"),
     guideModalDescEl: doc.getElementById("guideModalDesc"),
     guideModalContentEl: doc.getElementById("guideModalContent"),
     guideCloseBtn: doc.getElementById("guideCloseBtn"),
+    settingsModalEl: doc.getElementById("settingsModal"),
+    settingsTitleEl: doc.getElementById("settingsTitle"),
+    settingsDescEl: doc.getElementById("settingsDesc"),
+    settingsLanguageLabelEl: doc.getElementById("settingsLanguageLabel"),
+    settingsLanguageHintEl: doc.getElementById("settingsLanguageHint"),
+    settingsVolumeLabelEl: doc.getElementById("settingsVolumeLabel"),
+    settingsVolumeValueEl: doc.getElementById("settingsVolumeValue"),
+    settingsCloseBtn: doc.getElementById("settingsCloseBtn"),
+    settingsMuteBtn: doc.getElementById("settingsMuteBtn"),
+    volumeSliderEl: doc.getElementById("volumeSlider"),
+    languageSwitchEl: doc.getElementById("languageSwitch"),
+    langZhBtn: doc.getElementById("langZhBtn"),
+    langEnBtn: doc.getElementById("langEnBtn"),
   };
 }
 
@@ -62,6 +80,9 @@ export function bindCoreEvents({
   guideCloseBtn,
   codexModalEl,
   guideModalEl,
+  settingsModalEl,
+  settingsButtons = [],
+  settingsCloseBtn,
   startRun,
   onBoardClick,
   onItemClick,
@@ -70,9 +91,12 @@ export function bindCoreEvents({
   openCodex,
   openGuidePanel,
   closeGuideModal,
+  openSettings,
+  closeSettings,
+  getRestartConfirmText = () => "Restart the run?",
 }) {
   restartBtn.addEventListener("click", () => {
-    if (window.confirm("Restart the run?")) startRun();
+    if (window.confirm(getRestartConfirmText())) startRun();
   });
   boardEl.addEventListener("click", onBoardClick);
   itemWrapEl.addEventListener("click", onItemClick);
@@ -83,6 +107,10 @@ export function bindCoreEvents({
   if (guideBtn) guideBtn.addEventListener("click", openGuidePanel);
   if (codexCloseBtn) codexCloseBtn.addEventListener("click", () => codexModalEl.classList.add("hidden"));
   if (guideCloseBtn) guideCloseBtn.addEventListener("click", closeGuideModal);
+  for (const btn of settingsButtons) {
+    if (btn) btn.addEventListener("click", openSettings);
+  }
+  if (settingsCloseBtn) settingsCloseBtn.addEventListener("click", closeSettings);
   if (codexModalEl) {
     codexModalEl.addEventListener("click", (e) => {
       if (e.target === codexModalEl) codexModalEl.classList.add("hidden");
@@ -91,6 +119,11 @@ export function bindCoreEvents({
   if (guideModalEl) {
     guideModalEl.addEventListener("click", (e) => {
       if (e.target === guideModalEl) closeGuideModal();
+    });
+  }
+  if (settingsModalEl) {
+    settingsModalEl.addEventListener("click", (e) => {
+      if (e.target === settingsModalEl) closeSettings();
     });
   }
 }
