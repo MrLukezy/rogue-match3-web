@@ -5,6 +5,7 @@ export const GUIDE_DEFS = {
   obstacle: { title: zhen("障碍块", "Obstacle Block"), desc: zhen("不能交换。清除相邻宝石或使用道具破坏它。", "Cannot be swapped. Clear adjacent gems or use items to break it."), preview: { kind: "obstacle" } },
   glass: { title: zhen("玻璃层", "Glass Layer"), desc: zhen("第一次清除会打碎玻璃，第二次才会清除宝石本体。", "The first clear removes the glass, the second clear removes the gem itself."), preview: { kind: "gem", color: 1, glass: true } },
   burning: { title: zhen("灼伤宝石", "Burning Gem"), desc: zhen("被火焰点燃的宝石第一次清除只会熄火；若本回合没被消掉，下回合会继续灼烧周围宝石。", "The first clear only snuffs the flames on a burning gem; if it survives the turn, it scorches nearby gems next turn."), preview: { kind: "gem", color: 0, burning: true } },
+  poisoned: { title: zhen("感染宝石", "Poisoned Gem"), desc: zhen("感染会持续数回合；若不处理，会在回合后向周围扩散。", "Poison lasts for several turns and spreads to nearby gems if left untreated."), preview: { kind: "gem", color: 2, poisonedTurns: 2 } },
   locked: { title: zhen("锁定宝石", "Locked Gem"), desc: zhen("锁定宝石会停留在原位，直到锁定回合结束前都无法交换。", "Locked gems stay in place and cannot be swapped until the lock expires."), preview: { kind: "gem", color: 2, locked: true } },
   line_h: { title: zhen("横向宝石", "Row Gem"), desc: zhen("触发时清除整条横向线路。", "Clears a full horizontal lane when triggered."), preview: { kind: "gem", color: 3, special: "line_h" } },
   line_v: { title: zhen("纵向宝石", "Column Gem"), desc: zhen("触发时清除整条纵向线路。", "Clears a full vertical lane when triggered."), preview: { kind: "gem", color: 3, special: "line_v" } },

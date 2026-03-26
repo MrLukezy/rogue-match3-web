@@ -26,11 +26,13 @@ export function renderBoardView({
       cell.appendChild(block);
     } else if (isGem(value)) {
       if (value.burning) cell.classList.add("cell-burning");
+      if (value.frozen) cell.classList.add("cell-frozen");
       const gem = document.createElement("div");
       gem.className = `gem g-${value.color}`;
       if (value.special) gem.classList.add(`sp-${value.special}`);
       if (value.glass) gem.classList.add("glass");
       if (value.burning) gem.classList.add("burning");
+      if (value.frozen) gem.classList.add("frozen");
       if (value.lockedTurns > 0) gem.classList.add("locked");
       if (fallAnim.has(i)) gem.classList.add("fall-in");
 
@@ -50,6 +52,21 @@ export function renderBoardView({
         burnTag.className = "gem-status burn";
         burnTag.textContent = "SCORCH";
         gem.appendChild(burnTag);
+      }
+
+      if (value.poisonedTurns > 0) {
+        gem.classList.add("poisoned");
+        const poisonTag = document.createElement("span");
+        poisonTag.className = "gem-status poison";
+        poisonTag.textContent = `POISON ${value.poisonedTurns}`;
+        gem.appendChild(poisonTag);
+      }
+
+      if (value.frozen) {
+        const frozenTag = document.createElement("span");
+        frozenTag.className = "gem-status frozen";
+        frozenTag.textContent = "FROZEN";
+        gem.appendChild(frozenTag);
       }
 
       cell.appendChild(gem);

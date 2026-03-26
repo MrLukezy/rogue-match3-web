@@ -924,6 +924,13 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   box-shadow: inset 0 0 12px rgba(255, 128, 72, 0.14), 0 0 10px rgba(255, 98, 44, 0.12);
 }
 
+.cell.cell-frozen {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(205, 244, 255, 0.28) 0%, rgba(168, 224, 255, 0.12) 34%, rgba(168, 224, 255, 0) 62%),
+    linear-gradient(180deg, #162533 0%, #121c2c 100%);
+  box-shadow: inset 0 0 18px rgba(174, 230, 255, 0.18), 0 0 14px rgba(142, 214, 255, 0.16);
+}
+
 .gem.burning {
   filter: saturate(1.2) brightness(1.08) contrast(1.03);
 }
@@ -970,6 +977,41 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   transform: scale(1.04);
 }
 
+.gem.poisoned::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 10px;
+  border: 2px solid rgba(112, 217, 121, 0.55);
+  box-shadow: 0 0 8px rgba(86, 188, 110, 0.24), inset 0 0 8px rgba(86, 188, 110, 0.16);
+}
+
+.gem.frozen::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  border: 2px solid rgba(196, 240, 255, 0.94);
+  background:
+    linear-gradient(135deg, rgba(226, 248, 255, 0.16), rgba(110, 182, 240, 0.1)),
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.12) 0 4px, rgba(178, 226, 255, 0.04) 4px 8px);
+  box-shadow: 0 0 14px rgba(173, 229, 255, 0.46), inset 0 0 14px rgba(225, 247, 255, 0.2);
+}
+
+.gem-status.poison {
+  color: #eaffea;
+  background: linear-gradient(180deg, rgba(136, 228, 151, 0.9), rgba(52, 133, 74, 0.86));
+  box-shadow: 0 0 6px rgba(74, 170, 96, 0.24);
+  transform: scale(1.02);
+}
+
+.gem-status.frozen {
+  color: #eefbff;
+  background: linear-gradient(180deg, rgba(212, 243, 255, 0.96), rgba(115, 184, 232, 0.9));
+  box-shadow: 0 0 8px rgba(170, 226, 255, 0.34);
+  transform: scale(1.04);
+}
+
 .gem.glass::after {
   content: "";
   position: absolute;
@@ -977,6 +1019,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.65);
   background: linear-gradient(135deg, rgba(255,255,255,0.36), rgba(255,255,255,0.05));
+  box-shadow: 0 0 10px rgba(186, 230, 255, 0.26), inset 0 0 10px rgba(214, 242, 255, 0.14);
 }
 
 .gem.locked::before {
@@ -984,9 +1027,54 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   position: absolute;
   inset: 2px;
   border-radius: 7px;
-  border: 2px dashed rgba(255, 138, 138, 0.9);
-  box-shadow: 0 0 0 2px rgba(100, 16, 16, 0.45) inset;
+  border: 2px dashed rgba(178, 232, 255, 0.96);
+  box-shadow: 0 0 0 2px rgba(36, 92, 128, 0.34) inset, 0 0 10px rgba(150, 220, 255, 0.38);
 }
+
+body[data-theme="frozen_archive"] .gem.glass::after {
+  border-color: rgba(204, 242, 255, 0.9);
+  background:
+    linear-gradient(135deg, rgba(228, 248, 255, 0.52), rgba(178, 224, 255, 0.12)),
+    linear-gradient(0deg, rgba(120, 182, 255, 0.08), rgba(255, 255, 255, 0));
+  box-shadow: 0 0 14px rgba(174, 229, 255, 0.42), inset 0 0 14px rgba(226, 247, 255, 0.18);
+}
+
+body[data-theme="frozen_archive"] .gem.locked::before,
+body[data-theme="frozen_archive"] .gem.frozen::before {
+  inset: 0;
+  border: 2px solid rgba(188, 236, 255, 0.96);
+  background:
+    repeating-linear-gradient(135deg, rgba(210, 244, 255, 0.18) 0 4px, rgba(140, 210, 255, 0.08) 4px 8px),
+    linear-gradient(180deg, rgba(210, 244, 255, 0.08), rgba(84, 154, 210, 0.08));
+  box-shadow: 0 0 0 2px rgba(73, 134, 189, 0.34) inset, 0 0 16px rgba(168, 227, 255, 0.48), inset 0 0 18px rgba(221, 247, 255, 0.18);
+}
+
+body[data-theme="frozen_archive"] .gem.locked::after,
+body[data-theme="frozen_archive"] .gem.frozen::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 10px;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0), rgba(220, 245, 255, 0.85), rgba(255,255,255,0)),
+    linear-gradient(180deg, rgba(255,255,255,0), rgba(194, 237, 255, 0.65), rgba(255,255,255,0));
+  filter: blur(3px);
+  opacity: 0.68;
+  animation: iceRunePulse 720ms ease-in-out infinite alternate;
+}
+
+@keyframes iceRunePulse {
+  from {
+    opacity: 0.4;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 0.92;
+    transform: scale(1.04);
+  }
+}
+
 
 .sp-line_h::before,
 .sp-line_v::before,

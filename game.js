@@ -527,6 +527,7 @@ import { createI18n } from "./src/ui/i18n.js";
     if (preview.special) gem.classList.add(`sp-${preview.special}`);
     if (preview.glass) gem.classList.add("glass");
     if (preview.burning) gem.classList.add("burning");
+    if (preview.frozen) gem.classList.add("frozen");
     if (preview.locked) gem.classList.add("locked");
 
     const icon = document.createElement("img");
@@ -545,6 +546,21 @@ import { createI18n } from "./src/ui/i18n.js";
       burnTag.className = "gem-status burn";
       burnTag.textContent = "SCORCH";
       gem.appendChild(burnTag);
+    }
+
+    if ((preview.poisonedTurns || 0) > 0) {
+      gem.classList.add("poisoned");
+      const poisonTag = document.createElement("span");
+      poisonTag.className = "gem-status poison";
+      poisonTag.textContent = `POISON ${preview.poisonedTurns}`;
+      gem.appendChild(poisonTag);
+    }
+
+    if (preview.frozen) {
+      const frozenTag = document.createElement("span");
+      frozenTag.className = "gem-status frozen";
+      frozenTag.textContent = "FROZEN";
+      gem.appendChild(frozenTag);
     }
 
     frame.appendChild(gem);
@@ -571,7 +587,7 @@ import { createI18n } from "./src/ui/i18n.js";
       if (!isGem(cell)) continue;
       if (cell.glass) hasGlass = true;
       if (cell.burning) hasBurning = true;
-      if (cell.lockedTurns > 0) hasLocked = true;
+      if (cell.lockedTurns > 0 || cell.frozen) hasLocked = true;
       if (cell.special) specials.add(cell.special);
     }
 
@@ -761,6 +777,7 @@ import { createI18n } from "./src/ui/i18n.js";
     state.modGlass = 0;
     state.modLocks = 0;
     state.taxColor = null;
+    state.taxColorTurns = 0;
     state.dropBoost = 0;
     state.chainBonus = 0;
     selected = null;
@@ -951,7 +968,7 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function placeLocks(count) {
-    const idxs = collectIndices((c) => c && c.kind === "gem" && c.lockedTurns <= 0);
+    const idxs = collectIndices((c) => c && c.kind === "gem" && c.lockedTurns <= 0 && !c.frozen);
     shuffle(idxs);
     for (let i = 0; i < Math.min(count, idxs.length); i += 1) state.board[idxs[i]].lockedTurns = 2;
   }
@@ -1075,7 +1092,7 @@ import { createI18n } from "./src/ui/i18n.js";
       audio.play("uiError");
       return notify(i18n.getLanguage() === "zh-CN" ? "障碍格无法交换。" : "Obstacle tiles cannot be swapped.", "warn");
     }
-    if (ca.lockedTurns > 0 || cb.lockedTurns > 0) {
+    if (ca.lockedTurns > 0 || cb.lockedTurns > 0 || ca.frozen || cb.frozen) {
       audio.play("uiError");
       return notify(i18n.getLanguage() === "zh-CN" ? "被锁定的宝石无法交换。" : "A locked gem cannot be swapped.", "warn");
     }
@@ -1158,7 +1175,7 @@ import { createI18n } from "./src/ui/i18n.js";
     if (item === "color") {
       const cell = state.board[idx];
       if (!isGem(cell)) return [];
-      if (cell.lockedTurns > 0) return [];
+      if (cell.lockedTurns > 0 || cell.frozen) return [];
       const targets = collectIndices((x) => isGem(x) && x.color === cell.color);
       if (itemPower(item) >= 3) {
         const bonusColor = nextGemColor(cell.color);
@@ -1187,7 +1204,7 @@ import { createI18n } from "./src/ui/i18n.js";
     resolveAutoBoard();
     if (power >= 2) state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 10 + power * 2);
     if (power >= 3) {
-      for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
+      for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
     }
     renderAll();
     await consumePostAction();
@@ -1240,7 +1257,7 @@ import { createI18n } from "./src/ui/i18n.js";
       state.movesLeft += 2 + itemPower(skill);
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 18 + itemPower(skill) * 4 + (state.perks.fever_smith ? 8 : 0));
       for (let i = 0; i < state.board.length; i += 1) {
-        if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
+        if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
       }
       recordCodex("skillUse", "time_freeze");
       applyLegendBossPressure();
@@ -1297,6 +1314,8 @@ import { createI18n } from "./src/ui/i18n.js";
   async function consumePostAction() {
     decayLocks();
     spreadBurning();
+    spreadPoison();
+    decayTaxColor();
     if (state.feverTurns > 0) state.feverTurns -= 1;
     await tickBoss();
     checkFloorState();
@@ -1363,6 +1382,55 @@ import { createI18n } from "./src/ui/i18n.js";
     }
 
     return spreadTargets.size;
+  }
+
+  function spreadPoison() {
+    const seeds = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0);
+    if (seeds.length === 0) return 0;
+
+    const spreadTargets = new Set();
+    for (const idx of seeds) {
+      const source = state.board[idx];
+      if (!isGem(source) || source.poisonedTurns <= 0) continue;
+      const r = rowOf(idx);
+      const c = colOf(idx);
+      const localCandidates = [];
+      for (let rr = r - 1; rr <= r + 1; rr += 1) {
+        for (let cc = c - 1; cc <= c + 1; cc += 1) {
+          if (rr === r && cc === c) continue;
+          if (!inside(rr, cc)) continue;
+          const nextIdx = rr * boardSize + cc;
+          const cell = state.board[nextIdx];
+          if (!isGem(cell) || (cell.poisonedTurns || 0) > 0) continue;
+          localCandidates.push(nextIdx);
+        }
+      }
+      shuffle(localCandidates);
+      const spreadCount = Math.min(localCandidates.length, 1);
+      for (const nextIdx of localCandidates.slice(0, spreadCount)) spreadTargets.add(nextIdx);
+      source.poisonedTurns = Math.max(0, source.poisonedTurns - 1);
+    }
+
+    for (const idx of spreadTargets) {
+      const cell = state.board[idx];
+      if (!isGem(cell)) continue;
+      cell.poisonedTurns = Math.max(cell.poisonedTurns || 0, 2);
+      spawnShockwaveFX(idx, false);
+    }
+
+    if (spreadTargets.size > 0) {
+      const center = [...spreadTargets][0];
+      spawnFloatText(i18n.getLanguage() === "zh-CN" ? `感染扩散 ${spreadTargets.size}` : `Poison spreads ${spreadTargets.size}`, center);
+      notify(i18n.getLanguage() === "zh-CN" ? `感染扩散到 ${spreadTargets.size} 枚周围宝石！` : `Infection spreads to ${spreadTargets.size} nearby gems!`, "warn");
+      renderAll();
+    }
+    return spreadTargets.size;
+  }
+
+  function decayTaxColor() {
+    if ((state.taxColorTurns || 0) <= 0) return;
+    state.taxColorTurns -= 1;
+    if (state.taxColorTurns <= 0) state.taxColor = null;
   }
 
   function spawnBurnSpreadLinks(pairs) {
@@ -1471,7 +1539,7 @@ import { createI18n } from "./src/ui/i18n.js";
 
   async function resolveBossSkill(skill) {
     const gems = collectIndices((x) => isGem(x));
-    const unlockedGems = collectIndices((x) => isGem(x) && x.lockedTurns <= 0);
+    const unlockedGems = collectIndices((x) => isGem(x) && x.lockedTurns <= 0 && !x.frozen);
     shuffle(gems);
     shuffle(unlockedGems);
 
@@ -1501,7 +1569,7 @@ import { createI18n } from "./src/ui/i18n.js";
       const from = randColor();
       let to = randColor();
       if (to === from) to = nextGemColor(from);
-      const candidates = collectIndices((x) => isGem(x) && x.color === from && x.lockedTurns <= 0);
+      const candidates = collectIndices((x) => isGem(x) && x.color === from && x.lockedTurns <= 0 && !x.frozen);
       shuffle(candidates);
       const size = Math.min(count, candidates.length);
       for (let i = 0; i < size; i += 1) state.board[candidates[i]].color = to;
@@ -1584,37 +1652,97 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "chill_script": {
-        const count = markLocks(state.boss.elite ? 4 : 2, 2);
-        setBossCastHint(lt(skill.name), `冻结 ${count} 枚宝石`, `${count} gems frozen`);
+        const lockedCandidates = collectIndices((cell) => isGem(cell) && cell.lockedTurns <= 0 && !cell.frozen && cell.special).concat(collectIndices((cell) => isGem(cell) && cell.lockedTurns <= 0 && !cell.frozen && !cell.special));
+        const targets = [...new Set(lockedCandidates)].slice(0, state.boss.elite ? 4 : 2);
+        let frozen = 0;
+        let frosted = 0;
+        for (const idx of targets) {
+          const cell = state.board[idx];
+          if (!isGem(cell)) continue;
+          if (cell.frozen) {
+            cell.glass = true;
+            frosted += 1;
+          } else {
+            cell.frozen = true;
+            frozen += 1;
+          }
+        }
+        setBossCastHint(lt(skill.name), `冻结 ${frozen} 枚，覆霜 ${frosted} 枚`, `${frozen} frozen, ${frosted} frosted`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "frost_page": {
-        const count = markLocks(state.boss.elite ? 6 : 4, 2);
-        markGlass(state.boss.elite ? 3 : 2);
-        setBossCastHint(lt(skill.name), `封锁 ${count} 个格子`, `${count} tiles sealed`);
+        const center = gems[0];
+        const r = rowOf(center);
+        const c = colOf(center);
+        const cross = [[r, c], [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]];
+        let frozen = 0;
+        let frosted = 0;
+        for (const [rr, cc] of cross) {
+          if (!inside(rr, cc)) continue;
+          const idx = rr * boardSize + cc;
+          const cell = state.board[idx];
+          if (!isGem(cell)) continue;
+          if (rr === r && cc === c) {
+            cell.frozen = true;
+            frozen += 1;
+          } else {
+            cell.glass = true;
+            frosted += 1;
+          }
+        }
+        setBossCastHint(lt(skill.name), `中心冻结 ${frozen} 枚，十字覆霜 ${frosted} 枚`, `center ${frozen} frozen, cross ${frosted} frosted`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "winter_seal": {
-        const count = markGlass(state.boss.elite ? 10 : 6);
-        setBossCastHint(lt(skill.name), `${count} 枚宝石覆盖寒霜`, `${count} gems layered in frost`);
+        const targets = gems.slice(0, Math.min(state.boss.elite ? 10 : 6, gems.length));
+        let frosted = 0;
+        let upgraded = 0;
+        for (const idx of targets) {
+          const cell = state.board[idx];
+          if (!isGem(cell)) continue;
+          if (cell.glass) {
+            cell.frozen = true;
+            upgraded += 1;
+          } else {
+            cell.glass = true;
+            frosted += 1;
+          }
+        }
+        setBossCastHint(lt(skill.name), `${frosted} 覆霜，${upgraded} 升级冻结`, `${frosted} frosted, ${upgraded} upgraded to freeze`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "glacier_column": {
         const col = Math.floor(Math.random() * boardSize);
         const targets = indicesInCol(col).filter((idx) => isGem(state.board[idx]));
-        for (const idx of targets) state.board[idx].lockedTurns = Math.max(state.board[idx].lockedTurns, 2);
-        setBossCastHint(lt(skill.name), `第 ${col + 1} 列被冻结`, `column ${col + 1} frozen`);
+        for (const idx of targets) state.board[idx].frozen = true;
+        for (const sideCol of [col - 1, col + 1]) {
+          if (sideCol < 0 || sideCol >= boardSize) continue;
+          for (const idx of indicesInCol(sideCol).filter((index) => isGem(state.board[index])).slice(0, 2)) state.board[idx].glass = true;
+        }
+        setBossCastHint(lt(skill.name), `第 ${col + 1} 列被冻结，侧格覆霜`, `column ${col + 1} frozen and side tiles frosted`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "absolute_stillness": {
-        const locks = markLocks(state.boss.elite ? 7 : 5, 2);
-        const glass = markGlass(state.boss.elite ? 8 : 5);
-        setBossCastHint(lt(skill.name), `${locks} 冻结，${glass} 覆霜`, `${locks} frozen, ${glass} iced`);
+        const row = Math.floor(Math.random() * boardSize);
+        const col = Math.floor(Math.random() * boardSize);
+        let frozen = 0;
+        let frosted = 0;
+        for (const idx of [...indicesInRow(row), ...indicesInCol(col)]) {
+          const cell = state.board[idx];
+          if (!isGem(cell)) continue;
+          cell.glass = true;
+          cell.frozen = true;
+          frozen += 1;
+          frosted += 1;
+        }
+        const crossIdx = row * boardSize + col;
+        if (isGem(state.board[crossIdx])) state.board[crossIdx].frozen = true;
+        setBossCastHint(lt(skill.name), `冻结第 ${row + 1} 行与第 ${col + 1} 列`, `freeze row ${row + 1} and col ${col + 1}`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.5);
         applyBossPressure(skill.id);
@@ -1693,38 +1821,64 @@ import { createI18n } from "./src/ui/i18n.js";
         break;
       }
       case "toxin_dust": {
-        const count = recolor(state.boss.elite ? 7 : 4);
-        setBossCastHint(lt(skill.name), `${count} 枚宝石被污染`, `${count} gems contaminated`);
+        const targets = gems.slice(0, Math.min(state.boss.elite ? 8 : 5, gems.length));
+        for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
+        setBossCastHint(lt(skill.name), `${targets.length} 枚宝石被感染`, `${targets.length} gems infected`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "thorn_bind": {
-        const count = markLocks(state.boss.elite ? 5 : 3, 2);
-        setBossCastHint(lt(skill.name), `${count} 枚宝石被缠绕`, `${count} gems entangled`);
+        const infected = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0);
+        if (infected.length < (state.boss.elite ? 5 : 3)) {
+          for (const idx of gems.slice(0, Math.min((state.boss.elite ? 5 : 3) - infected.length, gems.length))) {
+            if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
+          }
+        }
+        const entangleTargets = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0).slice(0, state.boss.elite ? 5 : 3);
+        for (const idx of entangleTargets) state.board[idx].lockedTurns = Math.max(state.board[idx].lockedTurns, 2);
+        setBossCastHint(lt(skill.name), `${entangleTargets.length} 枚感染宝石被束缚`, `${entangleTargets.length} infected gems bound`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "spore_bloom": {
-        const count = recolor(state.boss.elite ? 14 : 10);
-        setBossCastHint(lt(skill.name), `${count} 枚宝石被感染`, `${count} gems infected`);
+        const hadPoison = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0).length > 0;
+        const count = hadPoison ? spreadPoison() : (() => {
+          const targets = gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length));
+          for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
+          return targets.length;
+        })();
+        setBossCastHint(lt(skill.name), `${count} 枚宝石受到孢子扩散`, `${count} gems hit by spore spread`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "rot_garden": {
-        const glass = markGlass(state.boss.elite ? 10 : 7);
-        const obstacles = addObstacles(state.boss.elite ? 3 : 2);
-        setBossCastHint(lt(skill.name), `${glass} 腐朽，${obstacles} 增生`, `${glass} decay, ${obstacles} growths`);
+        const infectedTargets = gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length));
+        for (const idx of infectedTargets) if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
+        const infectedCells = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0 && !cell.special);
+        shuffle(infectedCells);
+        const chosen = infectedCells.slice(0, state.boss.elite ? 3 : 2);
+        for (const idx of chosen) state.board[idx] = { kind: "obstacle" };
+        setBossCastHint(lt(skill.name), `${infectedTargets.length} 感染，${chosen.length} 腐株生成`, `${infectedTargets.length} infected, ${chosen.length} rot growths`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "royal_pollution": {
-        const recolored = recolor(state.boss.elite ? 18 : 12);
-        const locks = markLocks(state.boss.elite ? 5 : 3, 2);
-        setBossCastHint(lt(skill.name), `${recolored} 腐化，${locks} 束缚`, `${recolored} corrupted, ${locks} bound`);
+        const colorCounts = new Map();
+        for (const idx of gems) {
+          const cell = state.board[idx];
+          if (!isGem(cell)) continue;
+          colorCounts.set(cell.color, (colorCounts.get(cell.color) || 0) + 1);
+          cell.poisonedTurns = Math.max(cell.poisonedTurns || 0, isGem(cell) ? 2 : 0);
+        }
+        const dominantColor = [...colorCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? randColor();
+        state.taxColor = dominantColor;
+        state.taxColorTurns = 2;
+        const locks = markLocks(state.boss.elite ? 6 : 4, 2);
+        setBossCastHint(lt(skill.name), `${gems.length} 感染，颜色税锁定 2 回合`, `${gems.length} infected, color tax for 2 turns`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
         applyBossPressure(skill.id);
@@ -1997,7 +2151,7 @@ import { createI18n } from "./src/ui/i18n.js";
         if (chain === 1 && localSpawnMap && localSpawnMap.size > 0) {
         const spawnIndex = pickSpawnIndex(localSpawnMap, preferSpawnIndex);
         if (spawnIndex !== null && state.board[spawnIndex] === null) {
-          state.board[spawnIndex] = { kind: "gem", color: randColor(), special: localSpawnMap.get(spawnIndex), glass: false, burning: false, lockedTurns: 0 };
+          state.board[spawnIndex] = { kind: "gem", color: randColor(), special: localSpawnMap.get(spawnIndex), glass: false, burning: false, poisonedTurns: 0, frozen: false, lockedTurns: 0 };
           spawnShockwaveFX(spawnIndex, true);
         }
       }
@@ -2498,7 +2652,7 @@ import { createI18n } from "./src/ui/i18n.js";
           title: zhen("寒霜提灯", "Frozen Lantern"),
           desc: zhen("稳定档案馆：移除当前所有锁定并获得 +25 动量。", "Stabilize the archive: remove all current locks and gain +25 momentum."),
           apply: () => {
-            for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
+            for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
             state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
             notify(i18n.getLanguage() === "zh-CN" ? "提灯安抚了冻结的档案馆。" : "The lantern calms the frozen archive.", "ok");
           },
@@ -2512,7 +2666,7 @@ import { createI18n } from "./src/ui/i18n.js";
             state.nextFloorMoveBonus += 2;
             const obstacles = collectIndices((x) => isObstacle(x));
             shuffle(obstacles);
-            for (const idx of obstacles.slice(0, 2)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, lockedTurns: 0 };
+            for (const idx of obstacles.slice(0, 2)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, poisonedTurns: 0, frozen: false, lockedTurns: 0 };
             notify(i18n.getLanguage() === "zh-CN" ? "地穴地图揭示了岩层薄弱点。" : "The burrow map reveals weak stone sections.", "ok");
           },
         },
@@ -2533,8 +2687,9 @@ import { createI18n } from "./src/ui/i18n.js";
           title: zhen("净化花蜜", "Purifier Nectar"),
           desc: zhen("移除当前所有锁定，并清除本层颜色税。", "Remove all current locks and clear your taxed color for the floor."),
           apply: () => {
-            for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) state.board[i].lockedTurns = 0;
+            for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
             state.taxColor = null;
+            state.taxColorTurns = 0;
             notify(i18n.getLanguage() === "zh-CN" ? "净化花蜜净化了花域。" : "Purifier Nectar cleanses the bloom.", "ok");
           },
         },
@@ -2570,7 +2725,7 @@ import { createI18n } from "./src/ui/i18n.js";
           apply: () => {
             const obstacles = collectIndices((x) => isObstacle(x));
             shuffle(obstacles);
-            for (const idx of obstacles.slice(0, 3)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, lockedTurns: 0 };
+            for (const idx of obstacles.slice(0, 3)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, poisonedTurns: 0, frozen: false, lockedTurns: 0 };
             state.boss.charge = 0;
             notify(i18n.getLanguage() === "zh-CN" ? "冷却阀门释放了熔炉压力。" : "Cooling valves release the furnace pressure.", "ok");
           },

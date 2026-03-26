@@ -16,6 +16,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
     modGlass: 0,
     modLocks: 0,
     taxColor: null,
+    taxColorTurns: 0,
     dropBoost: 0,
     chainBonus: 0,
     momentum: 0,
