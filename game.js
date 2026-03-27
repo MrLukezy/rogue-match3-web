@@ -956,6 +956,7 @@ import { createI18n } from "./src/ui/i18n.js";
     state.boss.pendingIdleMs = 0;
     state.boss.lastChargeTickAt = Date.now();
     state.boss.nextDecisionAt = Date.now() + 900;
+    state.boss.smallCastCount = 0;
 
     overlayEl.classList.add("hidden");
     if (overlayActionsEl) overlayActionsEl.innerHTML = "";
@@ -1027,46 +1028,24 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function getAvailableBossSkills() {
     const profile = getBossProfile();
-    const skills = Array.isArray(profile.skills) ? profile.skills : [];
-    const charge = Number(state.boss.charge || 0);
-    return skills.filter((skill) => charge >= skill.cost);
-  }
-
-  function chooseWeightedSkill(skills, profile, preferBig = false) {
-    if (!skills || skills.length === 0) return null;
-    const weighted = [];
-    for (const skill of skills) {
-      const baseWeight = Number(profile.skillWeights?.[skill.id] || 10);
-      const sizeBias = preferBig ? Math.max(1, Math.floor(skill.cost / 10)) : Math.max(1, Math.floor((120 - skill.cost) / 10));
-      weighted.push({ skill, weight: Math.max(1, baseWeight + sizeBias) });
-    }
-    const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
-    let roll = Math.random() * total;
-    for (const entry of weighted) {
-      roll -= entry.weight;
-      if (roll <= 0) return entry.skill;
-    }
-    return weighted[weighted.length - 1].skill;
+    if (profile.isMinion) return Array.isArray(profile.skills) ? profile.skills : [];
+    const cycle = [...(profile.smallSkills || []), profile.ultimateSkill].filter(Boolean);
+    return cycle;
   }
 
   function pickBossSkill(now = Date.now()) {
     const profile = getBossProfile();
-    const available = getAvailableBossSkills();
-    if (available.length === 0) return null;
-    if (profile.isMinion) return Number(state.boss.charge || 0) >= getEncounterCastThreshold(profile) ? available[0] : null;
-    if (now < Number(state.boss.nextDecisionAt || 0)) return null;
-
-    const charge = Number(state.boss.charge || 0);
-    const highest = available[available.length - 1];
-    const holdChance = charge >= 100 ? 0.1 : charge >= 80 ? 0.3 : charge >= 60 ? 0.42 : 0.22;
-    if (charge < 100 && Math.random() < holdChance) {
-      state.boss.nextDecisionAt = now + (charge >= 80 ? 900 : 700);
-      return null;
+    if (profile.isMinion) {
+      const available = getAvailableBossSkills();
+      if (available.length === 0) return null;
+      return Number(state.boss.charge || 0) >= getEncounterCastThreshold(profile) ? available[0] : null;
     }
-
-    if (charge >= 100 && highest && highest.cost >= 80 && Math.random() < 0.5) return highest;
-    if (charge >= 80 && highest && highest.cost >= 80 && Math.random() < 0.3) return highest;
-    return chooseWeightedSkill(available, profile, charge >= 80);
+    if (now < Number(state.boss.nextDecisionAt || 0)) return null;
+    if (Number(state.boss.charge || 0) < getEncounterCastThreshold(profile)) return null;
+    if (Number(state.boss.smallCastCount || 0) >= 5) return profile.ultimateSkill;
+    const smallSkills = profile.smallSkills || [];
+    if (smallSkills.length === 0) return profile.ultimateSkill || null;
+    return smallSkills[Math.floor(Math.random() * smallSkills.length)] || null;
   }
 
   function getBossThreatLevel() {
@@ -1973,23 +1952,23 @@ import { createI18n } from "./src/ui/i18n.js";
     if (state.boss.charge < castThreshold) {
       const rate = getBossChargeRatePerSecond();
       state.boss.hint = i18n.getLanguage() === "zh-CN"
-        ? `${profile.isMinion ? "小怪" : "Boss"} 每秒蓄能 ${rate}，消满后会开始出招`
-        : `${profile.isMinion ? "Minion" : "Boss"} gains ${rate} charge per second and attacks once ready`;
+        ? `${profile.isMinion ? "小怪" : "Boss"} 每秒蓄能 ${rate}，满能后自动出招`
+        : `${profile.isMinion ? "Minion" : "Boss"} gains ${rate} charge per second and auto-casts at full charge`;
       return;
     }
 
     if (inputLocked || !overlayEl?.classList.contains("hidden")) {
       state.boss.hint = i18n.getLanguage() === "zh-CN"
-        ? (profile.isMinion ? "小怪已满能，棋盘稳定后会立刻施放轻技能" : "Boss 已准备技能，正在等待合适时机出手")
-        : (profile.isMinion ? "Minion is fully charged and will cast as soon as the board settles" : "Boss is ready and waiting for a good casting window");
+        ? (profile.isMinion ? "小怪已满能，棋盘稳定后会立刻施放轻技能" : "Boss 已满能，棋盘稳定后会按循环规则自动施法")
+        : (profile.isMinion ? "Minion is fully charged and will cast as soon as the board settles" : "Boss is fully charged and will auto-cast by cycle rule when the board settles");
       return;
     }
 
     const skill = pickBossSkill(now);
     if (!skill) {
       state.boss.hint = i18n.getLanguage() === "zh-CN"
-        ? (profile.isMinion ? "小怪已满能，马上就会施放轻技能" : "Boss 正在判断是连放小技能还是继续攒大招")
-        : (profile.isMinion ? "Minion is primed to fire its light skill" : "Boss is deciding between quick small casts and saving for a bigger attack");
+        ? (profile.isMinion ? "小怪已满能，马上就会施放轻技能" : "Boss 已进入技能循环，准备释放当前轮次技能")
+        : (profile.isMinion ? "Minion is primed to fire its light skill" : "Boss is in cycle mode and preparing its current cast");
       return;
     }
 
@@ -2010,6 +1989,10 @@ import { createI18n } from "./src/ui/i18n.js";
     boardWrapEl.classList.remove("boss-telegraph");
     state.boss.phase = "charging";
     state.boss.casting = false;
+    if (!profile.isMinion) {
+      if (profile.ultimateSkill && skill.id === profile.ultimateSkill.id) state.boss.smallCastCount = 0;
+      else state.boss.smallCastCount = Number(state.boss.smallCastCount || 0) + 1;
+    }
     state.boss.lastChargeTickAt = Date.now();
     state.boss.nextDecisionAt = Date.now() + (profile.isMinion ? 1600 : 700 + Math.floor(Math.random() * 500));
   }
@@ -2022,7 +2005,7 @@ import { createI18n } from "./src/ui/i18n.js";
     if (bossPortraitEl) bossPortraitEl.classList.add("casting");
     spawnScreenPulse("boss", 520);
     await resolveBossSkill(skill);
-    state.boss.charge = Math.max(0, state.boss.charge - Number(skill.cost || 20));
+    state.boss.charge = 0;
     renderAll();
     await sleep(220);
     if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
@@ -4692,8 +4675,15 @@ import { createI18n } from "./src/ui/i18n.js";
     const bossPct = Math.max(0, Math.min(100, (displayedCharge / state.boss.max) * 100));
     if (bossBarEl) bossBarEl.style.width = `${bossPct}%`;
     if (bossSkillHintEl) {
-      const nextSkills = getAvailableBossSkills().map((skill) => `${lt(skill.name)}(${skill.cost})`).join(" · ");
-      bossSkillHintEl.textContent = nextSkills ? `${state.boss.hint} · ${t("readyPrefix")}${nextSkills}` : state.boss.hint;
+      if (profile.isMinion) {
+        const nextSkills = getAvailableBossSkills().map((skill) => `${lt(skill.name)}(${skill.cost})`).join(" · ");
+        bossSkillHintEl.textContent = nextSkills ? `${state.boss.hint} · ${t("readyPrefix")}${nextSkills}` : state.boss.hint;
+      } else {
+        const cycleStep = Number(state.boss.smallCastCount || 0) >= 5 ? lt(profile.ultimateSkill?.name) : `${lt(profile.smallSkills?.[0]?.name)} / ${lt(profile.smallSkills?.[1]?.name)}`;
+        bossSkillHintEl.textContent = i18n.getLanguage() === "zh-CN"
+          ? `${state.boss.hint} · 小技能计数 ${state.boss.smallCastCount || 0}/5 · 下一轮：${cycleStep}`
+          : `${state.boss.hint} · Small casts ${state.boss.smallCastCount || 0}/5 · Next: ${cycleStep}`;
+      }
     }
     if (bossHpRingEl) {
       bossHpRingEl.style.setProperty("--hp-pct", `${hpPct}%`);
@@ -4711,14 +4701,15 @@ import { createI18n } from "./src/ui/i18n.js";
     if (bossHpMaxEl) bossHpMaxEl.textContent = `/${maxHp}`;
     if (bossTitleEl) bossTitleEl.textContent = lt(getEncounterName(state.floorTheme));
     if (bossStateEl) {
-      const tier = getBossThreatLevel();
       const charge = displayedCharge;
       bossStateEl.textContent = state.boss.casting
           ? t("bossCastingNow", { name: lt(state.floorTheme.shortLabel), element: lt(profile.element) })
           : charge >= castThreshold
             ? (profile.isMinion
                 ? (i18n.getLanguage() === "zh-CN" ? "小怪已满能，会立刻自行释放轻技能" : "Minion is fully charged and auto-casts immediately")
-                : t("bossReadyTier", { tier }))
+                : (Number(state.boss.smallCastCount || 0) >= 5
+                    ? (i18n.getLanguage() === "zh-CN" ? "Boss 大招已就绪，下一次满能必定释放" : "Boss ultimate is primed for the next full charge")
+                    : (i18n.getLanguage() === "zh-CN" ? `Boss 小技能循环中：${state.boss.smallCastCount || 0}/5` : `Boss small-skill cycle: ${state.boss.smallCastCount || 0}/5`)))
             : t("bossChargingIdle");
     }
     if (bossThreatEl) bossThreatEl.textContent = getBossThreatLabel();
@@ -4727,8 +4718,8 @@ import { createI18n } from "./src/ui/i18n.js";
       bossPatternEl.textContent = profile.isMinion
         ? `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} / ${i18n.getLanguage() === "zh-CN" ? "小怪" : "Minion"} / ${charge}/100`
         : state.boss.elite
-          ? `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} elite / ${charge}/100`
-          : `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} / ${charge}/100`;
+          ? `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} elite / S${state.boss.smallCastCount || 0}/5 / ${charge}/100`
+          : `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} / S${state.boss.smallCastCount || 0}/5 / ${charge}/100`;
     }
     if (modifierEl) modifierEl.textContent = state.modifier ? `${lt(state.floorTheme.shortLabel)} · ${state.routePlan.title} · ${lt(state.modifier.name)} · ${state.activeGemColors.length}C` : `${lt(state.floorTheme.shortLabel)} · ${state.routePlan.title} · ${state.activeGemColors.length}C`;
     if (bossMeterEl) {
@@ -4748,10 +4739,19 @@ import { createI18n } from "./src/ui/i18n.js";
     const charge = getBossDisplayedCharge();
     bossSkillbookListEl.innerHTML = "";
 
-    for (const skill of profile.skills || []) {
+    const skills = profile.isMinion
+      ? (profile.skills || [])
+      : [
+          ...(profile.smallSkills || []).map((skill) => ({ ...skill, cycleLabel: i18n.getLanguage() === "zh-CN" ? "小技能" : "Small" })),
+          profile.ultimateSkill ? { ...profile.ultimateSkill, cycleLabel: i18n.getLanguage() === "zh-CN" ? "大技能" : "Ultimate" } : null,
+        ].filter(Boolean);
+
+    for (const skill of skills) {
       const entry = document.createElement("div");
       entry.className = "boss-skill-entry";
-      if (charge >= skill.cost) entry.classList.add("ready");
+      const isUltimate = !profile.isMinion && profile.ultimateSkill?.id === skill.id;
+      const cycleReady = profile.isMinion ? charge >= skill.cost : (isUltimate ? Number(state.boss.smallCastCount || 0) >= 5 : Number(state.boss.smallCastCount || 0) < 5);
+      if (charge >= skill.cost && cycleReady) entry.classList.add("ready");
       const pct = Math.max(0, Math.min(100, Math.round((charge / Math.max(1, skill.cost)) * 100)));
       entry.style.setProperty("--skill-charge", `${pct}%`);
 
@@ -4773,7 +4773,11 @@ import { createI18n } from "./src/ui/i18n.js";
 
       const threshold = document.createElement("span");
       threshold.className = "boss-skill-threshold";
-      threshold.textContent = i18n.getLanguage() === "zh-CN" ? `阈值 ${skill.cost}` : `Need ${skill.cost}`;
+      threshold.textContent = profile.isMinion
+        ? (i18n.getLanguage() === "zh-CN" ? `阈值 ${skill.cost}` : `Need ${skill.cost}`)
+        : (isUltimate
+            ? (i18n.getLanguage() === "zh-CN" ? `累计 5 次小技能后触发` : `Triggers after 5 small casts`)
+            : `${skill.cycleLabel} · ${i18n.getLanguage() === "zh-CN" ? "满能随机释放" : "Random on full charge"}`);
 
       body.appendChild(title);
       body.appendChild(desc);
