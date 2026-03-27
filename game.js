@@ -24,7 +24,7 @@ import {
 } from "./src/config/items-config.js";
 import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES, GEM_POOL_BY_FLOOR, GEM_COLOR_NAMES } from "./src/config/gems-config.js";
 import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_PROFILES } from "./src/config/boss-ui-config.js";
-import { BLESSING_DEFS } from "./src/config/blessings-config.js";
+import { CONDITIONAL_PASSIVE_DEFS } from "./src/config/blessings-config.js";
 import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
 import { renderBoardView } from "./src/render/board-render.js";
 import {
@@ -835,6 +835,9 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function startFloor(floor) {
     state.floor = floor;
+    state.gameOver = false;
+    state.victory = false;
+    inputLocked = false;
     const chapter = state.selectedChapter || CHAPTER_THEMES[0];
     if (state.floor > chapter.end) return onVictory();
 
@@ -891,9 +894,6 @@ import { createI18n } from "./src/ui/i18n.js";
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 28);
     }
     state.momentum = Math.min(MOMENTUM_MAX, state.momentum + Number(meta.progression.upgrades.ember_core || 0) * 12);
-    if (state.blessings.tactical_reserve) state.movesLeft += 1;
-    if (state.blessings.chain_matrix) state.chainBonus += 0.15;
-    if (state.blessings.supply_cache) refillCarriedCharges();
     if (unlockedNewColor) {
       state.movesLeft += 1;
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 18);
@@ -919,7 +919,7 @@ import { createI18n } from "./src/ui/i18n.js";
       state.chainBonus += 0.1;
     }
 
-    const purifierOffset = state.blessings.purifier_sigil ? 2 : 0;
+    const purifierOffset = 0;
     if (state.modGlass > 0) placeGlass(Math.max(0, state.modGlass + threat.glassBonus - purifierOffset));
     if (state.modLocks > 0) placeLocks(Math.max(0, state.modLocks + Math.max(0, threat.pressure - 1) - purifierOffset));
 
@@ -992,7 +992,7 @@ import { createI18n } from "./src/ui/i18n.js";
     const base = Number(profile.baseGain || 8);
     const threat = Number(state.floorThreat.bossGain || 0);
     const elite = state.boss.elite ? 2 : 0;
-    const blessing = state.blessings.boss_shunt ? 2 : 0;
+    const blessing = 0;
     return Math.max(6, base + threat + elite - blessing - permanentDampener);
   }
 
@@ -1262,6 +1262,7 @@ import { createI18n } from "./src/ui/i18n.js";
 
     if (ca.special && cb.special) {
       swap(a, b);
+      renderAll();
       consumeMove();
       const comboTargets = specialComboTargets(a, b, ca.special, cb.special);
       await resolveAction(comboTargets, "combo");
@@ -1282,6 +1283,7 @@ import { createI18n } from "./src/ui/i18n.js";
     }
 
     consumeMove();
+    renderAll();
     await resolveAction(analysis.clear, "normal", analysis.spawnMap, b);
     await consumePostAction();
     inputLocked = false;
@@ -3057,10 +3059,42 @@ import { createI18n } from "./src/ui/i18n.js";
     return effects;
   }
 
+  function buildConditionalPassiveEffect(valid, gemTargets, chain, expandedInfo) {
+    const id = state.conditionalPassive;
+    if (!id || valid.length === 0) return null;
+    const anchor = gemTargets[0] ?? valid[0];
+    if (anchor == null) return null;
+
+    switch (id) {
+      case "chain_matrix": {
+        if (expandedInfo.chainCount <= 1 && chain <= 1) return null;
+        const indices = [...new Set([...getIndicesInRow(rowOf(anchor)), ...getIndicesInCol(colOf(anchor))])].filter((idx) => !valid.includes(idx));
+        return indices.length > 0 ? { id, name: lt(CONDITIONAL_PASSIVE_DEFS[id].title), indices, type: "clear" } : null;
+      }
+      case "fever_engine": {
+        if (state.feverTurns <= 0) return null;
+        const indices = gatherAreaIndices(anchor, 1).filter((idx) => !valid.includes(idx));
+        return indices.length > 0 ? { id, name: lt(CONDITIONAL_PASSIVE_DEFS[id].title), indices, type: "clear" } : null;
+      }
+      case "purifier_sigil": {
+        const targets = collectIndices((cell) => isGem(cell) && (cell.glass || cell.frozen || cell.lockedTurns > 0)).filter((idx) => !valid.includes(idx)).slice(0, 3);
+        return targets.length > 0 ? { id, name: lt(CONDITIONAL_PASSIVE_DEFS[id].title), indices: targets, type: "purify" } : null;
+      }
+      case "boss_shunt": {
+        if (Number(state.boss.charge || 0) < 60) return null;
+        const indices = choosePriorityGemIndices(3, { preferSpecial: true }).filter((idx) => !valid.includes(idx));
+        return indices.length > 0 ? { id, name: lt(CONDITIONAL_PASSIVE_DEFS[id].title), indices, type: "clear", chargeDrain: 14 } : null;
+      }
+      default:
+        return null;
+    }
+  }
+
   async function resolveAction(initialTargets, source, spawnMap = null, preferSpawnIndex = null) {
     let chain = 1;
     let current = [...new Set(initialTargets)];
     let localSpawnMap = spawnMap;
+    let passiveSkillTriggered = false;
 
     while (current.length > 0) {
       const expandedInfo = expandWithSpecialTriggers(current, MAX_SKILL_CHAIN);
@@ -3077,16 +3111,22 @@ import { createI18n } from "./src/ui/i18n.js";
       });
 
       clearAnim = new Set(valid);
-      spawnShatterFX(valid);
       if (expandedInfo.chainCount > 1) shakeBoard(1.25);
       else shakeBoard(1);
       renderAll();
-      await sleep(240);
+      await sleep(260);
 
-      const skillEffects = source === "normal" || source === "combo"
+      const conditionalEffect = buildConditionalPassiveEffect(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo);
+      if (conditionalEffect) {
+        await playConditionalPassiveSequence(conditionalEffect);
+        for (const idx of conditionalEffect.indices) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
+      }
+
+      const skillEffects = !passiveSkillTriggered && (source === "normal" || source === "combo")
         ? buildOffensiveSkillEffects(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo)
         : [];
       if (skillEffects.length > 0) {
+        passiveSkillTriggered = true;
         await playPassiveSkillSequence(skillEffects);
         for (const effect of skillEffects) {
           for (const idx of effect.indices) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
@@ -3154,9 +3194,13 @@ import { createI18n } from "./src/ui/i18n.js";
           : `${lt(getEncounterName(state.floorTheme))} takes ${inflicted} damage and drops to ${state.boss.hp}/${state.boss.maxHp}`;
       }
 
+      spawnShatterFX(valid);
+      renderAll();
+      await sleep(170);
+
       clearAnim.clear();
       renderAll();
-      await sleep(70);
+      await sleep(90);
 
       const moved = collapseBoard();
       const born = refillBoard();
@@ -3387,7 +3431,7 @@ import { createI18n } from "./src/ui/i18n.js";
     state.momentum = Math.min(MOMENTUM_MAX, state.momentum + gain);
     if (state.momentum >= MOMENTUM_MAX) {
       state.momentum = 0;
-      state.feverTurns = (state.perks.fever_loop ? 4 : 3) + (state.blessings.fever_engine ? 1 : 0);
+      state.feverTurns = (state.perks.fever_loop ? 4 : 3);
       spawnFloatText("FEVER!", Math.floor((boardSize * boardSize) / 2));
       notify(i18n.getLanguage() === "zh-CN" ? "热潮启动：得分和掉落都已提升！" : "FEVER started: score and drops are boosted!", "ok");
       audio.play("fever");
@@ -3498,24 +3542,24 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function showChapterBlessings(isChapterStart = false) {
-    overlayTitleEl.textContent = `${t("chapterBlessingPrefix")}${lt(state.floorTheme.title)}`;
-    overlayDescEl.textContent = isChapterStart ? t("chapterBlessingStart") : t("chapterBlessingNext");
+    overlayTitleEl.textContent = `${t("conditionalPassivePrefix") || t("chapterBlessingPrefix")}${lt(state.floorTheme.title)}`;
+    overlayDescEl.textContent = isChapterStart ? t("conditionalPassiveStart") || t("chapterBlessingStart") : t("conditionalPassiveNext") || t("chapterBlessingNext");
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
-    const missing = Object.entries(BLESSING_DEFS).filter(([id]) => !state.blessings[id]);
-    shuffle(missing);
-    const picks = missing.slice(0, 3);
+    const pool = Object.entries(CONDITIONAL_PASSIVE_DEFS).filter(([id]) => id !== state.conditionalPassive);
+    shuffle(pool);
+    const picks = pool.slice(0, 3);
 
-    for (const [, def] of picks) {
+    for (const [id, def] of picks) {
       const btn = document.createElement("button");
       btn.className = `choice rarity-${def.rarity}`;
-      btn.innerHTML = `<span class="choice-rarity">${t("blessing")}</span><strong>${lt(def.title)}</strong><small>${lt(def.desc)}</small>`;
+      btn.innerHTML = `<span class="choice-rarity">${t("conditionalPassive") || t("blessing")}</span><strong>${lt(def.title)}</strong><small>${lt(def.desc)}</small>`;
       btn.addEventListener("click", () => {
         def.apply(state);
         audio.play("rewardPick");
         overlayEl.classList.add("hidden");
-        notify(t("blessingAcquired", { name: lt(def.title) }), "ok");
+        notify(t("conditionalPassiveAcquired", { name: lt(def.title) }) || t("blessingAcquired", { name: lt(def.title) }), "ok");
         renderAll();
         if (isChapterStart) startFloor(state.selectedChapter.start);
         else startFloor(state.floor + 1);
@@ -4047,6 +4091,15 @@ import { createI18n } from "./src/ui/i18n.js";
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
+  function getConditionalPassiveCenter(passiveId) {
+    const chips = perkWrapEl?.querySelectorAll(".perk-chip");
+    if (!chips?.length) return null;
+    const target = [...chips].find((el) => el.textContent?.includes(lt(CONDITIONAL_PASSIVE_DEFS[passiveId]?.title || {}))) || chips[0];
+    if (!target) return null;
+    const rect = target.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
   function getViewportCenter() {
     return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   }
@@ -4183,6 +4236,25 @@ import { createI18n } from "./src/ui/i18n.js";
     }
 
     switch (effect.id) {
+      case "chain_matrix":
+        spawnPassiveLineSweep(effect.indices.filter((idx) => rowOf(idx) === rowOf(effect.indices[0])), effect.id, 0);
+        spawnPassiveLineSweep(effect.indices.filter((idx) => colOf(idx) === colOf(effect.indices[0])), effect.id, 40);
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 18, 1));
+        break;
+      case "fever_engine":
+        spawnPassiveAreaShockwave(effect.indices, effect.id, 0);
+        points.slice(0, 2).forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 42, 1.12));
+        break;
+      case "purifier_sigil":
+        spawnPassiveLinkPath(points, effect.id, 0);
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 22, 0.9));
+        break;
+      case "boss_shunt":
+        points.forEach((point, index) => {
+          spawnPassiveSlash(point, effect.id, index * 34, index % 2 === 0 ? -20 : 20);
+          spawnPassiveSkillMarker(point, effect.id, index * 22, 1.02);
+        });
+        break;
       case "hammer":
         points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 40, 0.82));
         break;
@@ -4247,6 +4319,31 @@ import { createI18n } from "./src/ui/i18n.js";
     }
     clearAnim.clear();
     setActiveSkillHighlight(null);
+  }
+
+  async function playConditionalPassiveSequence(effect) {
+    if (!effect?.indices?.length) return;
+    const origin = getConditionalPassiveCenter(effect.id) || getViewportCenter();
+    spawnTransientFx("fx-skill-cast-icon passive-conditional", origin, 560, {
+      "--fx-delay": "0ms",
+      "--skill-icon": "none",
+    });
+    spawnPassiveSkillFX(effect, origin);
+    spawnFloatText(effect.name, effect.indices[0]);
+    if (effect.id === "boss_shunt" && effect.chargeDrain) {
+      state.boss.charge = Math.max(0, Number(state.boss.charge || 0) - effect.chargeDrain);
+    }
+    if (effect.id === "purifier_sigil") {
+      for (const idx of effect.indices) {
+        const cell = state.board[idx];
+        if (!isGem(cell)) continue;
+        cell.glass = false;
+        cell.frozen = false;
+        cell.lockedTurns = 0;
+      }
+    }
+    renderAll();
+    await sleep(320);
   }
 
   function getCellCenter(index) {
@@ -4385,7 +4482,8 @@ import { createI18n } from "./src/ui/i18n.js";
     shots.forEach((idx, order) => {
       const start = getCellCenter(idx);
       if (!start) return;
-      spawnEncounterBolt(start, target, "player", 520 + order * 36);
+      const gemColor = state.board[idx]?.color;
+      spawnEncounterBolt(start, target, "player", 520 + order * 36, getGemBoltPalette(gemColor));
     });
     await sleep(620);
     const shell = bossPortraitEl?.parentElement;
@@ -4631,7 +4729,7 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function renderPerks() {
-    renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, RARITY_LABELS, t, lt });
+    renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS: CONDITIONAL_PASSIVE_DEFS, RARITY_LABELS, t, lt });
   }
 
   function renderBoard() {

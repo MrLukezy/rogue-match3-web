@@ -49,6 +49,7 @@ export function renderBoardView({
       if (value.voidMarked) gem.classList.add("void-marked");
       if (value.slippery) gem.classList.add("slippery");
       if (fallAnim.has(i)) gem.classList.add("fall-in");
+      if (clearAnim.has(i)) gem.classList.add("clearing");
 
       const icon = document.createElement("img");
       icon.className = "gem-icon gem-image";

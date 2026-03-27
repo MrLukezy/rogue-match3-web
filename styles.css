@@ -1710,6 +1710,20 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
   animation: fallIn 220ms ease;
 }
 
+.gem.clearing {
+  animation: gemClearCharge 440ms cubic-bezier(.18,.72,.27,.99) forwards;
+  transform-origin: center center;
+}
+
+.gem.clearing .gem-image {
+  animation: gemClearIcon 440ms ease-in forwards;
+}
+
+.gem.clearing::before {
+  opacity: 1;
+  animation: gemClearAura 440ms ease-in forwards;
+}
+
 @keyframes clearPop {
   0% { transform: scale(1); opacity: 1; filter: brightness(1); }
   40% { transform: scale(1.18); opacity: 1; filter: brightness(1.85); }
@@ -1719,6 +1733,24 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
 @keyframes fallIn {
   0% { transform: translateY(-34px); opacity: 0.2; }
   100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes gemClearCharge {
+  0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+  42% { transform: scale(1.14); opacity: 1; filter: brightness(1.5); }
+  100% { transform: scale(0.54); opacity: 0.18; filter: brightness(2.1); }
+}
+
+@keyframes gemClearIcon {
+  0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+  50% { transform: scale(1.08); opacity: 1; filter: brightness(1.32); }
+  100% { transform: scale(0.48); opacity: 0.08; filter: brightness(2.2); }
+}
+
+@keyframes gemClearAura {
+  0% { transform: scale(0.86); opacity: 0.14; }
+  45% { transform: scale(1.12); opacity: 0.42; }
+  100% { transform: scale(1.4); opacity: 0; }
 }
 
 @keyframes bossReadyPulse {
@@ -1974,32 +2006,33 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
 
 .fx-wave {
   position: fixed;
-  width: 12px;
-  height: 12px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,0.9);
+  border: 3px solid rgba(255,255,255,0.94);
   transform: translate(-50%, -50%);
-  animation: waveExpand 300ms ease forwards;
+  box-shadow: 0 0 22px rgba(255,255,255,0.28);
+  animation: waveExpand 420ms ease forwards;
 }
 
 .fx-burst {
   position: fixed;
-  width: 28px;
-  height: 28px;
+  width: 66px;
+  height: 66px;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.45) 22%, rgba(255,255,255,0.08) 54%, rgba(255,255,255,0) 75%);
   transform: translate(-50%, -50%);
-  animation: burstFlash 260ms ease forwards;
+  animation: burstFlash 430ms ease forwards;
 }
 
 .fx-streak {
   position: fixed;
-  width: 30px;
-  height: 4px;
+  width: 84px;
+  height: 10px;
   border-radius: 999px;
   background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.95), rgba(255,255,255,0));
   transform-origin: center;
-  animation: streakFlash 280ms ease forwards;
+  animation: streakFlash 420ms ease forwards;
 }
 
 @keyframes specialGlyphPulse {

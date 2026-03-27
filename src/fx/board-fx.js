@@ -71,10 +71,12 @@ export function spawnShatterFX({ indices, boardEl, state, isGem, fxLayerEl, MAX_
     burst.style.top = `${rect.top + rect.height / 2}px`;
     if (isGem(source)) {
       const color = `var(--gem-color-${source.color}, #ffffff)`;
-      burst.style.background = `radial-gradient(circle, rgba(255,255,255,0.98) 0%, ${color} 28%, rgba(255,255,255,0.14) 58%, rgba(255,255,255,0) 76%)`;
+      burst.style.background = `radial-gradient(circle, rgba(255,255,255,1) 0%, ${color} 24%, color-mix(in srgb, ${color} 72%, white 28%) 46%, rgba(255,255,255,0.18) 68%, rgba(255,255,255,0) 84%)`;
+      burst.style.boxShadow = `0 0 28px ${color}, 0 0 54px color-mix(in srgb, ${color} 62%, white 38%)`;
     }
     host.appendChild(burst);
-    setTimeout(() => burst.remove(), 280);
+    burst.style.transform = "translate(-50%, -50%) scale(1.72)";
+    setTimeout(() => burst.remove(), 430);
 
     if (isGem(source) && source.special) {
       const streakCount = source.special === "bomb" || source.special === "rainbow" ? 6 : 4;
@@ -86,8 +88,10 @@ export function spawnShatterFX({ indices, boardEl, state, isGem, fxLayerEl, MAX_
         const rot = `${(360 / streakCount) * s + (source.special === "line_h" ? 0 : source.special === "line_v" ? 90 : 30)}deg`;
         streak.style.setProperty("--streak-rot", rot);
         streak.style.background = `linear-gradient(90deg, rgba(255,255,255,0), var(--gem-color-${source.color}, #fff), rgba(255,255,255,0))`;
+        streak.style.width = source.special === "bomb" || source.special === "rainbow" ? "156px" : "124px";
+        streak.style.height = "14px";
         host.appendChild(streak);
-        setTimeout(() => streak.remove(), 320);
+        setTimeout(() => streak.remove(), 460);
       }
     }
 
@@ -141,16 +145,16 @@ export function spawnShockwaveFX({ boardEl, fxLayerEl, index, strong = false }) 
     setTimeout(() => wave.remove(), life);
   };
 
-  spawnWave(strong ? 16 : 12, strong ? 3 : 2, strong ? 360 : 320, strong ? 0.98 : 0.85);
+  spawnWave(strong ? 34 : 24, strong ? 5 : 4, strong ? 480 : 420, strong ? 1 : 0.94);
     if (strong) {
-      spawnWave(24, 2, 420, 0.68);
-      spawnWave(34, 2, 460, 0.32);
+      spawnWave(56, 4, 520, 0.76);
+      spawnWave(82, 3, 620, 0.44);
       const flash = document.createElement("i");
       flash.style.position = "fixed";
       flash.style.left = `${r.left + r.width / 2}px`;
       flash.style.top = `${r.top + r.height / 2}px`;
-      flash.style.width = "28px";
-      flash.style.height = "28px";
+      flash.style.width = "58px";
+      flash.style.height = "58px";
       flash.style.borderRadius = "50%";
       flash.style.transform = "translate(-50%, -50%)";
       flash.style.background = "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0.35) 45%, rgba(255,255,255,0) 100%)";

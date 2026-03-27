@@ -40,11 +40,11 @@ export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, R
     .filter(([id]) => state.perks[id])
     .sort((a, b) => rarityOrder[a[1].rarity] - rarityOrder[b[1].rarity]);
 
-  const blessings = Object.entries(BLESSING_DEFS || {})
-    .filter(([id]) => state.blessings?.[id])
-    .sort((a, b) => rarityOrder[a[1].rarity] - rarityOrder[b[1].rarity]);
+  const conditional = state.conditionalPassive && BLESSING_DEFS?.[state.conditionalPassive]
+    ? [[state.conditionalPassive, BLESSING_DEFS[state.conditionalPassive]]]
+    : [];
 
-  if (owned.length === 0 && blessings.length === 0) {
+  if (owned.length === 0 && conditional.length === 0) {
     const empty = document.createElement("div");
     empty.className = "perk-empty";
     empty.textContent = t("draftSkillsEmpty");
@@ -52,10 +52,10 @@ export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, R
     return;
   }
 
-  for (const [, def] of blessings) {
+  for (const [, def] of conditional) {
     const el = document.createElement("div");
     el.className = `perk-chip rarity-${def.rarity}`;
-    el.innerHTML = `<span>${t("blessing")}</span><strong>${lt(def.title)}</strong><small>${lt(def.desc)}</small>`;
+    el.innerHTML = `<span>${t("conditionalPassive") || t("blessing")}</span><strong>${lt(def.title)}</strong><small>${lt(def.desc)}</small>`;
     perkWrapEl.appendChild(el);
   }
 
