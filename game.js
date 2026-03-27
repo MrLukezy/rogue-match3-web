@@ -957,6 +957,7 @@ import { createI18n } from "./src/ui/i18n.js";
     state.boss.lastChargeTickAt = Date.now();
     state.boss.nextDecisionAt = Date.now() + 900;
     state.boss.smallCastCount = 0;
+    state.boss.warningStage = 0;
 
     overlayEl.classList.add("hidden");
     if (overlayActionsEl) overlayActionsEl.innerHTML = "";
@@ -1014,7 +1015,7 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function getBossChargeRatePerSecond() {
-    return Math.max(4, Math.round(getBossEnergyGain() * 0.5));
+    return Math.max(6, Math.round(getBossEnergyGain() * 0.72));
   }
 
   function getBossIdleChargeGain(idleMs = 0) {
@@ -1948,6 +1949,20 @@ import { createI18n } from "./src/ui/i18n.js";
     const gain = getBossIdleChargeGain(elapsedMs);
     state.boss.lastChargeTickAt = now;
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
+    const chargePct = state.boss.charge / Math.max(1, state.boss.max);
+    if (chargePct >= 0.95 && state.boss.warningStage < 2) {
+      state.boss.warningStage = 2;
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${profile.isMinion ? "小怪" : "Boss"} 蓄能即将拉满！`
+        : `${profile.isMinion ? "Minion" : "Boss"} is about to hit full charge!`, "warn");
+      audio.play("uiError", { volume: 0.22, rate: 1.18 });
+    } else if (chargePct >= 0.8 && state.boss.warningStage < 1) {
+      state.boss.warningStage = 1;
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${profile.isMinion ? "小怪" : "Boss"} 蓄能接近满值，准备出招。`
+        : `${profile.isMinion ? "Minion" : "Boss"} charge is nearing full. Get ready.`, "warn");
+      audio.play("uiClick", { volume: 0.18, rate: 1.24 });
+    }
     state.boss.phase = state.boss.charge >= castThreshold ? "ready" : "charging";
     if (state.boss.charge < castThreshold) {
       const rate = getBossChargeRatePerSecond();
@@ -1989,6 +2004,7 @@ import { createI18n } from "./src/ui/i18n.js";
     boardWrapEl.classList.remove("boss-telegraph");
     state.boss.phase = "charging";
     state.boss.casting = false;
+    state.boss.warningStage = 0;
     if (!profile.isMinion) {
       if (profile.ultimateSkill && skill.id === profile.ultimateSkill.id) state.boss.smallCastCount = 0;
       else state.boss.smallCastCount = Number(state.boss.smallCastCount || 0) + 1;
@@ -4676,13 +4692,12 @@ import { createI18n } from "./src/ui/i18n.js";
     if (bossBarEl) bossBarEl.style.width = `${bossPct}%`;
     if (bossSkillHintEl) {
       if (profile.isMinion) {
-        const nextSkills = getAvailableBossSkills().map((skill) => `${lt(skill.name)}(${skill.cost})`).join(" · ");
-        bossSkillHintEl.textContent = nextSkills ? `${state.boss.hint} · ${t("readyPrefix")}${nextSkills}` : state.boss.hint;
-      } else {
-        const cycleStep = Number(state.boss.smallCastCount || 0) >= 5 ? lt(profile.ultimateSkill?.name) : `${lt(profile.smallSkills?.[0]?.name)} / ${lt(profile.smallSkills?.[1]?.name)}`;
         bossSkillHintEl.textContent = i18n.getLanguage() === "zh-CN"
-          ? `${state.boss.hint} · 小技能计数 ${state.boss.smallCastCount || 0}/5 · 下一轮：${cycleStep}`
-          : `${state.boss.hint} · Small casts ${state.boss.smallCastCount || 0}/5 · Next: ${cycleStep}`;
+          ? `${Math.round(bossPct)}% · ${lt(profile.skills?.[0]?.name || profile.title)}`
+          : `${Math.round(bossPct)}% · ${lt(profile.skills?.[0]?.name || profile.title)}`;
+      } else {
+        const cycleStep = Number(state.boss.smallCastCount || 0) >= 5 ? lt(profile.ultimateSkill?.name) : `S ${state.boss.smallCastCount || 0}/5`;
+        bossSkillHintEl.textContent = `${Math.round(bossPct)}% · ${cycleStep}`;
       }
     }
     if (bossHpRingEl) {
@@ -4727,6 +4742,8 @@ import { createI18n } from "./src/ui/i18n.js";
       if (state.boss.casting) bossMeterEl.classList.add("casting");
       else if (displayedCharge >= castThreshold || state.boss.phase === "ready") bossMeterEl.classList.add("ready");
       else bossMeterEl.classList.add("charging");
+      bossMeterEl.classList.toggle("warning", !state.boss.casting && Number(state.boss.warningStage || 0) > 0);
+      bossMeterEl.classList.toggle("critical-warning", !state.boss.casting && Number(state.boss.warningStage || 0) > 1);
     }
 
     if (state.mode.type === "normal") modeTextEl.textContent = t("modeStandard");

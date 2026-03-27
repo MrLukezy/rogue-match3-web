@@ -97,8 +97,6 @@
 
       <aside class="panel boss-panel">
         <div class="boss-card">
-          <p class="eyebrow">Encounter Pressure</p>
-          <h2>Encounter Gauge</h2>
           <div class="boss-crest">
             <div class="boss-icon-stack">
               <div class="boss-sigil">
@@ -107,11 +105,14 @@
             </div>
             <div>
               <strong id="bossTitle">Warden of the Deep</strong>
-              <small id="bossState">Studying your board...</small>
             </div>
           </div>
           <div class="boss-portrait-wrap">
             <div class="boss-portrait-shell">
+              <div id="bossMeter" class="momentum boss portrait-meter">
+                <div class="bar"><i id="bossBar"></i></div>
+                <strong id="bossSkillHint">-</strong>
+              </div>
               <div id="bossHpRing" class="boss-hp-ring" aria-label="Encounter HP">
                 <div class="boss-hp-ring-inner">
                   <strong id="bossHpValue">0</strong>
@@ -121,26 +122,10 @@
               <img id="bossPortrait" src="./assets/generated/boss/chapter01_ember_cub.png" alt="Encounter portrait" class="boss-portrait-image" />
             </div>
           </div>
-          <div id="bossMeter" class="momentum boss">
-            <span>Energy</span>
-            <div class="bar"><i id="bossBar"></i></div>
-            <strong id="bossSkillHint">-</strong>
-          </div>
-          <div class="boss-mini-grid">
-            <div class="boss-mini-card">
-              <span>Threat</span>
-              <strong id="bossThreat">Low</strong>
-            </div>
-            <div class="boss-mini-card">
-              <span>Pattern</span>
-              <strong id="bossPattern">Storm / Lock / Shift</strong>
-            </div>
-          </div>
           <div class="boss-skillbook">
             <h3>Encounter Skills</h3>
             <div id="bossSkillbookList"></div>
           </div>
-          <p class="boss-copy">Watch the energy bar on the right side. Higher energy unlocks stronger encounter skills.</p>
         </div>
       </aside>
     </div>
