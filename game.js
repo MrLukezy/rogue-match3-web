@@ -4044,16 +4044,23 @@ import { createI18n } from "./src/ui/i18n.js";
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
+  function spawnTransientFx(className, point, ttl, styleVars = {}) {
+    if (!fxLayerEl || !point) return null;
+    const el = document.createElement("i");
+    el.className = className;
+    el.style.left = `${point.x}px`;
+    el.style.top = `${point.y}px`;
+    for (const [key, value] of Object.entries(styleVars)) el.style.setProperty(key, value);
+    fxLayerEl.appendChild(el);
+    setTimeout(() => el.remove(), ttl);
+    return el;
+  }
+
   function spawnPassiveSkillMarker(point, skillId, delay = 0, scale = 1) {
-    if (!fxLayerEl || !point) return;
-    const marker = document.createElement("i");
-    marker.className = `fx-passive-skill fx-${skillId}`;
-    marker.style.left = `${point.x}px`;
-    marker.style.top = `${point.y}px`;
-    marker.style.setProperty("--fx-delay", `${delay}ms`);
-    marker.style.setProperty("--fx-scale", `${scale}`);
-    fxLayerEl.appendChild(marker);
-    setTimeout(() => marker.remove(), 760 + delay);
+    spawnTransientFx(`fx-passive-skill fx-${skillId}`, point, 760 + delay, {
+      "--fx-delay": `${delay}ms`,
+      "--fx-scale": `${scale}`,
+    });
   }
 
   function spawnPassiveLineSweep(indices, skillId = "row", delay = 0) {
@@ -4062,15 +4069,14 @@ import { createI18n } from "./src/ui/i18n.js";
     if (points.length < 2) return;
     const xs = points.map((point) => point.x);
     const ys = points.map((point) => point.y);
-    const line = document.createElement("i");
     const horizontal = Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys);
-    line.className = `fx-passive-line fx-${skillId}${horizontal ? " horizontal" : " vertical"}`;
-    line.style.left = `${(Math.min(...xs) + Math.max(...xs)) / 2}px`;
-    line.style.top = `${(Math.min(...ys) + Math.max(...ys)) / 2}px`;
-    line.style.setProperty("--line-length", `${horizontal ? Math.max(...xs) - Math.min(...xs) + 44 : Math.max(...ys) - Math.min(...ys) + 44}px`);
-    line.style.setProperty("--fx-delay", `${delay}ms`);
-    fxLayerEl.appendChild(line);
-    setTimeout(() => line.remove(), 720 + delay);
+    spawnTransientFx(`fx-passive-line fx-${skillId}${horizontal ? " horizontal" : " vertical"}`, {
+      x: (Math.min(...xs) + Math.max(...xs)) / 2,
+      y: (Math.min(...ys) + Math.max(...ys)) / 2,
+    }, 720 + delay, {
+      "--line-length": `${horizontal ? Math.max(...xs) - Math.min(...xs) + 44 : Math.max(...ys) - Math.min(...ys) + 44}px`,
+      "--fx-delay": `${delay}ms`,
+    });
   }
 
   function spawnPassiveLinkPath(points, skillId = "color", delay = 0) {
@@ -4082,15 +4088,11 @@ import { createI18n } from "./src/ui/i18n.js";
       const dy = to.y - from.y;
       const length = Math.hypot(dx, dy);
       const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      const beam = document.createElement("i");
-      beam.className = `fx-passive-link fx-${skillId}`;
-      beam.style.left = `${(from.x + to.x) / 2}px`;
-      beam.style.top = `${(from.y + to.y) / 2}px`;
-      beam.style.setProperty("--link-length", `${length}px`);
-      beam.style.setProperty("--link-angle", `${angle}deg`);
-      beam.style.setProperty("--fx-delay", `${delay + i * 36}ms`);
-      fxLayerEl.appendChild(beam);
-      setTimeout(() => beam.remove(), 780 + delay + i * 36);
+      spawnTransientFx(`fx-passive-link fx-${skillId}`, { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }, 780 + delay + i * 36, {
+        "--link-length": `${length}px`,
+        "--link-angle": `${angle}deg`,
+        "--fx-delay": `${delay + i * 36}ms`,
+      });
     }
   }
 
@@ -4102,38 +4104,24 @@ import { createI18n } from "./src/ui/i18n.js";
     const ys = points.map((point) => point.y);
     const center = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
     const radius = Math.max(42, Math.max(...points.map((point) => Math.hypot(point.x - center.x, point.y - center.y))) + 28);
-    const wave = document.createElement("i");
-    wave.className = `fx-passive-area fx-${skillId}`;
-    wave.style.left = `${center.x}px`;
-    wave.style.top = `${center.y}px`;
-    wave.style.setProperty("--area-size", `${radius * 2}px`);
-    wave.style.setProperty("--fx-delay", `${delay}ms`);
-    fxLayerEl.appendChild(wave);
-    setTimeout(() => wave.remove(), 820 + delay);
+    spawnTransientFx(`fx-passive-area fx-${skillId}`, center, 820 + delay, {
+      "--area-size": `${radius * 2}px`,
+      "--fx-delay": `${delay}ms`,
+    });
   }
 
   function spawnPassiveSlash(point, skillId = "boss_breaker", delay = 0, angle = -32) {
-    if (!fxLayerEl || !point) return;
-    const slash = document.createElement("i");
-    slash.className = `fx-passive-slash fx-${skillId}`;
-    slash.style.left = `${point.x}px`;
-    slash.style.top = `${point.y}px`;
-    slash.style.setProperty("--slash-angle", `${angle}deg`);
-    slash.style.setProperty("--fx-delay", `${delay}ms`);
-    fxLayerEl.appendChild(slash);
-    setTimeout(() => slash.remove(), 760 + delay);
+    spawnTransientFx(`fx-passive-slash fx-${skillId}`, point, 760 + delay, {
+      "--slash-angle": `${angle}deg`,
+      "--fx-delay": `${delay}ms`,
+    });
   }
 
   function spawnPassiveSpiral(point, skillId = "shuffle", delay = 0, scale = 1) {
-    if (!fxLayerEl || !point) return;
-    const spiral = document.createElement("i");
-    spiral.className = `fx-passive-spiral fx-${skillId}`;
-    spiral.style.left = `${point.x}px`;
-    spiral.style.top = `${point.y}px`;
-    spiral.style.setProperty("--fx-delay", `${delay}ms`);
-    spiral.style.setProperty("--fx-scale", `${scale}`);
-    fxLayerEl.appendChild(spiral);
-    setTimeout(() => spiral.remove(), 820 + delay);
+    spawnTransientFx(`fx-passive-spiral fx-${skillId}`, point, 820 + delay, {
+      "--fx-delay": `${delay}ms`,
+      "--fx-scale": `${scale}`,
+    });
   }
 
   function spawnPassiveOverclockGrid(indices, skillId = "time_freeze", delay = 0) {
@@ -4142,15 +4130,14 @@ import { createI18n } from "./src/ui/i18n.js";
     if (points.length === 0) return;
     const xs = points.map((point) => point.x);
     const ys = points.map((point) => point.y);
-    const grid = document.createElement("i");
-    grid.className = `fx-passive-grid fx-${skillId}`;
-    grid.style.left = `${(Math.min(...xs) + Math.max(...xs)) / 2}px`;
-    grid.style.top = `${(Math.min(...ys) + Math.max(...ys)) / 2}px`;
-    grid.style.setProperty("--grid-width", `${Math.max(...xs) - Math.min(...xs) + 54}px`);
-    grid.style.setProperty("--grid-height", `${Math.max(...ys) - Math.min(...ys) + 54}px`);
-    grid.style.setProperty("--fx-delay", `${delay}ms`);
-    fxLayerEl.appendChild(grid);
-    setTimeout(() => grid.remove(), 860 + delay);
+    spawnTransientFx(`fx-passive-grid fx-${skillId}`, {
+      x: (Math.min(...xs) + Math.max(...xs)) / 2,
+      y: (Math.min(...ys) + Math.max(...ys)) / 2,
+    }, 860 + delay, {
+      "--grid-width": `${Math.max(...xs) - Math.min(...xs) + 54}px`,
+      "--grid-height": `${Math.max(...ys) - Math.min(...ys) + 54}px`,
+      "--fx-delay": `${delay}ms`,
+    });
   }
 
   function spawnPassiveSkillFX(effect) {
