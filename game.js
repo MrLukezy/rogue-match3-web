@@ -305,6 +305,21 @@ import { createI18n } from "./src/ui/i18n.js";
     grantSkillLevel(id, levelGain);
   }
 
+  function replaceSkill(replacedId, newId, levelGain = 1) {
+    const slotIndex = state.itemSlots.indexOf(replacedId);
+    if (slotIndex < 0) return false;
+    delete state.itemLevels[replacedId];
+    delete state.items[replacedId];
+    state.itemSlots[slotIndex] = newId;
+    state.itemLevels[newId] = Math.max(ITEM_BASE_LEVEL, (state.itemLevels[newId] || 0) + levelGain);
+    state.items[newId] = 0;
+    return true;
+  }
+
+  function pickReplacementCandidates() {
+    return getCarriedItems();
+  }
+
   function grantDragonHoardBonus() {
     applyDragonHoardBonus(state, ITEM_DEFS, (id, amount) => unlockOrUpgradeSkill(id, amount));
   }
@@ -649,6 +664,13 @@ import { createI18n } from "./src/ui/i18n.js";
         if (btn.dataset.action === "restart-run") startRun();
         if (btn.dataset.action === "chapter-select") showChapterSelect();
         if (btn.dataset.action === "next-chapter") startNextChapter();
+        if (btn.dataset.action === "skip-reward") {
+          overlayEl.classList.add("hidden");
+          startFloor(state.floor + 1);
+        }
+        if (btn.dataset.action === "skip-late-draft") {
+          showChapterBlessings(true);
+        }
       });
     }
   }
@@ -899,12 +921,6 @@ import { createI18n } from "./src/ui/i18n.js";
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 18);
     }
     grantDragonHoardBonus();
-
-    const satchelBonus = Number(meta.progression.upgrades.relic_satchel || 0);
-    if (satchelBonus > 0) {
-      unlockOrUpgradeSkill("hammer", satchelBonus);
-      unlockOrUpgradeSkill("row", satchelBonus);
-    }
 
     state.board = createBoard();
     resolveAutoBoard();
@@ -2969,91 +2985,108 @@ import { createI18n } from "./src/ui/i18n.js";
   function buildOffensiveSkillEffects(valid, gemTargets, chain, expandedInfo) {
     const reserved = new Set(valid);
     const effects = [];
-    const baseTargets = gemTargets.length > 0 ? gemTargets : valid;
-    const anchor = baseTargets[0];
-    const secondary = baseTargets[baseTargets.length - 1] ?? anchor;
-    if (anchor == null) return [];
-    const dominantColor = getDominantGemColor(baseTargets);
-    const hpRatio = Number(state.boss.hp || 0) / Math.max(1, Number(state.boss.maxHp || 1));
+    const orderedSkills = getCarriedItems();
+    let aggregateTargets = [...valid];
 
     const pushEffect = (id, indices) => {
       const unique = [...new Set((indices || []).filter((idx) => !reserved.has(idx) && idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))];
       if (unique.length <= 0) return;
       unique.forEach((idx) => reserved.add(idx));
+      aggregateTargets.push(...unique);
       effects.push({ id, name: lt(ITEM_DEFS[id].name), indices: unique });
     };
 
-    if (hasItemType("hammer")) {
-      const anchors = baseTargets.slice(0, Math.min(itemPower("hammer"), baseTargets.length));
-      const picks = [];
-      for (const idx of anchors) {
-        const extra = gatherAdjacentGemIndices(idx).find((candidate) => !reserved.has(candidate));
-        if (Number.isInteger(extra)) picks.push(extra);
+    for (const id of orderedSkills) {
+      const currentGemTargets = [...new Set(aggregateTargets)].filter((idx) => isGem(state.board[idx]));
+      const baseTargets = currentGemTargets.length > 0 ? currentGemTargets : aggregateTargets;
+      const anchor = baseTargets[0];
+      const secondary = baseTargets[baseTargets.length - 1] ?? anchor;
+      if (anchor == null) continue;
+      const dominantColor = getDominantGemColor(baseTargets);
+      const hpRatio = Number(state.boss.hp || 0) / Math.max(1, Number(state.boss.maxHp || 1));
+
+      switch (id) {
+        case "hammer": {
+          const anchors = baseTargets.slice(0, Math.min(itemPower(id), baseTargets.length));
+          const picks = [];
+          for (const idx of anchors) {
+            const extras = gatherAdjacentGemIndices(idx).filter((candidate) => !reserved.has(candidate));
+            picks.push(...extras.slice(0, 1));
+          }
+          pushEffect(id, picks);
+          break;
+        }
+        case "row": {
+          if (currentGemTargets.length < 4) break;
+          const indices = [...getIndicesInRow(rowOf(anchor))];
+          if (itemPower(id) >= 2) indices.push(...getIndicesInRow(rowOf(secondary)));
+          if (itemPower(id) >= 3) indices.push(...getIndicesInCol(colOf(anchor)));
+          pushEffect(id, indices);
+          break;
+        }
+        case "cross": {
+          if (!(currentGemTargets.length >= 4 || chain >= 2 || expandedInfo.chainCount > 1)) break;
+          const indices = [...gatherAreaIndices(anchor, 1)];
+          if (itemPower(id) >= 2) indices.push(...gatherAreaIndices(secondary, 1));
+          if (itemPower(id) >= 3) indices.push(...getIndicesInRow(rowOf(anchor)), ...getIndicesInCol(colOf(anchor)));
+          pushEffect(id, indices);
+          break;
+        }
+        case "color": {
+          if (!(dominantColor != null && currentGemTargets.length >= 4)) break;
+          const sameColor = collectIndices((cell) => isGem(cell) && cell.color === dominantColor).filter((idx) => !reserved.has(idx));
+          shuffle(sameColor);
+          pushEffect(id, sameColor.slice(0, 2 + itemPower(id) * 2));
+          break;
+        }
+        case "shuffle": {
+          const roam = collectIndices((cell) => isGem(cell) || isObstacle(cell)).filter((idx) => !reserved.has(idx));
+          shuffle(roam);
+          pushEffect(id, roam.slice(0, 1 + itemPower(id)));
+          break;
+        }
+        case "screen_wipe": {
+          if (!(currentGemTargets.length >= (itemPower(id) >= 2 ? 4 : 5))) break;
+          const indices = [...gatherAreaIndices(anchor, 1)];
+          if (itemPower(id) >= 2) indices.push(...gatherAreaIndices(secondary, 1));
+          if (itemPower(id) >= 3 && currentGemTargets[1] != null) indices.push(...gatherAreaIndices(currentGemTargets[1], 1));
+          pushEffect(id, indices);
+          break;
+        }
+        case "rainbow_burst": {
+          if (chain < 2) break;
+          const indices = [];
+          const uniqueColors = [...new Set(baseTargets.map((idx) => state.board[idx]?.color).filter((x) => Number.isInteger(x)))];
+          for (const color of uniqueColors) {
+            const pool = collectIndices((cell) => isGem(cell) && cell.color === color).filter((idx) => !reserved.has(idx) && !indices.includes(idx));
+            shuffle(pool);
+            indices.push(...pool.slice(0, Math.max(1, itemPower(id) - 1)));
+          }
+          pushEffect(id, indices);
+          break;
+        }
+        case "time_freeze": {
+          if (expandedInfo.chainCount <= 1) break;
+          const indices = [...gatherAreaIndices(anchor, itemPower(id) >= 3 ? 2 : 1)];
+          if (itemPower(id) >= 2) indices.push(...gatherAreaIndices(secondary, 1));
+          pushEffect(id, indices);
+          break;
+        }
+        case "boss_breaker": {
+          if (hpRatio > 0.5) break;
+          const indices = [...gatherAreaIndices(anchor, 1)];
+          if (itemPower(id) >= 2) indices.push(...gatherAreaIndices(secondary, 1));
+          if (itemPower(id) >= 3) {
+            const finishers = collectIndices((cell) => isGem(cell) || isObstacle(cell)).filter((idx) => !reserved.has(idx) && !indices.includes(idx));
+            shuffle(finishers);
+            indices.push(...finishers.slice(0, 4));
+          }
+          pushEffect(id, indices);
+          break;
+        }
+        default:
+          break;
       }
-      pushEffect("hammer", picks);
-    }
-
-    if (hasItemType("row") && gemTargets.length >= 4) {
-      const indices = [...getIndicesInRow(rowOf(anchor))];
-      if (itemPower("row") >= 2) indices.push(...getIndicesInRow(rowOf(secondary)));
-      if (itemPower("row") >= 3) indices.push(...getIndicesInCol(colOf(anchor)));
-      pushEffect("row", indices);
-    }
-
-    if (hasItemType("cross") && (gemTargets.length >= 4 || chain >= 2 || expandedInfo.chainCount > 1)) {
-      const indices = [...gatherAreaIndices(anchor, 1)];
-      if (itemPower("cross") >= 2) indices.push(...gatherAreaIndices(secondary, 1));
-      if (itemPower("cross") >= 3) {
-        indices.push(...getIndicesInRow(rowOf(anchor)), ...getIndicesInCol(colOf(anchor)));
-      }
-      pushEffect("cross", indices);
-    }
-
-    if (hasItemType("color") && dominantColor != null && gemTargets.length >= 4) {
-      const sameColor = collectIndices((cell) => isGem(cell) && cell.color === dominantColor).filter((idx) => !reserved.has(idx));
-      shuffle(sameColor);
-      pushEffect("color", sameColor.slice(0, 2 + itemPower("color") * 2));
-    }
-
-    if (hasItemType("shuffle")) {
-      const roam = collectIndices((cell) => isGem(cell) || isObstacle(cell)).filter((idx) => !reserved.has(idx));
-      shuffle(roam);
-      pushEffect("shuffle", roam.slice(0, 1 + itemPower("shuffle")));
-    }
-
-    if (hasItemType("screen_wipe") && gemTargets.length >= (itemPower("screen_wipe") >= 2 ? 4 : 5)) {
-      const indices = [...gatherAreaIndices(anchor, 1)];
-      if (itemPower("screen_wipe") >= 2) indices.push(...gatherAreaIndices(secondary, 1));
-      if (itemPower("screen_wipe") >= 3 && gemTargets[1] != null) indices.push(...gatherAreaIndices(gemTargets[1], 1));
-      pushEffect("screen_wipe", indices);
-    }
-
-    if (hasItemType("rainbow_burst") && chain >= 2) {
-      const indices = [];
-      const uniqueColors = [...new Set(baseTargets.map((idx) => state.board[idx]?.color).filter((x) => Number.isInteger(x)))];
-      for (const color of uniqueColors) {
-        const pool = collectIndices((cell) => isGem(cell) && cell.color === color).filter((idx) => !reserved.has(idx) && !indices.includes(idx));
-        shuffle(pool);
-        indices.push(...pool.slice(0, Math.max(1, itemPower("rainbow_burst") - 1)));
-      }
-      pushEffect("rainbow_burst", indices);
-    }
-
-    if (hasItemType("time_freeze") && expandedInfo.chainCount > 1) {
-      const indices = [...gatherAreaIndices(anchor, itemPower("time_freeze") >= 3 ? 2 : 1)];
-      if (itemPower("time_freeze") >= 2) indices.push(...gatherAreaIndices(secondary, 1));
-      pushEffect("time_freeze", indices);
-    }
-
-    if (hasItemType("boss_breaker") && hpRatio <= 0.5) {
-      const indices = [...gatherAreaIndices(anchor, 1)];
-      if (itemPower("boss_breaker") >= 2) indices.push(...gatherAreaIndices(secondary, 1));
-      if (itemPower("boss_breaker") >= 3) {
-        const finishers = collectIndices((cell) => isGem(cell) || isObstacle(cell)).filter((idx) => !reserved.has(idx) && !indices.includes(idx));
-        shuffle(finishers);
-        indices.push(...finishers.slice(0, 4));
-      }
-      pushEffect("boss_breaker", indices);
     }
 
     return effects;
@@ -3439,33 +3472,7 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function maybeDropItem(chain) {
-    if (chain < 2) return;
-    let chance = 0.16 - (state.floor - 1) * 0.012 + state.dropBoost;
-    if (state.feverTurns > 0) chance += 0.1;
-    if (state.perks.relic_magnet) chance += 0.1;
-    chance = Math.max(0.08, Math.min(0.5, chance));
-    if (Math.random() >= chance) return;
-
-    const carried = getCarriedItems();
-    const unlockPool = ITEM_ORDER.filter((id) => !hasItemType(id));
-    if (unlockPool.length > 0 && carried.length < MAX_ITEM_TYPES && Math.random() < 0.38) {
-      const nonLegendary = unlockPool.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
-      const picked = randomPick(nonLegendary.length > 0 ? nonLegendary : unlockPool);
-      unlockOrUpgradeSkill(picked, 1);
-      spawnFloatText(`+${lt(ITEM_DEFS[picked].name)}`, Math.floor(Math.random() * boardSize * boardSize));
-      audio.play("itemGain", { volume: 0.32 });
-      return;
-    }
-    if (carried.length === 0) return;
-    const weighted = [];
-    for (const id of carried) {
-      const weight = Math.max(1, 6 - getItemLevel(id));
-      for (let i = 0; i < weight; i += 1) weighted.push(id);
-    }
-    const picked = randomPick(weighted);
-    unlockOrUpgradeSkill(picked, 1);
-    spawnFloatText(`${lt(ITEM_DEFS[picked].name)} +1`, Math.floor(Math.random() * boardSize * boardSize));
-    audio.play("itemGain", { volume: 0.32 });
+    return;
   }
 
   function breakAdjacentObstacles(gemIndices) {
@@ -3576,13 +3583,14 @@ import { createI18n } from "./src/ui/i18n.js";
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
-    const choices = buildCatchUpSkillChoices();
+    const choices = buildCatchUpSkillChoices(chapter, draftsRemaining);
     for (const reward of choices) {
       const btn = document.createElement("button");
       btn.className = `choice rarity-${reward.rarity || "common"}`;
       btn.innerHTML = `<span class="choice-rarity">${lt(RARITY_LABELS[reward.rarity]) || t("common")}</span><strong>${lt(reward.title)}</strong><small>${lt(reward.desc)}</small>`;
-      btn.addEventListener("click", () => {
-        reward.apply();
+      btn.addEventListener("click", async () => {
+        const proceed = await reward.apply();
+        if (proceed === false) return;
         audio.play("rewardPick");
         if (draftsRemaining > 1) {
           showLateChapterSkillDraft(chapter, draftsRemaining - 1);
@@ -3593,17 +3601,20 @@ import { createI18n } from "./src/ui/i18n.js";
       choiceWrapEl.appendChild(btn);
     }
 
+    overlayActionsEl.innerHTML = `<button type="button" class="btn overlay-btn" data-action="skip-late-draft">${t("skipReward")}</button>`;
+    bindOverlayActions();
+
     overlayEl.classList.remove("hidden");
   }
 
-  function buildCatchUpSkillChoices() {
+  function buildCatchUpSkillChoices(chapter, draftsRemaining) {
     const result = [];
     const newCandidates = ITEM_ORDER.filter((id) => !hasItemType(id));
     const carried = getCarriedItems();
     if (newCandidates.length > 0 && carried.length < MAX_ITEM_TYPES) {
       const pool = [...newCandidates];
       shuffle(pool);
-      for (const id of pool.slice(0, 2)) result.push(createNewItemReward(id));
+      for (const id of pool.slice(0, 2)) result.push(createNewItemReward(id, { onCancel: () => showLateChapterSkillDraft(chapter, draftsRemaining) }));
     }
 
     const upgrades = [...carried].sort((a, b) => getItemLevel(a) - getItemLevel(b));
@@ -3611,7 +3622,7 @@ import { createI18n } from "./src/ui/i18n.js";
 
     while (result.length < 3) {
       const fallback = randomPick(ITEM_ORDER);
-      result.push(hasItemType(fallback) ? createUpgradeReward(fallback) : createNewItemReward(fallback));
+      result.push(hasItemType(fallback) ? createUpgradeReward(fallback) : createNewItemReward(fallback, { onCancel: () => showLateChapterSkillDraft(chapter, draftsRemaining) }));
     }
     return result.slice(0, 3);
   }
@@ -3924,14 +3935,18 @@ import { createI18n } from "./src/ui/i18n.js";
       const btn = document.createElement("button");
       btn.className = `choice rarity-${reward.rarity || "common"}`;
       btn.innerHTML = `<span class="choice-rarity">${lt(RARITY_LABELS[reward.rarity]) || t("common")}</span><strong>${lt(reward.title)}</strong><small>${lt(reward.desc)}</small>`;
-      btn.addEventListener("click", () => {
-        reward.apply();
+      btn.addEventListener("click", async () => {
+        const proceed = await reward.apply();
+        if (proceed === false) return;
         audio.play("rewardPick");
         overlayEl.classList.add("hidden");
         startFloor(state.floor + 1);
       });
       choiceWrapEl.appendChild(btn);
     }
+
+    overlayActionsEl.innerHTML = `<button type="button" class="btn overlay-btn" data-action="skip-reward">${t("skipReward")}</button>`;
+    bindOverlayActions();
 
     overlayEl.classList.remove("hidden");
   }
@@ -3967,8 +3982,14 @@ import { createI18n } from "./src/ui/i18n.js";
       shuffle(pool);
       const preferred = pool.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
       const picks = (preferred.length >= 3 ? preferred : pool).slice(0, 3);
-      for (const id of picks) rewards.push(createNewItemReward(id));
+      for (const id of picks) rewards.push(createNewItemReward(id, { onCancel: () => showRewardChoices() }));
       return rewards;
+    }
+
+    if (newCandidates.length > 0) {
+      const pool = [...newCandidates];
+      shuffle(pool);
+      rewards.push(createNewItemReward(pool[0], { onCancel: () => showRewardChoices() }));
     }
 
     const upgradePool = [];
@@ -3998,14 +4019,55 @@ import { createI18n } from "./src/ui/i18n.js";
     ];
   }
 
-  function createNewItemReward(id) {
+  function showSkillReplacementChoices({ newId, levelGain = 1, onCancel = null }) {
+    return new Promise((resolve) => {
+    overlayTitleEl.textContent = i18n.getLanguage() === "zh-CN" ? `替换为 ${lt(ITEM_DEFS[newId].name)}` : `Replace with ${lt(ITEM_DEFS[newId].name)}`;
+    overlayDescEl.textContent = i18n.getLanguage() === "zh-CN"
+      ? "技能栏已满，请主动选择一个已有技能进行替换，或者取消本次选择。"
+      : "Your skill bar is full. Choose one equipped skill to replace, or cancel this pick.";
+    choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = `<button type="button" class="btn overlay-btn" data-action="cancel-replace">${t("close")}</button>`;
+    bindOverlayActions();
+
+    for (const id of pickReplacementCandidates()) {
+      const btn = document.createElement("button");
+      btn.className = `choice rarity-${ITEM_DEFS[id].rarity}`;
+      btn.innerHTML = `<span class="choice-rarity">${t("itemLevel", { level: getItemLevel(id) })}</span><strong>${lt(ITEM_DEFS[id].name)}</strong><small>${i18n.getLanguage() === "zh-CN" ? `替换后获得 ${lt(ITEM_DEFS[newId].name)} ${t("itemLevel", { level: levelGain })}` : `Replace with ${lt(ITEM_DEFS[newId].name)} Lv.${levelGain}`}</small>`;
+      btn.addEventListener("click", () => {
+        replaceSkill(id, newId, levelGain);
+        resolve(true);
+      });
+      choiceWrapEl.appendChild(btn);
+    }
+
+    const cancelBtn = overlayActionsEl.querySelector('[data-action="cancel-replace"]');
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", () => {
+        if (onCancel) onCancel();
+        resolve(false);
+      }, { once: true });
+    }
+    overlayEl.classList.remove("hidden");
+    });
+  }
+
+  function createNewItemReward(id, options = {}) {
     const bonus = state.perks.vault_expander ? 2 : 1;
     return {
       type: "item",
       rarity: ITEM_DEFS[id].rarity,
       title: i18n.getLanguage() === "zh-CN" ? `新技能：${lt(ITEM_DEFS[id].name)}` : `New Skill: ${lt(ITEM_DEFS[id].name)}`,
-      desc: i18n.getLanguage() === "zh-CN" ? `将 ${lt(ITEM_DEFS[id].name)} 加入你的作战槽位，并直接提升到 ${t("itemLevel", { level: bonus })}。` : `Add ${lt(ITEM_DEFS[id].name)} to your combat bar at Lv.${bonus}.`,
-      apply: () => unlockOrUpgradeSkill(id, bonus),
+      desc: itemSlotAvailable()
+        ? (i18n.getLanguage() === "zh-CN" ? `将 ${lt(ITEM_DEFS[id].name)} 加入你的作战槽位，并直接提升到 ${t("itemLevel", { level: bonus })}。` : `Add ${lt(ITEM_DEFS[id].name)} to your combat bar at Lv.${bonus}.`)
+        : (i18n.getLanguage() === "zh-CN" ? `技能栏已满，可主动选择替换一个已装备技能。` : `Your skill bar is full, so you may choose one equipped skill to replace.`),
+      apply: async () => {
+        if (itemSlotAvailable() || hasItemType(id)) {
+          unlockOrUpgradeSkill(id, bonus);
+          return true;
+        }
+        const replaced = await showSkillReplacementChoices({ newId: id, levelGain: bonus, onCancel: options.onCancel });
+        return replaced;
+      },
     };
   }
 
@@ -4215,11 +4277,11 @@ import { createI18n } from "./src/ui/i18n.js";
   async function playSkillIconReveal(effect) {
     const button = itemWrapEl?.querySelector(`.ability[data-item="${effect.id}"] .item-image`);
     const center = getViewportCenter();
-    spawnTransientFx("fx-skill-cast-icon", center, 620, {
+    spawnTransientFx("fx-skill-cast-icon", center, 900, {
       "--fx-delay": "0ms",
       "--skill-icon": button ? `url("${button.getAttribute("src")}")` : "none",
     });
-    await sleep(180);
+    await sleep(320);
     return center;
   }
 
@@ -4302,6 +4364,25 @@ import { createI18n } from "./src/ui/i18n.js";
     }
   }
 
+  function getSkillAudioProfile(skillId) {
+    const profiles = {
+      hammer: { sound: "matchClear", volume: 0.34, rate: 1.22 },
+      row: { sound: "itemCast", volume: 0.3, rate: 0.92 },
+      cross: { sound: "itemCast", volume: 0.34, rate: 0.84 },
+      color: { sound: "rewardPick", volume: 0.26, rate: 1.18 },
+      shuffle: { sound: "swap", volume: 0.32, rate: 1.16 },
+      screen_wipe: { sound: "bossCast", volume: 0.28, rate: 0.78 },
+      rainbow_burst: { sound: "fever", volume: 0.24, rate: 1.18 },
+      time_freeze: { sound: "bossCast", volume: 0.22, rate: 1.06 },
+      boss_breaker: { sound: "bossCast", volume: 0.32, rate: 0.72 },
+      chain_matrix: { sound: "itemCast", volume: 0.24, rate: 0.96 },
+      fever_engine: { sound: "fever", volume: 0.2, rate: 1.06 },
+      purifier_sigil: { sound: "uiClick", volume: 0.24, rate: 1.2 },
+      boss_shunt: { sound: "bossCast", volume: 0.2, rate: 1.24 },
+    };
+    return profiles[skillId] || { sound: "itemCast", volume: 0.26, rate: 1.06 };
+  }
+
   async function playPassiveSkillSequence(effects) {
     if (!effects || effects.length === 0) return;
     for (const effect of effects) {
@@ -4312,10 +4393,10 @@ import { createI18n } from "./src/ui/i18n.js";
       spawnPassiveSkillFX(effect, castOrigin);
       spawnShatterFX(effect.indices);
       spawnFloatText(effect.name, effect.indices[0]);
-      const rateMap = { hammer: 1.12, row: 0.96, cross: 0.92, color: 1.18, shuffle: 1.06, screen_wipe: 0.82, rainbow_burst: 1.2, time_freeze: 0.88, boss_breaker: 0.78 };
-      audio.play("itemCast", { volume: 0.26, rate: rateMap[effect.id] || 1.06 });
+      const audioProfile = getSkillAudioProfile(effect.id);
+      audio.play(audioProfile.sound, { volume: audioProfile.volume, rate: audioProfile.rate });
       renderAll();
-      await sleep(460);
+      await sleep(620);
     }
     clearAnim.clear();
     setActiveSkillHighlight(null);
@@ -4330,6 +4411,8 @@ import { createI18n } from "./src/ui/i18n.js";
     });
     spawnPassiveSkillFX(effect, origin);
     spawnFloatText(effect.name, effect.indices[0]);
+    const audioProfile = getSkillAudioProfile(effect.id);
+    audio.play(audioProfile.sound, { volume: Math.max(0.18, audioProfile.volume - 0.04), rate: audioProfile.rate });
     if (effect.id === "boss_shunt" && effect.chargeDrain) {
       state.boss.charge = Math.max(0, Number(state.boss.charge || 0) - effect.chargeDrain);
     }

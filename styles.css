@@ -966,7 +966,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   opacity: 0;
   background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.2), rgba(255,255,255,0) 68%), rgba(16, 20, 40, 0.72);
   box-shadow: 0 0 42px rgba(255, 218, 138, 0.24), 0 18px 36px rgba(5, 8, 18, 0.42);
-  animation: skillCastIconBurst 360ms ease-out forwards;
+  animation: skillCastIconBurst 620ms ease-out forwards;
 }
 
 .fx-skill-cast-icon::before {
