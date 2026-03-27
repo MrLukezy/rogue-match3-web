@@ -3919,14 +3919,17 @@ import { createI18n } from "./src/ui/i18n.js";
     const newCandidates = ITEM_ORDER.filter((id) => !hasItemType(id));
 
     if (carried.length < MAX_ITEM_TYPES && newCandidates.length > 0) {
-      const preferred = newCandidates.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
-      const candidate = randomPick(preferred.length > 0 ? preferred : newCandidates);
-      rewards.push(createNewItemReward(candidate));
+      const pool = [...newCandidates];
+      shuffle(pool);
+      const preferred = pool.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
+      const picks = (preferred.length >= 3 ? preferred : pool).slice(0, 3);
+      for (const id of picks) rewards.push(createNewItemReward(id));
+      return rewards;
     }
 
     const upgradePool = [];
     for (const id of carried) {
-      const weight = 2 + getItemLevel(id) * 2 + (getItemCount(id) === 0 ? 1 : 0);
+      const weight = 2 + getItemLevel(id) * 2;
       for (let i = 0; i < weight; i += 1) upgradePool.push(id);
     }
     while (upgradePool.length > 0 && rewards.length < 2) {
@@ -4044,6 +4047,22 @@ import { createI18n } from "./src/ui/i18n.js";
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
+  function getViewportCenter() {
+    return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  }
+
+  function getGemBoltPalette(color) {
+    const palettes = {
+      0: { core: "rgba(255,245,214,0.98)", mid: "rgba(255,122,92,0.96)", glow: "rgba(255,82,82,0.44)" },
+      1: { core: "rgba(239,250,255,0.98)", mid: "rgba(98,202,255,0.96)", glow: "rgba(86,142,255,0.42)" },
+      2: { core: "rgba(247,255,232,0.98)", mid: "rgba(116,224,118,0.96)", glow: "rgba(66,186,118,0.42)" },
+      3: { core: "rgba(255,244,224,0.98)", mid: "rgba(255,214,102,0.96)", glow: "rgba(255,152,82,0.44)" },
+      4: { core: "rgba(255,240,255,0.98)", mid: "rgba(214,138,255,0.96)", glow: "rgba(148,92,255,0.44)" },
+      5: { core: "rgba(244,255,246,0.98)", mid: "rgba(144,255,220,0.96)", glow: "rgba(96,230,208,0.4)" },
+    };
+    return palettes[color] || getEncounterBoltPalette("player");
+  }
+
   function spawnTransientFx(className, point, ttl, styleVars = {}) {
     if (!fxLayerEl || !point) return null;
     const el = document.createElement("i");
@@ -4140,13 +4159,26 @@ import { createI18n } from "./src/ui/i18n.js";
     });
   }
 
-  function spawnPassiveSkillFX(effect) {
-    const skillOrigin = getSkillButtonCenter(effect.id);
-    const points = effect.indices.map(getCellCenter).filter(Boolean);
+  async function playSkillIconReveal(effect) {
+    const button = itemWrapEl?.querySelector(`.ability[data-item="${effect.id}"] .item-image`);
+    const center = getViewportCenter();
+    spawnTransientFx("fx-skill-cast-icon", center, 620, {
+      "--fx-delay": "0ms",
+      "--skill-icon": button ? `url("${button.getAttribute("src")}")` : "none",
+    });
+    await sleep(180);
+    return center;
+  }
+
+  function spawnPassiveSkillFX(effect, originOverride = null) {
+    const skillOrigin = originOverride || getSkillButtonCenter(effect.id);
+    const targets = effect.indices.map((idx) => ({ idx, point: getCellCenter(idx) })).filter((entry) => Boolean(entry.point));
+    const points = targets.map((entry) => entry.point);
     if (points.length === 0) return;
     if (skillOrigin) {
-      for (const point of points.slice(0, Math.min(4, points.length))) {
-        spawnEncounterBolt(skillOrigin, point, "player", 280);
+      for (const entry of targets.slice(0, Math.min(6, targets.length))) {
+        const gemColor = state.board[entry.idx]?.color;
+        spawnEncounterBolt(skillOrigin, entry.point, "player", 980, getGemBoltPalette(gemColor));
       }
     }
 
@@ -4204,13 +4236,14 @@ import { createI18n } from "./src/ui/i18n.js";
       if (!effect.indices || effect.indices.length === 0) continue;
       setActiveSkillHighlight(effect.id);
       clearAnim = new Set(effect.indices);
-      spawnPassiveSkillFX(effect);
+      const castOrigin = await playSkillIconReveal(effect);
+      spawnPassiveSkillFX(effect, castOrigin);
       spawnShatterFX(effect.indices);
       spawnFloatText(effect.name, effect.indices[0]);
       const rateMap = { hammer: 1.12, row: 0.96, cross: 0.92, color: 1.18, shuffle: 1.06, screen_wipe: 0.82, rainbow_burst: 1.2, time_freeze: 0.88, boss_breaker: 0.78 };
       audio.play("itemCast", { volume: 0.26, rate: rateMap[effect.id] || 1.06 });
       renderAll();
-      await sleep(280);
+      await sleep(460);
     }
     clearAnim.clear();
     setActiveSkillHighlight(null);
@@ -4321,12 +4354,12 @@ import { createI18n } from "./src/ui/i18n.js";
     return choosePriorityGemIndices(4, { preferSpecial: true });
   }
 
-  function spawnEncounterBolt(start, end, modifier = "player", duration = 420) {
+  function spawnEncounterBolt(start, end, modifier = "player", duration = 420, paletteOverride = null) {
     if (!fxLayerEl || !start || !end) return;
     const bolt = document.createElement("i");
     const dx = end.x - start.x;
     const dy = end.y - start.y;
-    const palette = getEncounterBoltPalette(modifier);
+    const palette = paletteOverride || getEncounterBoltPalette(modifier);
     bolt.className = `fx-encounter-bolt ${modifier}`;
     bolt.style.left = `${start.x}px`;
     bolt.style.top = `${start.y}px`;
@@ -4336,6 +4369,7 @@ import { createI18n } from "./src/ui/i18n.js";
     bolt.style.setProperty("--bolt-core", palette.core);
     bolt.style.setProperty("--bolt-mid", palette.mid);
     bolt.style.setProperty("--bolt-glow", palette.glow);
+    bolt.style.setProperty("--bolt-angle", `${Math.atan2(dy, dx)}rad`);
     fxLayerEl.appendChild(bolt);
     setTimeout(() => bolt.remove(), duration + 60);
   }
@@ -4351,9 +4385,9 @@ import { createI18n } from "./src/ui/i18n.js";
     shots.forEach((idx, order) => {
       const start = getCellCenter(idx);
       if (!start) return;
-      spawnEncounterBolt(start, target, "player", 320 + order * 28);
+      spawnEncounterBolt(start, target, "player", 520 + order * 36);
     });
-    await sleep(420);
+    await sleep(620);
     const shell = bossPortraitEl?.parentElement;
     if (shell) shell.classList.add("hit");
     if (bossPortraitEl) bossPortraitEl.classList.add("hit");
@@ -4375,9 +4409,9 @@ import { createI18n } from "./src/ui/i18n.js";
     const fallback = getBoardCenter();
     const targets = impactPoints.length > 0 ? impactPoints.slice(0, 6) : (fallback ? [fallback] : []);
     targets.forEach((target, i) => {
-      spawnEncounterBolt(start, target, "enemy", 340 + i * 26);
+      spawnEncounterBolt(start, target, "enemy", 560 + i * 34);
     });
-    await sleep(430);
+    await sleep(640);
     if (shell) shell.classList.remove("casting");
   }
 

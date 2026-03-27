@@ -11,7 +11,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
     mode: { type: "normal", item: null },
     items: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
     itemLevels: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
-    itemSlots: ["hammer", "row"],
+    itemSlots: [],
     modifier: null,
     modGlass: 0,
     modLocks: 0,

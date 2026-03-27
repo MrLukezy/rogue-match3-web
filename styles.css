@@ -907,24 +907,87 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   position: fixed;
   left: 0;
   top: 0;
-  width: 16px;
-  height: 16px;
-  margin-left: -8px;
-  margin-top: -8px;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+  margin-top: -17px;
   border-radius: 999px;
   pointer-events: none;
-  transform: translate(0, 0) scale(0.72);
+  transform: translate(0, 0) scale(0.78);
   animation: encounterBoltFlight var(--fx-duration, 420ms) cubic-bezier(.18,.72,.2,1) forwards;
+}
+
+.fx-encounter-bolt::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 150px;
+  height: 14px;
+  margin-left: -128px;
+  margin-top: -7px;
+  border-radius: 999px;
+  transform-origin: 128px center;
+  transform: rotate(var(--bolt-angle, 0rad));
+  background: linear-gradient(90deg, rgba(255,255,255,0), var(--bolt-glow, rgba(255, 108, 144, 0.3)) 22%, var(--bolt-mid, rgba(255, 194, 110, 0.96)) 72%, rgba(255,255,255,0));
+  filter: blur(1.4px);
+  opacity: 1;
+}
+
+.fx-encounter-bolt::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  background: radial-gradient(circle, color-mix(in srgb, var(--bolt-core, rgba(255,255,255,0.95)) 72%, white 28%), rgba(255,255,255,0) 72%);
+  opacity: 0.86;
 }
 
 .fx-encounter-bolt.player {
   background: radial-gradient(circle at 35% 35%, var(--bolt-core, rgba(255, 252, 234, 0.95)), var(--bolt-mid, rgba(255, 194, 110, 0.88)) 38%, var(--bolt-glow, rgba(255, 104, 138, 0.24)) 72%, rgba(255,255,255,0) 100%);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--bolt-mid, rgba(255, 194, 110, 0.88)) 72%, white 28%), 0 0 26px var(--bolt-glow, rgba(255, 108, 144, 0.22));
+  box-shadow: 0 0 26px color-mix(in srgb, var(--bolt-mid, rgba(255, 194, 110, 0.88)) 72%, white 28%), 0 0 56px var(--bolt-glow, rgba(255, 108, 144, 0.32));
 }
 
 .fx-encounter-bolt.enemy {
   background: radial-gradient(circle at 35% 35%, var(--bolt-core, rgba(255, 236, 246, 0.95)), var(--bolt-mid, rgba(255, 116, 162, 0.9)) 42%, var(--bolt-glow, rgba(128, 198, 255, 0.2)) 74%, rgba(255,255,255,0) 100%);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--bolt-mid, rgba(255, 116, 162, 0.9)) 72%, white 28%), 0 0 26px var(--bolt-glow, rgba(104, 182, 255, 0.24));
+  box-shadow: 0 0 26px color-mix(in srgb, var(--bolt-mid, rgba(255, 116, 162, 0.9)) 72%, white 28%), 0 0 56px var(--bolt-glow, rgba(104, 182, 255, 0.32));
+}
+
+.fx-skill-cast-icon {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 112px;
+  height: 112px;
+  margin-left: -56px;
+  margin-top: -56px;
+  border-radius: 28px;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.2), rgba(255,255,255,0) 68%), rgba(16, 20, 40, 0.72);
+  box-shadow: 0 0 42px rgba(255, 218, 138, 0.24), 0 18px 36px rgba(5, 8, 18, 0.42);
+  animation: skillCastIconBurst 360ms ease-out forwards;
+}
+
+.fx-skill-cast-icon::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border-radius: 22px;
+  background-image: var(--skill-icon);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  filter: drop-shadow(0 0 18px rgba(255,255,255,0.28));
+}
+
+.fx-skill-cast-icon::after {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border-radius: 34px;
+  border: 2px solid rgba(255, 226, 156, 0.54);
+  opacity: 0.8;
 }
 
 .fx-passive-skill {
@@ -1186,9 +1249,16 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 }
 
 @keyframes encounterBoltFlight {
-  0% { transform: translate(0, 0) scale(0.72); opacity: 0; }
-  14% { opacity: 1; }
-  100% { transform: translate(var(--fx-dx), var(--fx-dy)) scale(1.16); opacity: 0; }
+  0% { transform: translate(0, 0) scale(0.78); opacity: 0; filter: brightness(1); }
+  10% { opacity: 1; }
+  72% { opacity: 1; filter: brightness(1.22); }
+  100% { transform: translate(var(--fx-dx), var(--fx-dy)) scale(1.34); opacity: 0; filter: brightness(1.08); }
+}
+
+@keyframes skillCastIconBurst {
+  0% { opacity: 0; transform: scale(0.62); filter: brightness(1); }
+  24% { opacity: 1; transform: scale(1); filter: brightness(1.2); }
+  100% { opacity: 0; transform: scale(1.2); filter: brightness(1.08); }
 }
 
 @keyframes passiveSkillPulse {
