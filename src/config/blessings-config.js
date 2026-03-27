@@ -9,7 +9,7 @@ export const BLESSING_DEFS = {
   },
   supply_cache: {
     title: zhen("补给储备", "Supply Cache"),
-    desc: zhen("每层开始时，所有已携带道具恢复 +1 充能。", "Restore +1 charge to every carried item at the start of each floor."),
+    desc: zhen("每层开始时，所有已携带进攻技能获得 +1 等级。", "At the start of each floor, all carried offensive skills gain +1 level."),
     rarity: "rare",
     apply: (state) => { state.blessings.supply_cache = true; },
   },

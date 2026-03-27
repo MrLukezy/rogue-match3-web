@@ -11,7 +11,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
     mode: { type: "normal", item: null },
     items: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
     itemLevels: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
-    itemSlots: ["hammer", "shuffle"],
+    itemSlots: ["hammer", "row"],
     modifier: null,
     modGlass: 0,
     modLocks: 0,
@@ -68,7 +68,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
 export function seedStartingItems(state, { ITEM_BASE_LEVEL, ITEM_BASE_COUNTS }) {
   for (const id of state.itemSlots) {
     state.itemLevels[id] = ITEM_BASE_LEVEL;
-    state.items[id] = ITEM_BASE_COUNTS[id] || 1;
+    state.items[id] = ITEM_BASE_COUNTS[id] || 0;
   }
 }
 

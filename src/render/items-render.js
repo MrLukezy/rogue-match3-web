@@ -17,19 +17,17 @@ export function renderItemsView({
   for (const id of carried) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "ability";
+    btn.className = "ability passive-skill";
     btn.dataset.item = id;
-    if (state.mode.type === "target_item" && state.mode.item === id) btn.classList.add("active");
-    if (getItemCount(id) <= 0) btn.classList.add("disabled");
     btn.classList.add(`rarity-${ITEM_DEFS[id].rarity}`);
-    btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${lt(ITEM_DEFS[id].name)}"><i class="item-badge">${getItemCount(id)}</i><i class="item-level">${t("itemLevel", { level: getItemLevel(id) })}</i><strong>${lt(ITEM_DEFS[id].name)}</strong>`;
+    btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${lt(ITEM_DEFS[id].name)}"><i class="item-level">${t("itemLevel", { level: getItemLevel(id) })}</i><i class="item-badge passive-tag">PASSIVE</i><strong>${lt(ITEM_DEFS[id].name)}</strong>`;
     itemWrapEl.appendChild(btn);
   }
 
   for (let i = carried.length; i < MAX_ITEM_TYPES; i += 1) {
     const slot = document.createElement("div");
     slot.className = "ability disabled empty-slot";
-    slot.innerHTML = `<div class="item-icon empty-item-slot"><img class="empty-slot-image" src="${UI_IMAGES.emptySlot}" alt="${t("emptySlot")}"></div><strong>${t("emptySlot")}</strong><small>${t("emptySlotDesc")}</small>`;
+    slot.innerHTML = `<div class="item-icon empty-item-slot"><img class="empty-slot-image" src="${UI_IMAGES.emptySlot}" alt="${t("emptySlot")}"></div><strong>${t("emptySlot")}</strong><small>${t("emptySkillDesc") || t("emptySlotDesc")}</small>`;
     itemWrapEl.appendChild(slot);
   }
 }

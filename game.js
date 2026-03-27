@@ -295,8 +295,18 @@ import { createI18n } from "./src/ui/i18n.js";
     spendStateItemCharge(state, id);
   }
 
+  function grantSkillLevel(id, levelGain = 1) {
+    if (!hasItemType(id)) ensureItemType(id);
+    state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(id) + levelGain);
+    state.items[id] = 0;
+  }
+
+  function unlockOrUpgradeSkill(id, levelGain = 1) {
+    grantSkillLevel(id, levelGain);
+  }
+
   function grantDragonHoardBonus() {
-    applyDragonHoardBonus(state, ITEM_DEFS, (id, amount, allowNewType) => addItemCharges(id, amount, allowNewType));
+    applyDragonHoardBonus(state, ITEM_DEFS, (id, amount) => unlockOrUpgradeSkill(id, amount));
   }
 
   function loadMeta() {
@@ -777,6 +787,11 @@ import { createI18n } from "./src/ui/i18n.js";
     return Math.max(40, Math.round(baseHp * laneFactor * eliteFactor));
   }
 
+  function getChapterOrder(chapter = state.selectedChapter || state.floorTheme) {
+    const index = CHAPTER_THEMES.findIndex((entry) => entry.id === chapter?.id);
+    return index >= 0 ? index + 1 : 1;
+  }
+
   function showChapterSelect() {
     openChapterScreen();
     overlayEl.classList.add("hidden");
@@ -802,11 +817,17 @@ import { createI18n } from "./src/ui/i18n.js";
       btn.addEventListener("click", () => {
         if (!isUnlocked) return;
         audio.play("uiClick");
+        state = createInitialState();
         state.selectedChapter = chapter;
         state.floorTheme = chapter;
         state.routePlan = { id: "main", title: t("carryingPath"), floorsRemaining: 0, moveBonus: 0, movePenalty: 0, targetMulDelta: 0, pressureDelta: 0, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
         closeChapterScreen();
-        showChapterBlessings(true);
+        const catchUpDrafts = Math.min(MAX_ITEM_TYPES, Math.max(0, getChapterOrder(chapter) - 1));
+        if (catchUpDrafts > 0) {
+          showLateChapterSkillDraft(chapter, catchUpDrafts);
+        } else {
+          showChapterBlessings(true);
+        }
       });
       chapterListEl.appendChild(btn);
     }
@@ -881,8 +902,8 @@ import { createI18n } from "./src/ui/i18n.js";
 
     const satchelBonus = Number(meta.progression.upgrades.relic_satchel || 0);
     if (satchelBonus > 0) {
-      addItemCharges("hammer", satchelBonus, false);
-      addItemCharges("shuffle", satchelBonus, false);
+      unlockOrUpgradeSkill("hammer", satchelBonus);
+      unlockOrUpgradeSkill("row", satchelBonus);
     }
 
     state.board = createBoard();
@@ -1171,24 +1192,11 @@ import { createI18n } from "./src/ui/i18n.js";
     const btn = event.target.closest(".ability");
     if (!btn) return;
     const item = btn.dataset.item;
-    if (!item || getItemCount(item) <= 0 || !hasItemType(item)) return;
+    if (!item || !hasItemType(item)) return;
     audio.play("uiClick", { volume: 0.34 });
-
-    if (!ITEM_DEFS[item].target) {
-      inputLocked = true;
-      spendItemCharge(item);
-      recordCodex("itemUse", item);
-      if (item === "shuffle") {
-        useShuffle();
-      } else {
-        useLegendSkill(item);
-      }
-      return;
-    }
-
-    state.mode = { type: "target_item", item };
-    selected = null;
-    renderAll();
+    notify(i18n.getLanguage() === "zh-CN"
+      ? `${lt(ITEM_DEFS[item].name)}为被动进攻技能，当前等级 ${getItemLevel(item)}。`
+      : `${lt(ITEM_DEFS[item].name)} is a passive offensive skill at Lv.${getItemLevel(item)}.`, "ok");
   }
 
   function onItemHover(event) {
@@ -2922,6 +2930,133 @@ import { createI18n } from "./src/ui/i18n.js";
     renderAll();
   }
 
+  function getDominantGemColor(indices) {
+    const counts = new Map();
+    for (const idx of indices) {
+      const cell = state.board[idx];
+      if (!isGem(cell)) continue;
+      counts.set(cell.color, (counts.get(cell.color) || 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  }
+
+  function gatherAreaIndices(center, radius = 1) {
+    const row = rowOf(center);
+    const col = colOf(center);
+    const out = [];
+    for (let rr = row - radius; rr <= row + radius; rr += 1) {
+      for (let cc = col - radius; cc <= col + radius; cc += 1) {
+        if (inside(rr, cc)) out.push(rr * boardSize + cc);
+      }
+    }
+    return out;
+  }
+
+  function gatherAdjacentGemIndices(center) {
+    const row = rowOf(center);
+    const col = colOf(center);
+    const out = [];
+    for (const [rr, cc] of [[row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]]) {
+      if (!inside(rr, cc)) continue;
+      const idx = rr * boardSize + cc;
+      if (isGem(state.board[idx]) || isObstacle(state.board[idx])) out.push(idx);
+    }
+    return out;
+  }
+
+  function buildOffensiveSkillEffects(valid, gemTargets, chain, expandedInfo) {
+    const reserved = new Set(valid);
+    const effects = [];
+    const baseTargets = gemTargets.length > 0 ? gemTargets : valid;
+    const anchor = baseTargets[0];
+    const secondary = baseTargets[baseTargets.length - 1] ?? anchor;
+    if (anchor == null) return [];
+    const dominantColor = getDominantGemColor(baseTargets);
+    const hpRatio = Number(state.boss.hp || 0) / Math.max(1, Number(state.boss.maxHp || 1));
+
+    const pushEffect = (id, indices) => {
+      const unique = [...new Set((indices || []).filter((idx) => !reserved.has(idx) && idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))];
+      if (unique.length <= 0) return;
+      unique.forEach((idx) => reserved.add(idx));
+      effects.push({ id, name: lt(ITEM_DEFS[id].name), indices: unique });
+    };
+
+    if (hasItemType("hammer")) {
+      const anchors = baseTargets.slice(0, Math.min(itemPower("hammer"), baseTargets.length));
+      const picks = [];
+      for (const idx of anchors) {
+        const extra = gatherAdjacentGemIndices(idx).find((candidate) => !reserved.has(candidate));
+        if (Number.isInteger(extra)) picks.push(extra);
+      }
+      pushEffect("hammer", picks);
+    }
+
+    if (hasItemType("row") && gemTargets.length >= 4) {
+      const indices = [...getIndicesInRow(rowOf(anchor))];
+      if (itemPower("row") >= 2) indices.push(...getIndicesInRow(rowOf(secondary)));
+      if (itemPower("row") >= 3) indices.push(...getIndicesInCol(colOf(anchor)));
+      pushEffect("row", indices);
+    }
+
+    if (hasItemType("cross") && (gemTargets.length >= 4 || chain >= 2 || expandedInfo.chainCount > 1)) {
+      const indices = [...gatherAreaIndices(anchor, 1)];
+      if (itemPower("cross") >= 2) indices.push(...gatherAreaIndices(secondary, 1));
+      if (itemPower("cross") >= 3) {
+        indices.push(...getIndicesInRow(rowOf(anchor)), ...getIndicesInCol(colOf(anchor)));
+      }
+      pushEffect("cross", indices);
+    }
+
+    if (hasItemType("color") && dominantColor != null && gemTargets.length >= 4) {
+      const sameColor = collectIndices((cell) => isGem(cell) && cell.color === dominantColor).filter((idx) => !reserved.has(idx));
+      shuffle(sameColor);
+      pushEffect("color", sameColor.slice(0, 2 + itemPower("color") * 2));
+    }
+
+    if (hasItemType("shuffle")) {
+      const roam = collectIndices((cell) => isGem(cell) || isObstacle(cell)).filter((idx) => !reserved.has(idx));
+      shuffle(roam);
+      pushEffect("shuffle", roam.slice(0, 1 + itemPower("shuffle")));
+    }
+
+    if (hasItemType("screen_wipe") && gemTargets.length >= (itemPower("screen_wipe") >= 2 ? 4 : 5)) {
+      const indices = [...gatherAreaIndices(anchor, 1)];
+      if (itemPower("screen_wipe") >= 2) indices.push(...gatherAreaIndices(secondary, 1));
+      if (itemPower("screen_wipe") >= 3 && gemTargets[1] != null) indices.push(...gatherAreaIndices(gemTargets[1], 1));
+      pushEffect("screen_wipe", indices);
+    }
+
+    if (hasItemType("rainbow_burst") && chain >= 2) {
+      const indices = [];
+      const uniqueColors = [...new Set(baseTargets.map((idx) => state.board[idx]?.color).filter((x) => Number.isInteger(x)))];
+      for (const color of uniqueColors) {
+        const pool = collectIndices((cell) => isGem(cell) && cell.color === color).filter((idx) => !reserved.has(idx) && !indices.includes(idx));
+        shuffle(pool);
+        indices.push(...pool.slice(0, Math.max(1, itemPower("rainbow_burst") - 1)));
+      }
+      pushEffect("rainbow_burst", indices);
+    }
+
+    if (hasItemType("time_freeze") && expandedInfo.chainCount > 1) {
+      const indices = [...gatherAreaIndices(anchor, itemPower("time_freeze") >= 3 ? 2 : 1)];
+      if (itemPower("time_freeze") >= 2) indices.push(...gatherAreaIndices(secondary, 1));
+      pushEffect("time_freeze", indices);
+    }
+
+    if (hasItemType("boss_breaker") && hpRatio <= 0.5) {
+      const indices = [...gatherAreaIndices(anchor, 1)];
+      if (itemPower("boss_breaker") >= 2) indices.push(...gatherAreaIndices(secondary, 1));
+      if (itemPower("boss_breaker") >= 3) {
+        const finishers = collectIndices((cell) => isGem(cell) || isObstacle(cell)).filter((idx) => !reserved.has(idx) && !indices.includes(idx));
+        shuffle(finishers);
+        indices.push(...finishers.slice(0, 4));
+      }
+      pushEffect("boss_breaker", indices);
+    }
+
+    return effects;
+  }
+
   async function resolveAction(initialTargets, source, spawnMap = null, preferSpawnIndex = null) {
     let chain = 1;
     let current = [...new Set(initialTargets)];
@@ -2946,7 +3081,20 @@ import { createI18n } from "./src/ui/i18n.js";
       if (expandedInfo.chainCount > 1) shakeBoard(1.25);
       else shakeBoard(1);
       renderAll();
-      await sleep(180);
+      await sleep(240);
+
+      const skillEffects = source === "normal" || source === "combo"
+        ? buildOffensiveSkillEffects(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo)
+        : [];
+      if (skillEffects.length > 0) {
+        await playPassiveSkillSequence(skillEffects);
+        for (const effect of skillEffects) {
+          for (const idx of effect.indices) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
+        }
+      }
+      clearAnim = new Set(valid);
+      renderAll();
+      await sleep(skillEffects.length > 0 ? 120 : 40);
 
       const gemTargets = valid.filter((i) => isGem(state.board[i]));
       const obstacles = valid.filter((i) => isObstacle(state.board[i])).length;
@@ -3255,16 +3403,24 @@ import { createI18n } from "./src/ui/i18n.js";
     if (Math.random() >= chance) return;
 
     const carried = getCarriedItems();
-    const pool = carried.length >= MAX_ITEM_TYPES ? [...carried] : ITEM_ORDER.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
-    if (state.perks.arcane_stockpile && Math.random() < 0.35) pool.push("screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker");
+    const unlockPool = ITEM_ORDER.filter((id) => !hasItemType(id));
+    if (unlockPool.length > 0 && carried.length < MAX_ITEM_TYPES && Math.random() < 0.38) {
+      const nonLegendary = unlockPool.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
+      const picked = randomPick(nonLegendary.length > 0 ? nonLegendary : unlockPool);
+      unlockOrUpgradeSkill(picked, 1);
+      spawnFloatText(`+${lt(ITEM_DEFS[picked].name)}`, Math.floor(Math.random() * boardSize * boardSize));
+      audio.play("itemGain", { volume: 0.32 });
+      return;
+    }
+    if (carried.length === 0) return;
     const weighted = [];
-    for (const id of pool) {
-      const weight = hasItemType(id) ? 2 + getItemLevel(id) : 1;
+    for (const id of carried) {
+      const weight = Math.max(1, 6 - getItemLevel(id));
       for (let i = 0; i < weight; i += 1) weighted.push(id);
     }
     const picked = randomPick(weighted);
-    if (!addItemCharges(picked, 1, itemSlotAvailable())) return;
-    spawnFloatText(`+${lt(ITEM_DEFS[picked].name)}`, Math.floor(Math.random() * boardSize * boardSize));
+    unlockOrUpgradeSkill(picked, 1);
+    spawnFloatText(`${lt(ITEM_DEFS[picked].name)} +1`, Math.floor(Math.random() * boardSize * boardSize));
     audio.play("itemGain", { volume: 0.32 });
   }
 
@@ -3370,6 +3526,52 @@ import { createI18n } from "./src/ui/i18n.js";
     overlayEl.classList.remove("hidden");
   }
 
+  function showLateChapterSkillDraft(chapter, draftsRemaining) {
+    overlayTitleEl.textContent = t("lateChapterDraftTitle");
+    overlayDescEl.textContent = t("lateChapterDraftDesc", { count: draftsRemaining });
+    choiceWrapEl.innerHTML = "";
+    overlayActionsEl.innerHTML = "";
+
+    const choices = buildCatchUpSkillChoices();
+    for (const reward of choices) {
+      const btn = document.createElement("button");
+      btn.className = `choice rarity-${reward.rarity || "common"}`;
+      btn.innerHTML = `<span class="choice-rarity">${lt(RARITY_LABELS[reward.rarity]) || t("common")}</span><strong>${lt(reward.title)}</strong><small>${lt(reward.desc)}</small>`;
+      btn.addEventListener("click", () => {
+        reward.apply();
+        audio.play("rewardPick");
+        if (draftsRemaining > 1) {
+          showLateChapterSkillDraft(chapter, draftsRemaining - 1);
+        } else {
+          showChapterBlessings(true);
+        }
+      });
+      choiceWrapEl.appendChild(btn);
+    }
+
+    overlayEl.classList.remove("hidden");
+  }
+
+  function buildCatchUpSkillChoices() {
+    const result = [];
+    const newCandidates = ITEM_ORDER.filter((id) => !hasItemType(id));
+    const carried = getCarriedItems();
+    if (newCandidates.length > 0 && carried.length < MAX_ITEM_TYPES) {
+      const pool = [...newCandidates];
+      shuffle(pool);
+      for (const id of pool.slice(0, 2)) result.push(createNewItemReward(id));
+    }
+
+    const upgrades = [...carried].sort((a, b) => getItemLevel(a) - getItemLevel(b));
+    for (const id of upgrades.slice(0, 2)) result.push(createUpgradeReward(id));
+
+    while (result.length < 3) {
+      const fallback = randomPick(ITEM_ORDER);
+      result.push(hasItemType(fallback) ? createUpgradeReward(fallback) : createNewItemReward(fallback));
+    }
+    return result.slice(0, 3);
+  }
+
   function onVictory() {
     state.victory = true;
     grantMetaShards(6 + Math.floor(state.score / 900));
@@ -3401,9 +3603,9 @@ import { createI18n } from "./src/ui/i18n.js";
     const currentIndex = CHAPTER_THEMES.findIndex((x) => x.id === state.selectedChapter.id);
     const next = CHAPTER_THEMES[currentIndex + 1];
     if (!next) return showChapterSelect();
-    state = createInitialState();
     state.selectedChapter = next;
     state.floorTheme = next;
+    state.routePlan = { id: "main", title: t("carryingPath"), floorsRemaining: 0, moveBonus: 0, movePenalty: 0, targetMulDelta: 0, pressureDelta: 0, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
     overlayEl.classList.add("hidden");
     closeChapterScreen();
     showChapterBlessings(true);
@@ -3491,7 +3693,7 @@ import { createI18n } from "./src/ui/i18n.js";
       },
       {
         title: names[2],
-        desc: zhen("最终 Boss 层：步数更少、压力更大，但连锁更强且立刻补满一次道具。", "Final boss floor: fewer moves and more pressure, but stronger chains and a full item refill now."),
+        desc: zhen("最终 Boss 层：步数更少、压力更大，但连锁更强且立刻让全部作战技能 +1 级。", "Final boss floor: fewer moves and more pressure, but stronger chains and all combat skills gain +1 level immediately."),
         apply: () => {
           state.routePlan = { id: "trial", title: lt(names[2]), floorsRemaining: 1, moveBonus: 0, movePenalty: 1, targetMulDelta: 0.12, pressureDelta: 1, dropBoost: 0.04, chainBonus: 0.18, shardBonus: 0 };
           refillCarriedCharges();
@@ -3503,15 +3705,15 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function buildEventChoices() {
     const commonEvents = [
-      {
-        title: zhen("诅咒契约", "Cursed Pact"),
-        desc: zhen("接下来两层会更严苛，但连锁奖励和掉落提高，并获得 +1 十字爆发。", "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Burst."),
-        apply: () => {
-          state.eventCurseFloors = 2;
-          addItemCharges("cross", 1, true);
-          notify(i18n.getLanguage() === "zh-CN" ? "你签下了诅咒契约。" : "You signed the Cursed Pact.", "warn");
+        {
+          title: zhen("诅咒契约", "Cursed Pact"),
+          desc: zhen("接下来两层会更严苛，但连锁奖励和掉落提高，并获得 +1 十字核爆。", "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Nova."),
+          apply: () => {
+            state.eventCurseFloors = 2;
+            unlockOrUpgradeSkill("cross", 1);
+            notify(i18n.getLanguage() === "zh-CN" ? "你签下了诅咒契约。" : "You signed the Cursed Pact.", "warn");
+          },
         },
-      },
       {
         title: zhen("修复熔炉", "Repair Forge"),
         desc: zhen("下一层 +2 步，并重置 Boss 充能。", "Gain +2 moves next floor and reset the boss charge."),
@@ -3545,10 +3747,10 @@ import { createI18n } from "./src/ui/i18n.js";
       ember_hollows: [
         {
           title: zhen("引燃储备", "Kindling Cache"),
-          desc: zhen("从余烬营地获得 +1 锤子和 +1 横扫。", "Gain +1 Hammer and +1 Row Sweep from the ember camp."),
+          desc: zhen("从余烬营地获得 +1 回响溅射和 +1 裂阵直击。", "Gain +1 Ricochet Splash and +1 Line Breaker from the ember camp."),
           apply: () => {
-            addItemCharges("hammer", 1, true);
-            addItemCharges("row", 1, true);
+            unlockOrUpgradeSkill("hammer", 1);
+            unlockOrUpgradeSkill("row", 1);
             notify(i18n.getLanguage() === "zh-CN" ? "引燃工具已加入你的配置。" : "Kindling tools added to your kit.", "ok");
           },
         },
@@ -3580,9 +3782,9 @@ import { createI18n } from "./src/ui/i18n.js";
       storm_peaks: [
         {
           title: zhen("熔炉过载", "Forge Overdrive"),
-          desc: zhen("获得 +1 彩色炸弹，并提高下一次诅咒楼层收益。", "Gain +1 Color Bomb and boost the next cursed floor payoff."),
+          desc: zhen("获得 +1 同调收割，并提高下一次诅咒楼层收益。", "Gain +1 Color Harvest and boost the next cursed floor payoff."),
           apply: () => {
-            addItemCharges("color", 1, true);
+            unlockOrUpgradeSkill("color", 1);
             state.eventCurseFloors = Math.max(state.eventCurseFloors, 1);
             notify(i18n.getLanguage() === "zh-CN" ? "熔炉轰鸣着苏醒。" : "The forge roars to life.", "warn");
           },
@@ -3603,10 +3805,10 @@ import { createI18n } from "./src/ui/i18n.js";
       tidal_depths: [
         {
           title: zhen("潮汐罗盘", "Tidal Compass"),
-          desc: zhen("下一层 +3 步，并获得 +1 洗牌充能。", "Gain +3 moves next floor and +1 Shuffle charge."),
+          desc: zhen("下一层 +3 步，并获得 +1 追击尾流。", "Gain +3 moves next floor and +1 Cascade Tailwind."),
           apply: () => {
             state.nextFloorMoveBonus += 3;
-            addItemCharges("shuffle", 1, true);
+            unlockOrUpgradeSkill("shuffle", 1);
             notify(i18n.getLanguage() === "zh-CN" ? "潮汐暂时与你同调。" : "The tides briefly align in your favor.", "ok");
           },
         },
@@ -3640,9 +3842,9 @@ import { createI18n } from "./src/ui/i18n.js";
       eclipse_sanctum: [
         {
           title: zhen("圣环碎片", "Halo Fragment"),
-          desc: zhen("获得 +1 彩虹爆发和 +25 动量。", "Gain +1 Rainbow Burst and +25 momentum."),
+          desc: zhen("获得 +1 棱镜溢流和 +25 动量。", "Gain +1 Prism Overflow and +25 momentum."),
           apply: () => {
-            addItemCharges("rainbow_burst", 1, true);
+            unlockOrUpgradeSkill("rainbow_burst", 1);
             state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
             notify(i18n.getLanguage() === "zh-CN" ? "圣环碎片强化了你的配置。" : "A halo fragment empowers your kit.", "ok");
           },
@@ -3651,11 +3853,11 @@ import { createI18n } from "./src/ui/i18n.js";
       void_throne: [
         {
           title: zhen("虚空交易", "Void Bargain"),
-          desc: zhen("获得 +240 分和 +1 彩虹爆发，但下一层 -1 步。", "Gain +240 score and +1 Rainbow Burst, but suffer -1 move next floor."),
+          desc: zhen("获得 +240 分和 +1 处决矩阵，但下一层 -1 步。", "Gain +240 score and +1 Execution Matrix, but suffer -1 move next floor."),
           apply: () => {
             state.score += 240;
             state.nextFloorMovePenalty += 1;
-            addItemCharges("rainbow_burst", 1, true);
+            unlockOrUpgradeSkill("boss_breaker", 1);
             notify(i18n.getLanguage() === "zh-CN" ? "裂隙以代价赐予了力量。" : "The rift grants power at a cost.", "warn");
           },
         },
@@ -3708,21 +3910,7 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function buildPerkReward() {
-    const missing = Object.entries(PERK_DEFS).filter(([k]) => !state.perks[k]);
-    if (missing.length === 0) return null;
-    const weighted = [];
-    for (const [id, def] of missing) {
-      const weight = def.rarity === "legendary" ? 1 : def.rarity === "epic" ? 2 : def.rarity === "rare" ? 3 : 4;
-      for (let i = 0; i < weight; i += 1) weighted.push([id, def]);
-    }
-    const [id, def] = randomPick(weighted);
-    return {
-      type: "perk",
-      rarity: def.rarity,
-        title: `${lt(RARITY_LABELS[def.rarity])}${i18n.getLanguage() === "zh-CN" ? "技能：" : " Skill: "}${lt(def.title)}`,
-        desc: lt(def.desc),
-      apply: () => def.apply(state),
-    };
+    return null;
   }
 
   function buildItemRewards() {
@@ -3754,12 +3942,12 @@ import { createI18n } from "./src/ui/i18n.js";
     return [
       { type: "support", rarity: "common", title: zhen("额外步数 +2", "Extra Moves +2"), desc: zhen("降低下一层压力", "Reduce next-floor pressure"), apply: () => (state.nextFloorMoveBonus += 2) },
       { type: "support", rarity: "common", title: zhen("动量激增", "Momentum Surge"), desc: zhen("+40 动量", "+40 momentum"), apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
-      { type: "support", rarity: "rare", title: zhen("战地修复", "Field Repair"), desc: zhen("为已携带道具随机恢复 2 次充能", "Restore 2 random item charges across carried gear"), apply: restoreRandomCharges },
-      { type: "support", rarity: "common", title: zhen("仓库补给", "Vault Refill"), desc: zhen("为每个已携带道具恢复 1 次充能", "Restore 1 charge to every carried item"), apply: refillCarriedCharges },
-      { type: "support", rarity: "rare", title: zhen("熔炉调校", "Forge Tune-Up"), desc: zhen("随机升级一个已携带道具 1 级并获得 1 次充能", "Upgrade a random carried item by 1 level and gain 1 charge"), apply: upgradeRandomCarriedItem },
+      { type: "support", rarity: "rare", title: zhen("战术加装", "Tactical Retrofit"), desc: zhen("随机提升一个已携带技能 1 级", "Upgrade one random carried skill by 1 level"), apply: upgradeRandomCarriedItem },
+      { type: "support", rarity: "common", title: zhen("战斗手册", "Combat Manual"), desc: zhen("所有已携带技能获得 +1 等级", "All carried skills gain +1 level"), apply: refillCarriedCharges },
+      { type: "support", rarity: "rare", title: zhen("过载校准", "Overload Tuning"), desc: zhen("随机解锁一个新技能；若已满则改为升级最低等级技能", "Unlock a new skill, or upgrade your lowest-level one if all slots are full"), apply: grantHighTierCharge },
       { type: "support", rarity: "rare", title: zhen("Boss 抑制", "Boss Suppressant"), desc: zhen("下一层开始时 +2 步，并完全重置 Boss 能量槽", "Start the next floor with +2 moves and a fully reset boss gauge"), apply: () => { state.nextFloorMoveBonus += 2; state.boss.charge = 0; } },
       { type: "support", rarity: "epic", title: zhen("热潮电池", "Fever Battery"), desc: zhen("获得 +70 动量，为下一次爆发蓄力", "Gain +70 momentum to prime your next power spike"), apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 70)) },
-      { type: "support", rarity: "epic", title: zhen("裂隙宝藏", "Rift Cache"), desc: zhen("随机获得 1 次史诗或更高阶道具充能", "Gain +1 random epic-or-higher item charge"), apply: grantHighTierCharge },
+      { type: "support", rarity: "epic", title: zhen("裂隙演算", "Rift Computation"), desc: zhen("随机获得 1 个史诗或传说技能；若已拥有则再升 1 级", "Gain a random epic or legendary skill, or level it up if already owned"), apply: grantHighTierCharge },
     ];
   }
 
@@ -3768,20 +3956,20 @@ import { createI18n } from "./src/ui/i18n.js";
     return {
       type: "item",
       rarity: ITEM_DEFS[id].rarity,
-      title: i18n.getLanguage() === "zh-CN" ? `新道具：${lt(ITEM_DEFS[id].name)}` : `New Item: ${lt(ITEM_DEFS[id].name)}`,
-      desc: i18n.getLanguage() === "zh-CN" ? `将 ${lt(ITEM_DEFS[id].name)} 加入你的装配，并获得 ${bonus} 点充能。` : `Add ${lt(ITEM_DEFS[id].name)} to your loadout with ${bonus} charge${bonus > 1 ? "s" : ""}.`,
-      apply: () => addItemCharges(id, bonus, true),
+      title: i18n.getLanguage() === "zh-CN" ? `新技能：${lt(ITEM_DEFS[id].name)}` : `New Skill: ${lt(ITEM_DEFS[id].name)}`,
+      desc: i18n.getLanguage() === "zh-CN" ? `将 ${lt(ITEM_DEFS[id].name)} 加入你的作战槽位，并直接提升到 ${t("itemLevel", { level: bonus })}。` : `Add ${lt(ITEM_DEFS[id].name)} to your combat bar at Lv.${bonus}.`,
+      apply: () => unlockOrUpgradeSkill(id, bonus),
     };
   }
 
   function createUpgradeReward(id) {
-    const charges = ITEM_DEFS[id].rarity === "legendary" ? 1 : 2;
+    const levels = ITEM_DEFS[id].rarity === "legendary" ? 1 : 2;
     return {
       type: "item",
       rarity: ITEM_DEFS[id].rarity,
       title: i18n.getLanguage() === "zh-CN" ? `升级 ${lt(ITEM_DEFS[id].name)}` : `Upgrade ${lt(ITEM_DEFS[id].name)}`,
-      desc: i18n.getLanguage() === "zh-CN" ? `将 ${lt(ITEM_DEFS[id].name)} 提升到 ${t("itemLevel", { level: getItemLevel(id) + 1 })}，并获得 +${charges} 充能。` : `Raise ${lt(ITEM_DEFS[id].name)} to Lv.${getItemLevel(id) + 1} and gain +${charges} charge${charges > 1 ? "s" : ""}.`,
-      apply: () => upgradeItem(id, 1, charges),
+      desc: i18n.getLanguage() === "zh-CN" ? `将 ${lt(ITEM_DEFS[id].name)} 提升到 ${t("itemLevel", { level: getItemLevel(id) + levels })}。` : `Raise ${lt(ITEM_DEFS[id].name)} to Lv.${getItemLevel(id) + levels}.`,
+      apply: () => unlockOrUpgradeSkill(id, levels),
     };
   }
 
@@ -3792,26 +3980,31 @@ import { createI18n } from "./src/ui/i18n.js";
     for (const id of carried) {
       for (let i = 0; i < Math.max(1, getItemLevel(id)); i += 1) bag.push(id);
     }
-    for (let i = 0; i < 2; i += 1) addItemCharges(randomPick(bag), 1, false);
+    for (let i = 0; i < 2; i += 1) unlockOrUpgradeSkill(randomPick(bag), 1);
   }
 
   function refillCarriedCharges() {
-    for (const id of getCarriedItems()) addItemCharges(id, 1, false);
+    for (const id of getCarriedItems()) unlockOrUpgradeSkill(id, 1);
   }
 
   function upgradeRandomCarriedItem() {
     const carried = getCarriedItems();
     if (carried.length === 0) return;
     const id = randomPick(carried);
-    upgradeItem(id, 1, 1);
+    unlockOrUpgradeSkill(id, 1);
   }
 
   function grantHighTierCharge() {
+    const lockedHighTier = ITEM_ORDER.filter((id) => !hasItemType(id) && ["epic", "legendary"].includes(ITEM_DEFS[id].rarity));
+    if (lockedHighTier.length > 0 && itemSlotAvailable()) {
+      unlockOrUpgradeSkill(randomPick(lockedHighTier), 1);
+      return;
+    }
     const carried = getCarriedItems().filter((id) => ["epic", "legendary"].includes(ITEM_DEFS[id].rarity));
     const fallback = getCarriedItems();
     const pool = carried.length > 0 ? carried : fallback;
     if (pool.length === 0) return;
-    addItemCharges(randomPick(pool), 1, false);
+    unlockOrUpgradeSkill(randomPick(pool), 1);
   }
 
   function consumeMove() {
@@ -3836,6 +4029,204 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function spawnFloatText(text, index) {
     runFloatText({ boardEl, fxLayerEl, text, index });
+  }
+
+  function setActiveSkillHighlight(skillId = null) {
+    if (!itemWrapEl) return;
+    const abilities = itemWrapEl.querySelectorAll(".ability[data-item]");
+    for (const el of abilities) el.classList.toggle("active-skill", el.dataset.item === skillId);
+  }
+
+  function getSkillButtonCenter(skillId) {
+    const el = itemWrapEl?.querySelector(`.ability[data-item="${skillId}"]`);
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
+  function spawnPassiveSkillMarker(point, skillId, delay = 0, scale = 1) {
+    if (!fxLayerEl || !point) return;
+    const marker = document.createElement("i");
+    marker.className = `fx-passive-skill fx-${skillId}`;
+    marker.style.left = `${point.x}px`;
+    marker.style.top = `${point.y}px`;
+    marker.style.setProperty("--fx-delay", `${delay}ms`);
+    marker.style.setProperty("--fx-scale", `${scale}`);
+    fxLayerEl.appendChild(marker);
+    setTimeout(() => marker.remove(), 760 + delay);
+  }
+
+  function spawnPassiveLineSweep(indices, skillId = "row", delay = 0) {
+    if (!fxLayerEl || !indices || indices.length === 0) return;
+    const points = indices.map(getCellCenter).filter(Boolean);
+    if (points.length < 2) return;
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const line = document.createElement("i");
+    const horizontal = Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys);
+    line.className = `fx-passive-line fx-${skillId}${horizontal ? " horizontal" : " vertical"}`;
+    line.style.left = `${(Math.min(...xs) + Math.max(...xs)) / 2}px`;
+    line.style.top = `${(Math.min(...ys) + Math.max(...ys)) / 2}px`;
+    line.style.setProperty("--line-length", `${horizontal ? Math.max(...xs) - Math.min(...xs) + 44 : Math.max(...ys) - Math.min(...ys) + 44}px`);
+    line.style.setProperty("--fx-delay", `${delay}ms`);
+    fxLayerEl.appendChild(line);
+    setTimeout(() => line.remove(), 720 + delay);
+  }
+
+  function spawnPassiveLinkPath(points, skillId = "color", delay = 0) {
+    if (!fxLayerEl || !points || points.length < 2) return;
+    for (let i = 1; i < points.length; i += 1) {
+      const from = points[i - 1];
+      const to = points[i];
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.hypot(dx, dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      const beam = document.createElement("i");
+      beam.className = `fx-passive-link fx-${skillId}`;
+      beam.style.left = `${(from.x + to.x) / 2}px`;
+      beam.style.top = `${(from.y + to.y) / 2}px`;
+      beam.style.setProperty("--link-length", `${length}px`);
+      beam.style.setProperty("--link-angle", `${angle}deg`);
+      beam.style.setProperty("--fx-delay", `${delay + i * 36}ms`);
+      fxLayerEl.appendChild(beam);
+      setTimeout(() => beam.remove(), 780 + delay + i * 36);
+    }
+  }
+
+  function spawnPassiveAreaShockwave(indices, skillId = "screen_wipe", delay = 0) {
+    if (!fxLayerEl || !indices || indices.length === 0) return;
+    const points = indices.map(getCellCenter).filter(Boolean);
+    if (points.length === 0) return;
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const center = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+    const radius = Math.max(42, Math.max(...points.map((point) => Math.hypot(point.x - center.x, point.y - center.y))) + 28);
+    const wave = document.createElement("i");
+    wave.className = `fx-passive-area fx-${skillId}`;
+    wave.style.left = `${center.x}px`;
+    wave.style.top = `${center.y}px`;
+    wave.style.setProperty("--area-size", `${radius * 2}px`);
+    wave.style.setProperty("--fx-delay", `${delay}ms`);
+    fxLayerEl.appendChild(wave);
+    setTimeout(() => wave.remove(), 820 + delay);
+  }
+
+  function spawnPassiveSlash(point, skillId = "boss_breaker", delay = 0, angle = -32) {
+    if (!fxLayerEl || !point) return;
+    const slash = document.createElement("i");
+    slash.className = `fx-passive-slash fx-${skillId}`;
+    slash.style.left = `${point.x}px`;
+    slash.style.top = `${point.y}px`;
+    slash.style.setProperty("--slash-angle", `${angle}deg`);
+    slash.style.setProperty("--fx-delay", `${delay}ms`);
+    fxLayerEl.appendChild(slash);
+    setTimeout(() => slash.remove(), 760 + delay);
+  }
+
+  function spawnPassiveSpiral(point, skillId = "shuffle", delay = 0, scale = 1) {
+    if (!fxLayerEl || !point) return;
+    const spiral = document.createElement("i");
+    spiral.className = `fx-passive-spiral fx-${skillId}`;
+    spiral.style.left = `${point.x}px`;
+    spiral.style.top = `${point.y}px`;
+    spiral.style.setProperty("--fx-delay", `${delay}ms`);
+    spiral.style.setProperty("--fx-scale", `${scale}`);
+    fxLayerEl.appendChild(spiral);
+    setTimeout(() => spiral.remove(), 820 + delay);
+  }
+
+  function spawnPassiveOverclockGrid(indices, skillId = "time_freeze", delay = 0) {
+    if (!fxLayerEl || !indices || indices.length === 0) return;
+    const points = indices.map(getCellCenter).filter(Boolean);
+    if (points.length === 0) return;
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const grid = document.createElement("i");
+    grid.className = `fx-passive-grid fx-${skillId}`;
+    grid.style.left = `${(Math.min(...xs) + Math.max(...xs)) / 2}px`;
+    grid.style.top = `${(Math.min(...ys) + Math.max(...ys)) / 2}px`;
+    grid.style.setProperty("--grid-width", `${Math.max(...xs) - Math.min(...xs) + 54}px`);
+    grid.style.setProperty("--grid-height", `${Math.max(...ys) - Math.min(...ys) + 54}px`);
+    grid.style.setProperty("--fx-delay", `${delay}ms`);
+    fxLayerEl.appendChild(grid);
+    setTimeout(() => grid.remove(), 860 + delay);
+  }
+
+  function spawnPassiveSkillFX(effect) {
+    const skillOrigin = getSkillButtonCenter(effect.id);
+    const points = effect.indices.map(getCellCenter).filter(Boolean);
+    if (points.length === 0) return;
+    if (skillOrigin) {
+      for (const point of points.slice(0, Math.min(4, points.length))) {
+        spawnEncounterBolt(skillOrigin, point, "player", 280);
+      }
+    }
+
+    switch (effect.id) {
+      case "hammer":
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 40, 0.82));
+        break;
+      case "row":
+        spawnPassiveLineSweep(effect.indices, effect.id, 0);
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 12, 0.9));
+        break;
+      case "cross":
+        spawnPassiveLineSweep(effect.indices.filter((idx) => rowOf(idx) === rowOf(effect.indices[0])), effect.id, 0);
+        spawnPassiveLineSweep(effect.indices.filter((idx) => colOf(idx) === colOf(effect.indices[0])), effect.id, 40);
+        spawnPassiveSkillMarker(points[0], effect.id, 0, 1.2);
+        break;
+      case "color":
+        spawnPassiveLinkPath(points.slice(0, Math.min(points.length, 6)), effect.id, 0);
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 18, 0.8));
+        break;
+      case "shuffle":
+        points.forEach((point, index) => {
+          spawnPassiveSpiral(point, effect.id, index * 36, 0.84 + index * 0.04);
+          spawnPassiveSkillMarker(point, effect.id, index * 26, 0.76);
+        });
+        break;
+      case "screen_wipe":
+        spawnPassiveAreaShockwave(effect.indices, effect.id, 0);
+        points.slice(0, 3).forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 60, 1.08));
+        break;
+      case "rainbow_burst":
+        spawnPassiveLinkPath(points.slice(0, Math.min(points.length, 7)), effect.id, 0);
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 16, 0.96));
+        break;
+      case "time_freeze":
+        spawnPassiveOverclockGrid(effect.indices, effect.id, 0);
+        spawnPassiveLineSweep(effect.indices.slice(0, Math.min(effect.indices.length, 5)), effect.id, 0);
+        points.slice(0, 2).forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 60, 1.18));
+        break;
+      case "boss_breaker":
+        points.slice(0, 4).forEach((point, index) => {
+          spawnPassiveSlash(point, effect.id, index * 46, index % 2 === 0 ? -32 : 28);
+          spawnPassiveSkillMarker(point, effect.id, index * 34, 0.9);
+        });
+        break;
+      default:
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 24, 1));
+        break;
+    }
+  }
+
+  async function playPassiveSkillSequence(effects) {
+    if (!effects || effects.length === 0) return;
+    for (const effect of effects) {
+      if (!effect.indices || effect.indices.length === 0) continue;
+      setActiveSkillHighlight(effect.id);
+      clearAnim = new Set(effect.indices);
+      spawnPassiveSkillFX(effect);
+      spawnShatterFX(effect.indices);
+      spawnFloatText(effect.name, effect.indices[0]);
+      const rateMap = { hammer: 1.12, row: 0.96, cross: 0.92, color: 1.18, shuffle: 1.06, screen_wipe: 0.82, rainbow_burst: 1.2, time_freeze: 0.88, boss_breaker: 0.78 };
+      audio.play("itemCast", { volume: 0.26, rate: rateMap[effect.id] || 1.06 });
+      renderAll();
+      await sleep(280);
+    }
+    clearAnim.clear();
+    setActiveSkillHighlight(null);
   }
 
   function getCellCenter(index) {
