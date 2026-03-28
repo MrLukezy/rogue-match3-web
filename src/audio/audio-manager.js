@@ -18,6 +18,22 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
     itemGain: { src: "./assets/audio/item_gain.ogg", volume: 0.36 },
     bossCast: { src: "./assets/audio/boss_cast.ogg", volume: 0.4 },
     floorStart: { src: "./assets/audio/floor_start.ogg", volume: 0.28 },
+    skillHammer: { src: "./assets/audio/skill_sfx/skill_hammer.ogg", volume: 0.34 },
+    skillRow: { src: "./assets/audio/skill_sfx/skill_row.wav", volume: 0.34 },
+    skillCross: { src: "./assets/audio/skill_sfx/skill_cross.wav", volume: 0.36 },
+    skillColor: { src: "./assets/audio/skill_sfx/skill_color.ogg", volume: 0.32 },
+    skillShuffle: { src: "./assets/audio/skill_sfx/skill_shuffle.ogg", volume: 0.34 },
+    skillPulse9: { src: "./assets/audio/skill_sfx/skill_pulse9.ogg", volume: 0.38 },
+    skillRainbow: { src: "./assets/audio/skill_sfx/skill_rainbow.wav", volume: 0.34 },
+    skillOverclock: { src: "./assets/audio/skill_sfx/skill_overclock.ogg", volume: 0.32 },
+    skillExecute: { src: "./assets/audio/skill_sfx/skill_execute.ogg", volume: 0.4 },
+    condChainMatrix: { src: "./assets/audio/skill_sfx/cond_chain_matrix.ogg", volume: 0.28 },
+    condFeverEngine: { src: "./assets/audio/skill_sfx/cond_fever_engine.wav", volume: 0.28 },
+    condPurifier: { src: "./assets/audio/skill_sfx/cond_purifier.ogg", volume: 0.26 },
+    condBossShunt: { src: "./assets/audio/skill_sfx/cond_boss_shunt.ogg", volume: 0.24 },
+    enemyMinionCast: { src: "./assets/audio/skill_sfx/enemy_minion_cast.ogg", volume: 0.3 },
+    enemyBossCast: { src: "./assets/audio/skill_sfx/enemy_boss_cast.ogg", volume: 0.34 },
+    enemyUltimateCast: { src: "./assets/audio/skill_sfx/enemy_ultimate_cast.ogg", volume: 0.4 },
   };
 
   let toggleButton = null;

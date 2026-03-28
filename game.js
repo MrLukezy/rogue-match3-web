@@ -2029,7 +2029,8 @@ import { createI18n } from "./src/ui/i18n.js";
     notify(i18n.getLanguage() === "zh-CN"
       ? (profile.isMinion ? "小怪满能后主动释放了轻技能！" : "Boss 主动出招了！")
       : (profile.isMinion ? "The minion auto-casts as soon as it fills its gauge!" : "The boss makes its own move!"), "warn");
-    audio.play("bossCast", { volume: 0.24, rate: 0.84 });
+    const readyAudio = getEnemyCastAudioProfile(skill.id, profile.isMinion, !profile.isMinion && profile.ultimateSkill?.id === skill.id);
+    audio.play(readyAudio.sound, { volume: Math.max(0.18, readyAudio.volume - 0.08), rate: readyAudio.rate });
     boardWrapEl.classList.add("boss-telegraph");
     renderAll();
     await sleep(360);
@@ -2050,7 +2051,10 @@ import { createI18n } from "./src/ui/i18n.js";
   async function castBossSkill(skillEntry) {
     const skill = typeof skillEntry === "string" ? { id: skillEntry, cost: 20, name: zhen(skillEntry, skillEntry) } : skillEntry;
     recordCodex("bossSeen", skill.id);
-    audio.play("bossCast", { volume: 0.44, rate: skill.id === "star_abyss_end" ? 0.82 : 1 });
+    const profile = getBossProfile();
+    const castAudio = getEnemyCastAudioProfile(skill.id, profile.isMinion, !profile.isMinion && profile.ultimateSkill?.id === skill.id);
+    audio.play(castAudio.sound, { volume: castAudio.volume, rate: castAudio.rate });
+    if (castAudio.accent) audio.play(castAudio.accent.sound, { volume: castAudio.accent.volume, rate: castAudio.accent.rate });
     boardWrapEl.classList.add("boss-cast");
     if (bossPortraitEl) bossPortraitEl.classList.add("casting");
     spawnScreenPulse("boss", 520);
@@ -4424,21 +4428,49 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function getSkillAudioProfile(skillId) {
     const profiles = {
-      hammer: { sound: "matchClear", volume: 0.34, rate: 1.22, accent: { sound: "uiClick", volume: 0.12, rate: 1.4 } },
-      row: { sound: "itemCast", volume: 0.3, rate: 0.92, accent: { sound: "swap", volume: 0.12, rate: 0.84 } },
-      cross: { sound: "itemCast", volume: 0.34, rate: 0.84, accent: { sound: "bossCast", volume: 0.1, rate: 1.18 } },
-      color: { sound: "rewardPick", volume: 0.26, rate: 1.18, accent: { sound: "uiClick", volume: 0.12, rate: 1.46 } },
-      shuffle: { sound: "swap", volume: 0.32, rate: 1.16, accent: { sound: "matchClear", volume: 0.12, rate: 1.38 } },
-      screen_wipe: { sound: "bossCast", volume: 0.28, rate: 0.78, accent: { sound: "fever", volume: 0.12, rate: 0.82 } },
-      rainbow_burst: { sound: "fever", volume: 0.24, rate: 1.18, accent: { sound: "rewardPick", volume: 0.1, rate: 1.34 } },
-      time_freeze: { sound: "bossCast", volume: 0.22, rate: 1.06, accent: { sound: "uiClick", volume: 0.12, rate: 0.76 } },
-      boss_breaker: { sound: "bossCast", volume: 0.32, rate: 0.72, accent: { sound: "matchClear", volume: 0.14, rate: 0.64 } },
-      chain_matrix: { sound: "itemCast", volume: 0.24, rate: 0.96, accent: { sound: "uiClick", volume: 0.1, rate: 1.28 } },
-      fever_engine: { sound: "fever", volume: 0.2, rate: 1.06, accent: { sound: "bossCast", volume: 0.08, rate: 1.3 } },
-      purifier_sigil: { sound: "uiClick", volume: 0.24, rate: 1.2, accent: { sound: "rewardPick", volume: 0.1, rate: 1.42 } },
-      boss_shunt: { sound: "bossCast", volume: 0.2, rate: 1.24, accent: { sound: "uiError", volume: 0.08, rate: 0.88 } },
+      hammer: { sound: "skillHammer", volume: 0.34, rate: 1.1, accent: { sound: "uiClick", volume: 0.1, rate: 1.34 } },
+      row: { sound: "skillRow", volume: 0.34, rate: 0.96, accent: { sound: "swap", volume: 0.1, rate: 0.82 } },
+      cross: { sound: "skillCross", volume: 0.34, rate: 0.9, accent: { sound: "skillRow", volume: 0.08, rate: 1.18 } },
+      color: { sound: "skillColor", volume: 0.3, rate: 1.08, accent: { sound: "rewardPick", volume: 0.08, rate: 1.22 } },
+      shuffle: { sound: "skillShuffle", volume: 0.34, rate: 1.08, accent: { sound: "matchClear", volume: 0.08, rate: 1.3 } },
+      screen_wipe: { sound: "skillPulse9", volume: 0.38, rate: 0.84, accent: { sound: "fever", volume: 0.08, rate: 0.88 } },
+      rainbow_burst: { sound: "skillRainbow", volume: 0.32, rate: 1.06, accent: { sound: "skillColor", volume: 0.08, rate: 1.26 } },
+      time_freeze: { sound: "skillOverclock", volume: 0.32, rate: 0.96, accent: { sound: "uiClick", volume: 0.08, rate: 0.74 } },
+      boss_breaker: { sound: "skillExecute", volume: 0.38, rate: 0.82, accent: { sound: "enemyUltimateCast", volume: 0.08, rate: 0.72 } },
+      chain_matrix: { sound: "condChainMatrix", volume: 0.28, rate: 1, accent: { sound: "skillRow", volume: 0.08, rate: 1.1 } },
+      fever_engine: { sound: "condFeverEngine", volume: 0.28, rate: 1.08, accent: { sound: "skillPulse9", volume: 0.08, rate: 1.16 } },
+      purifier_sigil: { sound: "condPurifier", volume: 0.28, rate: 1.04, accent: { sound: "skillColor", volume: 0.06, rate: 1.32 } },
+      boss_shunt: { sound: "condBossShunt", volume: 0.24, rate: 0.96, accent: { sound: "enemyBossCast", volume: 0.08, rate: 0.84 } },
     };
     return profiles[skillId] || { sound: "itemCast", volume: 0.26, rate: 1.06 };
+  }
+
+  function getEnemyCastAudioProfile(skillId, isMinion = false, isUltimate = false) {
+    if (isMinion) return { sound: "enemyMinionCast", volume: 0.26, rate: 1.06 };
+    if (isUltimate) return { sound: "enemyUltimateCast", volume: 0.34, rate: 0.9, accent: { sound: "enemyBossCast", volume: 0.08, rate: 0.78 } };
+    const map = {
+      ember_spark: { sound: "enemyBossCast", volume: 0.3, rate: 1.08 },
+      tail_scorch: { sound: "enemyBossCast", volume: 0.3, rate: 0.94 },
+      chill_script: { sound: "condPurifier", volume: 0.26, rate: 0.92 },
+      frost_page: { sound: "skillOverclock", volume: 0.24, rate: 0.82 },
+      pebble_drop: { sound: "skillHammer", volume: 0.28, rate: 0.78 },
+      bark_armor: { sound: "condChainMatrix", volume: 0.24, rate: 0.8 },
+      static_pin: { sound: "skillOverclock", volume: 0.26, rate: 1.14 },
+      thunder_lance: { sound: "skillRow", volume: 0.28, rate: 1.08 },
+      toxin_dust: { sound: "condBossShunt", volume: 0.22, rate: 1.16 },
+      thorn_bind: { sound: "enemyMinionCast", volume: 0.24, rate: 0.88 },
+      splash_shift: { sound: "skillShuffle", volume: 0.26, rate: 0.94 },
+      undertow_pull: { sound: "enemyBossCast", volume: 0.28, rate: 0.82 },
+      mirror_glint: { sound: "skillColor", volume: 0.24, rate: 1.22 },
+      false_match: { sound: "skillShuffle", volume: 0.26, rate: 1.14 },
+      iron_slag: { sound: "enemyBossCast", volume: 0.28, rate: 0.76 },
+      anvil_slam: { sound: "skillExecute", volume: 0.3, rate: 0.88 },
+      radiance_mark: { sound: "condPurifier", volume: 0.24, rate: 1.18 },
+      eclipse_wing: { sound: "condBossShunt", volume: 0.24, rate: 0.9 },
+      void_scale: { sound: "enemyBossCast", volume: 0.3, rate: 0.72 },
+      dragon_breath: { sound: "enemyUltimateCast", volume: 0.28, rate: 1.08 },
+    };
+    return map[skillId] || { sound: "enemyBossCast", volume: 0.28, rate: 1.02 };
   }
 
   async function playPassiveSkillSequence(effects) {
