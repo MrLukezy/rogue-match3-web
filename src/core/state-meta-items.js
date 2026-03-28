@@ -4,6 +4,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
     score: 0,
     floorScore: 0,
     targetScore: 0,
+    momentumLastDecayAt: 0,
     movesLeft: 0,
     boardSize: MIN_BOARD_SIZE,
     activeGemColors: [0, 1, 2, 3],

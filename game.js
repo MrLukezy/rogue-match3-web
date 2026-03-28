@@ -400,7 +400,9 @@ import { createI18n } from "./src/ui/i18n.js";
     const viewportHeight = window.innerHeight;
 
     const appScale = Math.min(1, viewportWidth / 1920, viewportHeight / 1080);
-    document.documentElement.style.setProperty("--app-scale", `${Math.max(0.56, appScale)}`);
+    const nextAppScale = Math.max(0.56, appScale);
+    document.documentElement.style.setProperty("--app-scale", `${nextAppScale}`);
+    document.documentElement.style.setProperty("--fx-global-scale", `${nextAppScale}`);
 
     const chapterScale = Math.min(1, (viewportWidth - 40) / 1280, (viewportHeight - 40) / 900);
     document.documentElement.style.setProperty("--chapter-scale", `${Math.max(0.64, chapterScale)}`);
@@ -973,6 +975,7 @@ import { createI18n } from "./src/ui/i18n.js";
     state.boss.nextDecisionAt = Date.now() + 900;
     state.boss.smallCastCount = 0;
     state.boss.warningStage = 0;
+    state.momentumLastDecayAt = Date.now();
 
     overlayEl.classList.add("hidden");
     if (overlayActionsEl) overlayActionsEl.innerHTML = "";
@@ -1030,7 +1033,10 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   function getBossChargeRatePerSecond() {
-    return Math.max(6, Math.round(getBossEnergyGain() * 0.72));
+    const profile = getBossProfile();
+    return profile.isMinion
+      ? Math.max(8, Math.round(getBossEnergyGain() * 0.92))
+      : Math.max(5, Math.round(getBossEnergyGain() * 0.6));
   }
 
   function getBossIdleChargeGain(idleMs = 0) {
@@ -1080,6 +1086,8 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function finishPlayerAction() {
     state.boss.pendingIdleMs = 0;
+    state.boss.lastActionEndedAt = Date.now();
+    state.momentumLastDecayAt = Date.now();
   }
 
   function maybeShowBossChargeGuide() {
@@ -1959,11 +1967,22 @@ import { createI18n } from "./src/ui/i18n.js";
     const now = Date.now();
     const lastTickAt = Number(state.boss.lastChargeTickAt || now);
     const elapsedMs = Math.max(0, now - lastTickAt);
+    const lastDecayAt = Number(state.momentumLastDecayAt || now);
+    const idleSinceAction = Math.max(0, now - Number(state.boss.lastActionEndedAt || now));
     const profile = getBossProfile();
     const castThreshold = getEncounterCastThreshold(profile);
     const gain = getBossIdleChargeGain(elapsedMs);
     state.boss.lastChargeTickAt = now;
     state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
+    if (state.momentum > 0 && idleSinceAction >= 1200) {
+      const decaySteps = Math.floor((now - lastDecayAt) / 900);
+      if (decaySteps > 0) {
+        state.momentum = Math.max(0, state.momentum - decaySteps);
+        state.momentumLastDecayAt = now;
+      }
+    } else {
+      state.momentumLastDecayAt = now;
+    }
     const chargePct = state.boss.charge / Math.max(1, state.boss.max);
     if (chargePct >= 0.95 && state.boss.warningStage < 2) {
       state.boss.warningStage = 2;
@@ -3237,7 +3256,7 @@ import { createI18n } from "./src/ui/i18n.js";
         spawnFloatText(i18n.getLanguage() === "zh-CN" ? `雷击成灰 ${ashCreated}` : `Ash ${ashCreated}`, gemTargets[0] ?? valid[0]);
       }
       if (chargeReduced > 0) {
-        spawnFloatText(i18n.getLanguage() === "zh-CN" ? `压制 -${chargeReduced}` : `Charge -${chargeReduced}`, Math.floor((boardSize * boardSize) / 2));
+        spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `压制 -${chargeReduced}` : `Charge -${chargeReduced}`, getElementCenter(bossMeterEl) || getEncounterPortraitCenter() || getViewportCenter(), "fx-text fx-text-warning");
       }
       if (inflicted > 0) {
         state.boss.hint = i18n.getLanguage() === "zh-CN"
@@ -3479,6 +3498,9 @@ import { createI18n } from "./src/ui/i18n.js";
   function updateMomentum(gems, chain) {
     const gain = Math.min(26, gems + chain * 4);
     state.momentum = Math.min(MOMENTUM_MAX, state.momentum + gain);
+    if (gain > 0) {
+      spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `动量 +${gain}` : `Momentum +${gain}`, getElementCenter(momentumBarEl) || getElementCenter(feverTurnsEl) || getViewportCenter(), "fx-text fx-text-momentum");
+    }
     if (state.momentum >= MOMENTUM_MAX) {
       state.momentum = 0;
       state.feverTurns = (state.perks.fever_loop ? 4 : 3);
@@ -4181,6 +4203,12 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function getViewportCenter() {
     return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  }
+
+  function getElementCenter(el) {
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
   function getGemBoltPalette(color) {
