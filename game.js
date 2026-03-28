@@ -3019,19 +3019,21 @@ import { createI18n } from "./src/ui/i18n.js";
     const reserved = new Set(valid);
     const effects = [];
     const orderedSkills = getCarriedItems();
-    let aggregateTargets = [...valid];
+    const originalTargets = [...valid];
+    let currentSourceTargets = [...valid];
 
     const pushEffect = (id, indices) => {
       const unique = [...new Set((indices || []).filter((idx) => !reserved.has(idx) && idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))];
       if (unique.length <= 0) return;
       unique.forEach((idx) => reserved.add(idx));
-      aggregateTargets.push(...unique);
+      currentSourceTargets = [...unique];
       effects.push({ id, name: lt(ITEM_DEFS[id].name), indices: unique });
     };
 
     for (const id of orderedSkills) {
-      const currentGemTargets = [...new Set(aggregateTargets)].filter((idx) => isGem(state.board[idx]));
-      const baseTargets = currentGemTargets.length > 0 ? currentGemTargets : aggregateTargets;
+      const sourceTargets = currentSourceTargets.length > 0 ? currentSourceTargets : originalTargets;
+      const currentGemTargets = [...new Set(sourceTargets)].filter((idx) => isGem(state.board[idx]));
+      const baseTargets = currentGemTargets.length > 0 ? currentGemTargets : sourceTargets;
       const anchor = baseTargets[0];
       const secondary = baseTargets[baseTargets.length - 1] ?? anchor;
       if (anchor == null) continue;
@@ -3080,9 +3082,9 @@ import { createI18n } from "./src/ui/i18n.js";
         }
         case "screen_wipe": {
           if (!(currentGemTargets.length >= (itemPower(id) >= 2 ? 4 : 5))) break;
-          const indices = [...gatherAreaIndices(anchor, 1)];
-          if (itemPower(id) >= 2) indices.push(...gatherAreaIndices(secondary, 1));
-          if (itemPower(id) >= 3 && currentGemTargets[1] != null) indices.push(...gatherAreaIndices(currentGemTargets[1], 1));
+          const anchors = baseTargets.slice(0, Math.min(itemPower(id), baseTargets.length));
+          const indices = [];
+          for (const sourceIdx of anchors) indices.push(...gatherAreaIndices(sourceIdx, 1));
           pushEffect(id, indices);
           break;
         }
