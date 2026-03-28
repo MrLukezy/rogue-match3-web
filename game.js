@@ -207,6 +207,7 @@ import { createI18n } from "./src/ui/i18n.js";
   bindEvents();
   startItemIconAnimation();
   startBossHudTicker();
+  updateResponsiveScale();
   startRun();
 
   function createInitialState() {
@@ -387,8 +388,22 @@ import { createI18n } from "./src/ui/i18n.js";
       });
     }
 
+    window.addEventListener("resize", updateResponsiveScale);
+    window.addEventListener("orientationchange", updateResponsiveScale);
+
     applyStaticText();
     syncSettingsControls();
+  }
+
+  function updateResponsiveScale() {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const appScale = Math.min(1, viewportWidth / 1920, viewportHeight / 1080);
+    document.documentElement.style.setProperty("--app-scale", `${Math.max(0.56, appScale)}`);
+
+    const chapterScale = Math.min(1, (viewportWidth - 40) / 1280, (viewportHeight - 40) / 900);
+    document.documentElement.style.setProperty("--chapter-scale", `${Math.max(0.64, chapterScale)}`);
   }
 
   function t(key, params = {}) {
@@ -3127,6 +3142,7 @@ import { createI18n } from "./src/ui/i18n.js";
     let current = [...new Set(initialTargets)];
     let localSpawnMap = spawnMap;
     let passiveSkillTriggered = false;
+    let conditionalSkillTriggered = false;
 
     while (current.length > 0) {
       const expandedInfo = expandWithSpecialTriggers(current, MAX_SKILL_CHAIN);
@@ -3148,8 +3164,11 @@ import { createI18n } from "./src/ui/i18n.js";
       renderAll();
       await sleep(260);
 
-      const conditionalEffect = buildConditionalPassiveEffect(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo);
+      const conditionalEffect = !conditionalSkillTriggered && (source === "normal" || source === "combo")
+        ? buildConditionalPassiveEffect(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo)
+        : null;
       if (conditionalEffect) {
+        conditionalSkillTriggered = true;
         await playConditionalPassiveSequence(conditionalEffect);
         for (const idx of conditionalEffect.indices) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
       }
@@ -3226,9 +3245,8 @@ import { createI18n } from "./src/ui/i18n.js";
           : `${lt(getEncounterName(state.floorTheme))} takes ${inflicted} damage and drops to ${state.boss.hp}/${state.boss.maxHp}`;
       }
 
-      spawnShatterFX(valid);
       renderAll();
-      await sleep(170);
+      await sleep(120);
 
       clearAnim.clear();
       renderAll();
@@ -4412,6 +4430,9 @@ import { createI18n } from "./src/ui/i18n.js";
     spawnFloatText(effect.name, effect.indices[0]);
     const audioProfile = getSkillAudioProfile(effect.id);
     audio.play(audioProfile.sound, { volume: Math.max(0.18, audioProfile.volume - 0.04), rate: audioProfile.rate });
+    clearAnim = new Set(effect.indices);
+    renderAll();
+    await sleep(280);
     if (effect.id === "boss_shunt" && effect.chargeDrain) {
       state.boss.charge = Math.max(0, Number(state.boss.charge || 0) - effect.chargeDrain);
     }
@@ -4424,8 +4445,9 @@ import { createI18n } from "./src/ui/i18n.js";
         cell.lockedTurns = 0;
       }
     }
+    clearAnim.clear();
     renderAll();
-    await sleep(320);
+    await sleep(120);
   }
 
   function getCellCenter(index) {
@@ -4560,14 +4582,15 @@ import { createI18n } from "./src/ui/i18n.js";
       if (applied > 0) spawnFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, Math.floor((boardSize * boardSize) / 2));
       return applied;
     }
+    spawnShatterFX(indices);
     const shots = indices.slice(0, 6);
     shots.forEach((idx, order) => {
       const start = getCellCenter(idx);
       if (!start) return;
       const gemColor = state.board[idx]?.color;
-      spawnEncounterBolt(start, target, "player", 520 + order * 36, getGemBoltPalette(gemColor));
+      spawnEncounterBolt(start, target, "player", 620 + order * 42, getGemBoltPalette(gemColor));
     });
-    await sleep(620);
+    await sleep(700);
     const shell = bossPortraitEl?.parentElement;
     if (shell) shell.classList.add("hit");
     if (bossPortraitEl) bossPortraitEl.classList.add("hit");
