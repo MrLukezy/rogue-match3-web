@@ -4207,6 +4207,17 @@ import { createI18n } from "./src/ui/i18n.js";
     return el;
   }
 
+  function spawnViewportFloatText(text, point, className = "fx-text") {
+    if (!point) return;
+    const el = document.createElement("i");
+    el.className = className;
+    el.textContent = text;
+    el.style.left = `${point.x}px`;
+    el.style.top = `${point.y}px`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 560);
+  }
+
   function spawnPassiveSkillMarker(point, skillId, delay = 0, scale = 1) {
     spawnTransientFx(`fx-passive-skill fx-${skillId}`, point, 760 + delay, {
       "--fx-delay": `${delay}ms`,
@@ -4383,19 +4394,19 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function getSkillAudioProfile(skillId) {
     const profiles = {
-      hammer: { sound: "matchClear", volume: 0.34, rate: 1.22 },
-      row: { sound: "itemCast", volume: 0.3, rate: 0.92 },
-      cross: { sound: "itemCast", volume: 0.34, rate: 0.84 },
-      color: { sound: "rewardPick", volume: 0.26, rate: 1.18 },
-      shuffle: { sound: "swap", volume: 0.32, rate: 1.16 },
-      screen_wipe: { sound: "bossCast", volume: 0.28, rate: 0.78 },
-      rainbow_burst: { sound: "fever", volume: 0.24, rate: 1.18 },
-      time_freeze: { sound: "bossCast", volume: 0.22, rate: 1.06 },
-      boss_breaker: { sound: "bossCast", volume: 0.32, rate: 0.72 },
-      chain_matrix: { sound: "itemCast", volume: 0.24, rate: 0.96 },
-      fever_engine: { sound: "fever", volume: 0.2, rate: 1.06 },
-      purifier_sigil: { sound: "uiClick", volume: 0.24, rate: 1.2 },
-      boss_shunt: { sound: "bossCast", volume: 0.2, rate: 1.24 },
+      hammer: { sound: "matchClear", volume: 0.34, rate: 1.22, accent: { sound: "uiClick", volume: 0.12, rate: 1.4 } },
+      row: { sound: "itemCast", volume: 0.3, rate: 0.92, accent: { sound: "swap", volume: 0.12, rate: 0.84 } },
+      cross: { sound: "itemCast", volume: 0.34, rate: 0.84, accent: { sound: "bossCast", volume: 0.1, rate: 1.18 } },
+      color: { sound: "rewardPick", volume: 0.26, rate: 1.18, accent: { sound: "uiClick", volume: 0.12, rate: 1.46 } },
+      shuffle: { sound: "swap", volume: 0.32, rate: 1.16, accent: { sound: "matchClear", volume: 0.12, rate: 1.38 } },
+      screen_wipe: { sound: "bossCast", volume: 0.28, rate: 0.78, accent: { sound: "fever", volume: 0.12, rate: 0.82 } },
+      rainbow_burst: { sound: "fever", volume: 0.24, rate: 1.18, accent: { sound: "rewardPick", volume: 0.1, rate: 1.34 } },
+      time_freeze: { sound: "bossCast", volume: 0.22, rate: 1.06, accent: { sound: "uiClick", volume: 0.12, rate: 0.76 } },
+      boss_breaker: { sound: "bossCast", volume: 0.32, rate: 0.72, accent: { sound: "matchClear", volume: 0.14, rate: 0.64 } },
+      chain_matrix: { sound: "itemCast", volume: 0.24, rate: 0.96, accent: { sound: "uiClick", volume: 0.1, rate: 1.28 } },
+      fever_engine: { sound: "fever", volume: 0.2, rate: 1.06, accent: { sound: "bossCast", volume: 0.08, rate: 1.3 } },
+      purifier_sigil: { sound: "uiClick", volume: 0.24, rate: 1.2, accent: { sound: "rewardPick", volume: 0.1, rate: 1.42 } },
+      boss_shunt: { sound: "bossCast", volume: 0.2, rate: 1.24, accent: { sound: "uiError", volume: 0.08, rate: 0.88 } },
     };
     return profiles[skillId] || { sound: "itemCast", volume: 0.26, rate: 1.06 };
   }
@@ -4412,6 +4423,7 @@ import { createI18n } from "./src/ui/i18n.js";
       spawnFloatText(effect.name, effect.indices[0]);
       const audioProfile = getSkillAudioProfile(effect.id);
       audio.play(audioProfile.sound, { volume: audioProfile.volume, rate: audioProfile.rate });
+      if (audioProfile.accent) audio.play(audioProfile.accent.sound, { volume: audioProfile.accent.volume, rate: audioProfile.accent.rate });
       renderAll();
       await sleep(620);
     }
@@ -4430,6 +4442,7 @@ import { createI18n } from "./src/ui/i18n.js";
     spawnFloatText(effect.name, effect.indices[0]);
     const audioProfile = getSkillAudioProfile(effect.id);
     audio.play(audioProfile.sound, { volume: Math.max(0.18, audioProfile.volume - 0.04), rate: audioProfile.rate });
+    if (audioProfile.accent) audio.play(audioProfile.accent.sound, { volume: Math.max(0.06, audioProfile.accent.volume - 0.02), rate: audioProfile.accent.rate });
     clearAnim = new Set(effect.indices);
     renderAll();
     await sleep(280);
@@ -4579,7 +4592,7 @@ import { createI18n } from "./src/ui/i18n.js";
     const target = getEncounterPortraitCenter();
     if (!target || !indices?.length) {
       const applied = damageEncounter(damage, "attack");
-      if (applied > 0) spawnFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, Math.floor((boardSize * boardSize) / 2));
+      if (applied > 0) spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, getEncounterPortraitCenter() || getViewportCenter());
       return applied;
     }
     spawnShatterFX(indices);
@@ -4595,7 +4608,7 @@ import { createI18n } from "./src/ui/i18n.js";
     if (shell) shell.classList.add("hit");
     if (bossPortraitEl) bossPortraitEl.classList.add("hit");
     const applied = damageEncounter(damage, "fx");
-    if (applied > 0) spawnFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, Math.floor((boardSize * boardSize) / 2));
+    if (applied > 0) spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, target);
     await sleep(220);
     if (shell) shell.classList.remove("hit");
     if (bossPortraitEl) bossPortraitEl.classList.remove("hit");
