@@ -83,19 +83,32 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 import { createAudioManager } from "./src/audio/audio-manager.js";
 import { createI18n } from "./src/ui/i18n.js";
 
+const buildIdleFrames = (basePath) => Array.from({ length: 8 }, (_, i) => `${basePath}/idle_f${i + 1}.png`);
+
 const CHAPTER_MINION_ANIMATIONS = {
-  ember_hollows: {
-    idle: [
-      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f1.png",
-      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f2.png",
-      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f3.png",
-      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f4.png",
-      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f5.png",
-      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f6.png",
-      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f7.png",
-      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f8.png",
-    ],
-  },
+  ember_hollows: { idle: buildIdleFrames("./assets/generated/chapters/chapter01/minion/anim/idle") },
+  frost_spire: { idle: buildIdleFrames("./assets/generated/chapters/chapter02/minion/anim/idle") },
+  stone_grove: { idle: buildIdleFrames("./assets/generated/chapters/chapter03/minion/anim/idle") },
+  storm_peaks: { idle: buildIdleFrames("./assets/generated/chapters/chapter04/minion/anim/idle") },
+  venom_bloom: { idle: buildIdleFrames("./assets/generated/chapters/chapter05/minion/anim/idle") },
+  tidal_depths: { idle: buildIdleFrames("./assets/generated/chapters/chapter06/minion/anim/idle") },
+  mirror_circus: { idle: buildIdleFrames("./assets/generated/chapters/chapter07/minion/anim/idle") },
+  iron_forge: { idle: buildIdleFrames("./assets/generated/chapters/chapter08/minion/anim/idle") },
+  eclipse_sanctum: { idle: buildIdleFrames("./assets/generated/chapters/chapter09/minion/anim/idle") },
+  void_throne: { idle: buildIdleFrames("./assets/generated/chapters/chapter10/minion/anim/idle") },
+};
+
+const CHAPTER_BOSS_ANIMATIONS = {
+  ember_hollows: { idle: buildIdleFrames("./assets/generated/chapters/chapter01/boss/anim/idle") },
+  frost_spire: { idle: buildIdleFrames("./assets/generated/chapters/chapter02/boss/anim/idle") },
+  stone_grove: { idle: buildIdleFrames("./assets/generated/chapters/chapter03/boss/anim/idle") },
+  storm_peaks: { idle: buildIdleFrames("./assets/generated/chapters/chapter04/boss/anim/idle") },
+  venom_bloom: { idle: buildIdleFrames("./assets/generated/chapters/chapter05/boss/anim/idle") },
+  tidal_depths: { idle: buildIdleFrames("./assets/generated/chapters/chapter06/boss/anim/idle") },
+  mirror_circus: { idle: buildIdleFrames("./assets/generated/chapters/chapter07/boss/anim/idle") },
+  iron_forge: { idle: buildIdleFrames("./assets/generated/chapters/chapter08/boss/anim/idle") },
+  eclipse_sanctum: { idle: buildIdleFrames("./assets/generated/chapters/chapter09/boss/anim/idle") },
+  void_throne: { idle: buildIdleFrames("./assets/generated/chapters/chapter10/boss/anim/idle") },
 };
 
 (() => {
@@ -143,6 +156,7 @@ const CHAPTER_MINION_ANIMATIONS = {
     floorScoreEl,
     scoreEl,
     boardMovesLeftEl,
+    testPassBtn,
     boardTargetScoreEl,
     boardFloorScoreEl,
     boardFloorTotalScoreEl,
@@ -410,6 +424,9 @@ const CHAPTER_MINION_ANIMATIONS = {
         });
         else syncSettingsControls();
       });
+    }
+    if (testPassBtn) {
+      testPassBtn.addEventListener("click", triggerTestPassCurrentFloor);
     }
 
     window.addEventListener("resize", updateResponsiveScale);
@@ -848,8 +865,9 @@ const CHAPTER_MINION_ANIMATIONS = {
 
   function getEncounterAnimatedPortraitPath(theme = state.floorTheme, floor = state.floor, frameIndex = itemAnimFrameIndex) {
     const basePortrait = getEncounterPortraitPath(theme, floor);
-    if (!isMinionEncounter(theme, floor)) return basePortrait;
-    const animationSet = CHAPTER_MINION_ANIMATIONS[theme?.id];
+    const animationSet = isMinionEncounter(theme, floor)
+      ? CHAPTER_MINION_ANIMATIONS[theme?.id]
+      : CHAPTER_BOSS_ANIMATIONS[theme?.id];
     if (!animationSet) return basePortrait;
     const frames = animationSet.idle;
     if (!Array.isArray(frames) || frames.length === 0) return basePortrait;
@@ -3634,6 +3652,14 @@ const CHAPTER_MINION_ANIMATIONS = {
     showRewardChoices();
   }
 
+  function triggerTestPassCurrentFloor() {
+    if (!state.selectedChapter || state.gameOver || state.victory) return;
+    state.boss.hp = 0;
+    renderHUD();
+    notify(i18n.getLanguage() === "zh-CN" ? "测试按钮：当前关卡已直接通关。" : "Test button: current floor cleared instantly.", "ok");
+    checkFloorState();
+  }
+
   function showChapterBlessings(isChapterStart = false) {
     overlayTitleEl.textContent = `${t("conditionalPassivePrefix") || t("chapterBlessingPrefix")}${lt(state.floorTheme.title)}`;
     overlayDescEl.textContent = isChapterStart ? t("conditionalPassiveStart") || t("chapterBlessingStart") : t("conditionalPassiveNext") || t("chapterBlessingNext");
@@ -4618,6 +4644,10 @@ const CHAPTER_MINION_ANIMATIONS = {
       : { x: rect.left + rect.width * 0.42, y: rect.top + rect.height * 0.58 };
   }
 
+  function getEncounterAttackOrigin() {
+    return getEncounterClawPoint() || getEncounterPortraitCenter();
+  }
+
   function getBoardCenter() {
     if (!boardWrapEl) return null;
     const rect = boardWrapEl.getBoundingClientRect();
@@ -4770,14 +4800,14 @@ const CHAPTER_MINION_ANIMATIONS = {
 
   async function playEncounterCastFX(skill, impactIndices = null) {
     const portraitCenter = getEncounterPortraitCenter();
-    const clawPoint = getEncounterClawPoint();
+    const attackOrigin = getEncounterAttackOrigin();
     const isMinion = isMinionEncounter(state.floorTheme, state.floor);
-    const start = isMinion ? (clawPoint || portraitCenter) : portraitCenter;
+    const start = attackOrigin || portraitCenter;
     if (!start) return;
     const shell = bossPortraitEl?.parentElement;
     if (shell) shell.classList.add("casting");
     if (isMinion && bossPortraitEl) bossPortraitEl.classList.add("minion-casting");
-    if (isMinion) spawnEncounterClawFx(clawPoint || start, 460);
+    spawnEncounterClawFx(start, isMinion ? 460 : 520);
     const exactIndices = Array.isArray(impactIndices) && impactIndices.length > 0 ? impactIndices : estimateSkillImpactIndices(skill);
     const impactPoints = exactIndices.map(getCellCenter).filter(Boolean);
     const fallback = getBoardCenter();
