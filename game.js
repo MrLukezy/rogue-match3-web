@@ -4536,31 +4536,43 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function getEnemyCastAudioProfile(skillId, isMinion = false, isUltimate = false) {
-    if (isMinion) return { sound: "enemyMinionCast", volume: 0.26, rate: 1.06 };
-    if (isUltimate) return { sound: "enemyUltimateCast", volume: 0.34, rate: 0.9, accent: { sound: "enemyBossCast", volume: 0.08, rate: 0.78 } };
+    const voiceLayer = isMinion
+      ? { sound: "enemyMinionVoice", volume: 0.2, rate: 1.04 }
+      : { sound: "enemyBossVoice", volume: 0.24, rate: 0.94 };
+
+    if (isUltimate) {
+      return {
+        sound: "enemyUltimateCast",
+        volume: 0.34,
+        rate: 0.9,
+        accent: { sound: "enemyBossRoar", volume: 0.24, rate: 0.82 },
+        layer: { sound: "enemyArcaneCast", volume: 0.18, rate: 0.9 },
+      };
+    }
+
     const map = {
-      ember_spark: { sound: "enemyBossCast", volume: 0.3, rate: 1.08 },
-      tail_scorch: { sound: "enemyBossCast", volume: 0.3, rate: 0.94 },
-      chill_script: { sound: "condPurifier", volume: 0.26, rate: 0.92 },
-      frost_page: { sound: "skillOverclock", volume: 0.24, rate: 0.82 },
-      pebble_drop: { sound: "skillHammer", volume: 0.28, rate: 0.78 },
-      bark_armor: { sound: "condChainMatrix", volume: 0.24, rate: 0.8 },
-      static_pin: { sound: "skillOverclock", volume: 0.26, rate: 1.14 },
-      thunder_lance: { sound: "skillRow", volume: 0.28, rate: 1.08 },
-      toxin_dust: { sound: "condBossShunt", volume: 0.22, rate: 1.16 },
-      thorn_bind: { sound: "enemyMinionCast", volume: 0.24, rate: 0.88 },
-      splash_shift: { sound: "skillShuffle", volume: 0.26, rate: 0.94 },
-      undertow_pull: { sound: "enemyBossCast", volume: 0.28, rate: 0.82 },
-      mirror_glint: { sound: "skillColor", volume: 0.24, rate: 1.22 },
-      false_match: { sound: "skillShuffle", volume: 0.26, rate: 1.14 },
-      iron_slag: { sound: "enemyBossCast", volume: 0.28, rate: 0.76 },
-      anvil_slam: { sound: "skillExecute", volume: 0.3, rate: 0.88 },
-      radiance_mark: { sound: "condPurifier", volume: 0.24, rate: 1.18 },
-      eclipse_wing: { sound: "condBossShunt", volume: 0.24, rate: 0.9 },
-      void_scale: { sound: "enemyBossCast", volume: 0.3, rate: 0.72 },
-      dragon_breath: { sound: "enemyUltimateCast", volume: 0.28, rate: 1.08 },
+      ember_spark: { sound: "enemyFireCast", volume: 0.34, rate: 1.04, accent: voiceLayer },
+      tail_scorch: { sound: "enemyFireCast", volume: 0.36, rate: 0.92, accent: { sound: "enemyBossVoice", volume: 0.18, rate: 0.84 } },
+      chill_script: { sound: "enemyIceCast", volume: 0.28, rate: 0.92, accent: voiceLayer },
+      frost_page: { sound: "enemyIceCast", volume: 0.3, rate: 0.78, accent: { sound: "enemyBossVoice", volume: 0.16, rate: 0.8 } },
+      pebble_drop: { sound: "enemyStoneCast", volume: 0.34, rate: 0.84, accent: voiceLayer },
+      bark_armor: { sound: "enemyStoneCast", volume: 0.28, rate: 0.76, accent: { sound: "enemyMinionVoice", volume: 0.16, rate: 0.9 } },
+      static_pin: { sound: "enemyLightningCast", volume: 0.3, rate: 1.18, accent: voiceLayer },
+      thunder_lance: { sound: "enemyLightningCast", volume: 0.36, rate: 1.08, accent: { sound: "enemyBossVoice", volume: 0.2, rate: 0.88 } },
+      toxin_dust: { sound: "enemyPoisonCast", volume: 0.3, rate: 1.08, accent: voiceLayer },
+      thorn_bind: { sound: "enemyPoisonCast", volume: 0.28, rate: 0.9, accent: { sound: "enemyMinionVoice", volume: 0.18, rate: 0.96 } },
+      splash_shift: { sound: "enemyWaterCast", volume: 0.28, rate: 0.94, accent: voiceLayer },
+      undertow_pull: { sound: "enemyWaterCast", volume: 0.34, rate: 0.78, accent: { sound: "enemyBossVoice", volume: 0.18, rate: 0.82 } },
+      mirror_glint: { sound: "enemyArcaneCast", volume: 0.28, rate: 1.2, accent: voiceLayer },
+      false_match: { sound: "enemyArcaneCast", volume: 0.3, rate: 1.08, accent: { sound: "enemyBossVoice", volume: 0.16, rate: 1.04 } },
+      iron_slag: { sound: "enemyStoneCast", volume: 0.34, rate: 0.72, accent: { sound: "enemyBossVoice", volume: 0.18, rate: 0.74 } },
+      anvil_slam: { sound: "enemyStoneCast", volume: 0.38, rate: 0.82, accent: { sound: "enemyBossRoar", volume: 0.14, rate: 1.04 } },
+      radiance_mark: { sound: "enemyArcaneCast", volume: 0.26, rate: 1.22, accent: voiceLayer },
+      eclipse_wing: { sound: "enemyArcaneCast", volume: 0.3, rate: 0.9, accent: { sound: "enemyBossVoice", volume: 0.18, rate: 0.76 } },
+      void_scale: { sound: "enemyArcaneCast", volume: 0.34, rate: 0.68, accent: { sound: "enemyBossRoar", volume: 0.16, rate: 0.62 } },
+      dragon_breath: { sound: "enemyFireCast", volume: 0.38, rate: 0.98, accent: { sound: "enemyBossRoar", volume: 0.24, rate: 0.9 } },
     };
-    return map[skillId] || { sound: "enemyBossCast", volume: 0.28, rate: 1.02 };
+    return map[skillId] || { sound: isMinion ? "enemyArcaneCast" : "enemyBossCast", volume: 0.28, rate: 1.02, accent: voiceLayer };
   }
 
   function playMatchDestructionAudio(valid, expandedInfo, chain) {

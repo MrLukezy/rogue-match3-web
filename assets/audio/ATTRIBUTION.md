@@ -19,6 +19,21 @@ All audio files in this folder were chosen for free commercial use.
    Source page: https://opengameart.org/content/heartfelt-battle-loopable-fantasy-stringspianohorn  
    Download used: https://opengameart.org/sites/default/files/heartfelt-battle_loop.ogg
 
+4. **80 CC0 creature SFX**  
+   License: **CC0**  
+   Source page: https://opengameart.org/content/80-cc0-creature-sfx  
+   Download: https://opengameart.org/sites/default/files/80-CC0-creature-SFX_0.zip
+
+5. **80 CC0 RPG SFX**  
+   License: **CC0**  
+   Source page: https://opengameart.org/content/80-cc0-rpg-sfx  
+   Download: https://opengameart.org/sites/default/files/80-CC0-RPG-SFX_0.zip
+
+6. **CC0 Deep Monster Roar**  
+   License: **CC0**  
+   Source page: https://opengameart.org/content/cc0-deep-monster-roar  
+   Download used: https://opengameart.org/sites/default/files/monster_roar.wav
+
 ## In-game mapping
 
 - `bgm_battle_loop.ogg`: chapter gameplay background music
@@ -28,5 +43,8 @@ All audio files in this folder were chosen for free commercial use.
 - `boss_cast.ogg`, `victory.ogg`, `defeat.ogg`, `floor_start.ogg`: game state events
 - `gem_sfx/gem_tap_main.mp3`: derived from Freesound preview of `Item Pickup Chime` by Irolan. License of source sound: CC0. Source page: https://freesound.org/people/Irolan/sounds/735168/
 - `gem_sfx/gem_clear_main.mp3`: derived from Freesound preview of `snd_fragment_retrieve.wav` by gristi. License of source sound: CC0. Source page: https://freesound.org/people/gristi/sounds/562196/
+- `enemy_layers/enemy_fire_cast.ogg`, `enemy_layers/enemy_ice_cast.ogg`, `enemy_layers/enemy_arcane_cast.ogg`, `enemy_layers/enemy_lightning_cast.ogg`, `enemy_layers/enemy_poison_cast.ogg`, `enemy_layers/enemy_stone_cast.ogg`, `enemy_layers/enemy_water_cast.ogg`: selected elemental cast layers from "80 CC0 RPG SFX" by rubberduck.
+- `enemy_layers/enemy_boss_voice.ogg`, `enemy_layers/enemy_minion_voice.ogg`: selected creature vocal layers from "80 CC0 creature SFX" by rubberduck.
+- `enemy_layers/enemy_boss_roar.wav`: selected roar layer from "CC0 Deep Monster Roar" by trazzz123.
 
 Kenney credit is appreciated but not required on CC0 assets.

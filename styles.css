@@ -274,6 +274,106 @@ body[data-theme="void_rift"] {
 .boss-panel .boss-card {
   height: 100%;
 }
+
+body[data-theme="ember_hollows"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(92, 26, 20, 0.84), rgba(38, 14, 16, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="ember_hollows"] .boss-card {
+  background: linear-gradient(180deg, rgba(255, 124, 84, 0.08), rgba(255, 92, 46, 0.02));
+}
+
+body[data-theme="frost_spire"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(228, 244, 255, 0.16), rgba(18, 34, 52, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="frost_spire"] .boss-card {
+  background: linear-gradient(180deg, rgba(232, 248, 255, 0.1), rgba(122, 186, 236, 0.03));
+}
+
+body[data-theme="stone_grove"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(94, 70, 48, 0.82), rgba(30, 24, 18, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="stone_grove"] .boss-card {
+  background: linear-gradient(180deg, rgba(212, 182, 138, 0.08), rgba(112, 82, 52, 0.03));
+}
+
+body[data-theme="storm_peaks"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(48, 54, 106, 0.82), rgba(18, 20, 44, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="storm_peaks"] .boss-card {
+  background: linear-gradient(180deg, rgba(196, 214, 255, 0.08), rgba(120, 144, 255, 0.03));
+}
+
+body[data-theme="venom_bloom"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(34, 70, 32, 0.84), rgba(12, 26, 16, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="venom_bloom"] .boss-card {
+  background: linear-gradient(180deg, rgba(176, 236, 124, 0.08), rgba(78, 154, 84, 0.03));
+}
+
+body[data-theme="tidal_depths"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(24, 72, 104, 0.82), rgba(10, 22, 38, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="tidal_depths"] .boss-card {
+  background: linear-gradient(180deg, rgba(144, 236, 255, 0.08), rgba(82, 156, 210, 0.03));
+}
+
+body[data-theme="mirror_circus"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(86, 34, 96, 0.82), rgba(26, 16, 40, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="mirror_circus"] .boss-card {
+  background: linear-gradient(180deg, rgba(244, 188, 255, 0.08), rgba(166, 120, 255, 0.03));
+}
+
+body[data-theme="iron_forge"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(94, 48, 30, 0.84), rgba(26, 18, 16, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="iron_forge"] .boss-card {
+  background: linear-gradient(180deg, rgba(255, 188, 124, 0.08), rgba(180, 102, 62, 0.03));
+}
+
+body[data-theme="eclipse_sanctum"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(78, 48, 92, 0.82), rgba(24, 16, 34, 0.94)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="eclipse_sanctum"] .boss-card {
+  background: linear-gradient(180deg, rgba(255, 238, 178, 0.08), rgba(196, 146, 255, 0.03));
+}
+
+body[data-theme="void_throne"] .boss-panel {
+  background:
+    linear-gradient(180deg, rgba(48, 24, 82, 0.84), rgba(10, 8, 22, 0.96)),
+    var(--bg-panel-boss-image) center / cover no-repeat;
+}
+
+body[data-theme="void_throne"] .boss-card {
+  background: linear-gradient(180deg, rgba(202, 152, 255, 0.08), rgba(96, 72, 168, 0.03));
+}
 .title-block {
   display: flex;
   align-items: center;
