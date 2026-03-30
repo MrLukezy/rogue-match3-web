@@ -83,6 +83,21 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 import { createAudioManager } from "./src/audio/audio-manager.js";
 import { createI18n } from "./src/ui/i18n.js";
 
+const CHAPTER_MINION_ANIMATIONS = {
+  ember_hollows: {
+    idle: [
+      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f1.png",
+      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f2.png",
+      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f3.png",
+      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f4.png",
+      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f5.png",
+      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f6.png",
+      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f7.png",
+      "./assets/generated/chapters/chapter01/minion/anim/idle/idle_f8.png",
+    ],
+  },
+};
+
 (() => {
   const TEST_UNLOCK_ALL_CHAPTERS = true;
   const zhen = (zh, en) => ({ zh, en });
@@ -243,6 +258,10 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function syncAnimatedItemImages(root = document) {
     syncAnimatedVisuals({ root, frameIndex: itemAnimFrameIndex, getAnimatedItemImage, getAnimatedGemImage, getAnimatedBossImage });
+    const encounterAnimatedPortrait = getEncounterAnimatedPortraitPath(state.floorTheme, state.floor, itemAnimFrameIndex);
+    if (bossPortraitEl && encounterAnimatedPortrait && bossPortraitEl.getAttribute("src") !== encounterAnimatedPortrait) {
+      bossPortraitEl.setAttribute("src", encounterAnimatedPortrait);
+    }
   }
 
   function startItemIconAnimation() {
@@ -827,6 +846,16 @@ import { createI18n } from "./src/ui/i18n.js";
     return theme?.bossPortrait || "";
   }
 
+  function getEncounterAnimatedPortraitPath(theme = state.floorTheme, floor = state.floor, frameIndex = itemAnimFrameIndex) {
+    const basePortrait = getEncounterPortraitPath(theme, floor);
+    if (!isMinionEncounter(theme, floor)) return basePortrait;
+    const animationSet = CHAPTER_MINION_ANIMATIONS[theme?.id];
+    if (!animationSet) return basePortrait;
+    const frames = animationSet.idle;
+    if (!Array.isArray(frames) || frames.length === 0) return basePortrait;
+    return frames[frameIndex % frames.length] || basePortrait;
+  }
+
   function getEncounterMaxHp(cfg, threat, route, theme = state.floorTheme, floor = state.floor) {
     const localFloor = getThemeLocalFloor(floor, theme);
     const baseHp = Math.floor(cfg.target * (threat.targetMul + route.targetMulDelta));
@@ -1127,7 +1156,7 @@ import { createI18n } from "./src/ui/i18n.js";
     document.documentElement.style.setProperty("--bg-board-image", `url("${theme.boardImage}")`);
     document.documentElement.style.setProperty("--obstacle-image", `url("${theme.obstacleImage}")`);
     document.documentElement.style.setProperty("--chapter-gem-filter", theme.gemTone || "none");
-    if (bossPortraitEl) bossPortraitEl.src = getEncounterPortraitPath(theme, state.floor);
+    if (bossPortraitEl) bossPortraitEl.src = getEncounterAnimatedPortraitPath(theme, state.floor, itemAnimFrameIndex);
   }
 
   function getGemPoolForFloor(floor) {
@@ -4580,6 +4609,15 @@ import { createI18n } from "./src/ui/i18n.js";
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
+  function getEncounterClawPoint() {
+    if (!bossPortraitEl) return null;
+    const rect = bossPortraitEl.getBoundingClientRect();
+    const isMinion = isMinionEncounter(state.floorTheme, state.floor);
+    return isMinion
+      ? { x: rect.left + rect.width * 0.36, y: rect.top + rect.height * 0.64 }
+      : { x: rect.left + rect.width * 0.42, y: rect.top + rect.height * 0.58 };
+  }
+
   function getBoardCenter() {
     if (!boardWrapEl) return null;
     const rect = boardWrapEl.getBoundingClientRect();
@@ -4692,6 +4730,17 @@ import { createI18n } from "./src/ui/i18n.js";
     setTimeout(() => bolt.remove(), duration + 60);
   }
 
+  function spawnEncounterClawFx(point, duration = 420) {
+    if (!point) return;
+    const palette = getEncounterBoltPalette("enemy");
+    spawnTransientFx("fx-encounter-claw", point, duration + 120, {
+      "--fx-duration": `${duration}ms`,
+      "--claw-core": palette.core,
+      "--claw-mid": palette.mid,
+      "--claw-glow": palette.glow,
+    });
+  }
+
   async function playEncounterDamageFX(indices, damage) {
     const target = getEncounterPortraitCenter();
     if (!target || !indices?.length) {
@@ -4720,10 +4769,15 @@ import { createI18n } from "./src/ui/i18n.js";
   }
 
   async function playEncounterCastFX(skill, impactIndices = null) {
-    const start = getEncounterPortraitCenter();
+    const portraitCenter = getEncounterPortraitCenter();
+    const clawPoint = getEncounterClawPoint();
+    const isMinion = isMinionEncounter(state.floorTheme, state.floor);
+    const start = isMinion ? (clawPoint || portraitCenter) : portraitCenter;
     if (!start) return;
     const shell = bossPortraitEl?.parentElement;
     if (shell) shell.classList.add("casting");
+    if (isMinion && bossPortraitEl) bossPortraitEl.classList.add("minion-casting");
+    if (isMinion) spawnEncounterClawFx(clawPoint || start, 460);
     const exactIndices = Array.isArray(impactIndices) && impactIndices.length > 0 ? impactIndices : estimateSkillImpactIndices(skill);
     const impactPoints = exactIndices.map(getCellCenter).filter(Boolean);
     const fallback = getBoardCenter();
@@ -4733,6 +4787,7 @@ import { createI18n } from "./src/ui/i18n.js";
     });
     await sleep(640);
     if (shell) shell.classList.remove("casting");
+    if (bossPortraitEl) bossPortraitEl.classList.remove("minion-casting");
   }
 
   function spawnScreenPulse(theme = "boss", duration = 420) {
