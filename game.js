@@ -227,6 +227,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   let inputLocked = false;
   let clearAnim = new Set();
   let fallAnim = new Set();
+  let gemClearPitchStep = 0;
   let activeShards = 0;
   let boardSize = MIN_BOARD_SIZE;
   let guideQueue = [];
@@ -1298,14 +1299,25 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const cell = event.target.closest(".cell");
     if (!cell) return;
     const idx = Number(cell.dataset.index);
+    const value = state.board[idx];
+
+    if (isObstacle(value)) {
+      audio.play("uiError");
+      selected = null;
+      renderBoard();
+      spawnFloatText(i18n.getLanguage() === "zh-CN" ? "无法操作" : "Unavailable", idx);
+      return notify(i18n.getLanguage() === "zh-CN" ? "此格不可操作。" : "This tile cannot be operated.", "warn");
+    }
 
     if (state.mode.type === "target_item") return useTargetItem(state.mode.item, idx);
 
     if (selected === null) {
+      audio.play("gemTap", { volume: 0.1, rate: 1.02 });
       selected = idx;
       return renderBoard();
     }
     if (selected === idx) {
+      audio.play("gemTap", { volume: 0.06, rate: 0.94 });
       selected = null;
       return renderBoard();
     }
@@ -1315,6 +1327,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     selected = null;
 
     if (!isAdjacent(a, b)) {
+      audio.play("gemTap", { volume: 0.08, rate: 0.98 });
       selected = b;
       return renderBoard();
     }
@@ -1335,7 +1348,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
     inputLocked = true;
     beginPlayerAction();
-    audio.play("swap");
     await playSwapAnimation(a, b);
 
     if (ca.special && cb.special) {
@@ -3225,6 +3237,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   async function resolveAction(initialTargets, source, spawnMap = null, preferSpawnIndex = null) {
+    gemClearPitchStep = 0;
     let chain = 1;
     let current = [...new Set(initialTargets)];
     let localSpawnMap = spawnMap;
@@ -4552,22 +4565,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function playMatchDestructionAudio(valid, expandedInfo, chain) {
     const gemCount = valid.filter((idx) => isGem(state.board[idx])).length;
-    const baseRate = Math.min(1.32, 0.98 + Math.max(0, gemCount - 3) * 0.03 + (chain - 1) * 0.05);
+    if (gemCount <= 0) return;
+    const soundIndex = Math.max(1, Math.min(7, gemClearPitchStep + 1));
+    const clearRates = [0.78, 1.02, 1.22, 1.44, 1.68, 1.94, 2.22];
 
-    if (gemCount >= 5) {
-      audio.play("matchClearBurst", { volume: Math.min(0.42, 0.24 + gemCount * 0.015), rate: Math.max(0.84, baseRate - 0.08) });
-    } else if (gemCount >= 4) {
-      audio.play("matchClearHeavy", { volume: Math.min(0.38, 0.22 + gemCount * 0.014), rate: baseRate });
-    } else {
-      audio.play("matchClear", { volume: Math.min(0.34, 0.22 + gemCount * 0.016), rate: baseRate });
-    }
+    audio.play(`gemClear${soundIndex}`, {
+      volume: Math.min(0.96, 0.56 + gemCount * 0.036),
+      rate: clearRates[soundIndex - 1],
+    });
 
-    if (expandedInfo.chainCount > 1) {
-      audio.play("comboRise", {
-        volume: Math.min(0.24, 0.1 + expandedInfo.chainCount * 0.025),
-        rate: Math.min(1.42, 1.04 + expandedInfo.chainCount * 0.08),
-      });
-    }
+    gemClearPitchStep = Math.min(6, gemClearPitchStep + 1);
   }
 
   async function playPassiveSkillSequence(effects) {
@@ -4649,8 +4656,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function getBoardCenter() {
-    if (!boardWrapEl) return null;
-    const rect = boardWrapEl.getBoundingClientRect();
+    if (!boardEl) return null;
+    const rect = boardEl.getBoundingClientRect();
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 

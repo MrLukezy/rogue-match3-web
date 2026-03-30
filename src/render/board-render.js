@@ -36,20 +36,27 @@ export function renderBoardView({
       block.className = `obstacle${value.ash ? " ash" : ""}`;
       cell.appendChild(block);
     } else if (isGem(value)) {
-      if (value.burning) cell.classList.add("cell-burning");
-      if (value.frozen) cell.classList.add("cell-frozen");
       const gem = document.createElement("div");
       gem.className = `gem g-${value.color}`;
       if (value.special) gem.classList.add(`sp-${value.special}`);
-      if (value.glass) gem.classList.add("glass");
-      if (value.burning) gem.classList.add("burning");
-      if (value.frozen) gem.classList.add("frozen");
-      if (value.lockedTurns > 0) gem.classList.add("locked");
-      if (value.holyMarked) gem.classList.add("holy-marked");
-      if (value.voidMarked) gem.classList.add("void-marked");
-      if (value.slippery) gem.classList.add("slippery");
       if (fallAnim.has(i)) gem.classList.add("fall-in");
       if (clearAnim.has(i)) gem.classList.add("clearing");
+
+      const overlayDefs = [];
+      if (value.glass) overlayDefs.push("glass");
+      if (value.burning) overlayDefs.push("burning");
+      if (value.poisonedTurns > 0) overlayDefs.push("poisoned");
+      if (value.frozen) overlayDefs.push("frozen");
+      if (value.lockedTurns > 0) overlayDefs.push("locked");
+      if (value.holyMarked) overlayDefs.push("holy-marked");
+      if (value.voidMarked) overlayDefs.push("void-marked");
+      if (value.slippery) overlayDefs.push("slippery");
+
+      for (const overlayType of overlayDefs) {
+        const overlay = document.createElement("span");
+        overlay.className = `cell-effect effect-${overlayType}`;
+        cell.appendChild(overlay);
+      }
 
       const icon = document.createElement("img");
       icon.className = "gem-icon gem-image";
@@ -57,53 +64,6 @@ export function renderBoardView({
       icon.src = getAnimatedGemImage(value.color);
       icon.alt = `gem-${value.color}`;
       gem.appendChild(icon);
-
-      if (value.burning) {
-        const burnAura = document.createElement("span");
-        burnAura.className = "gem-burn-aura";
-        gem.appendChild(burnAura);
-
-        const burnTag = document.createElement("span");
-        burnTag.className = "gem-status burn";
-        burnTag.textContent = "SCORCH";
-        gem.appendChild(burnTag);
-      }
-
-      if (value.poisonedTurns > 0) {
-        gem.classList.add("poisoned");
-        const poisonTag = document.createElement("span");
-        poisonTag.className = "gem-status poison";
-        poisonTag.textContent = `POISON ${value.poisonedTurns}`;
-        gem.appendChild(poisonTag);
-      }
-
-      if (value.frozen) {
-        const frozenTag = document.createElement("span");
-        frozenTag.className = "gem-status frozen";
-        frozenTag.textContent = "FROZEN";
-        gem.appendChild(frozenTag);
-      }
-
-      if (value.holyMarked) {
-        const holyTag = document.createElement("span");
-        holyTag.className = "gem-status holy";
-        holyTag.textContent = "MARK";
-        gem.appendChild(holyTag);
-      }
-
-      if (value.voidMarked) {
-        const voidTag = document.createElement("span");
-        voidTag.className = "gem-status poison";
-        voidTag.textContent = "RIFT";
-        gem.appendChild(voidTag);
-      }
-
-      if (value.slippery) {
-        const slipTag = document.createElement("span");
-        slipTag.className = "gem-status frozen";
-        slipTag.textContent = "FLOW";
-        gem.appendChild(slipTag);
-      }
 
       cell.appendChild(gem);
     }

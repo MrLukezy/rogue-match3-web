@@ -1116,20 +1116,15 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 .board-hp-bar {
   position: relative;
   margin-top: 2px;
-  height: 12px;
+  height: 6px;
   border-radius: 999px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(47, 19, 27, 0.82), rgba(30, 12, 18, 0.94));
-  box-shadow: inset 0 1px 2px rgba(255,255,255,0.04), inset 0 0 0 1px rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.04);
+  box-shadow: none;
 }
 
 .board-hp-bar::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(90deg, rgba(255,255,255,0.16) 0 1px, transparent 1px 22px);
-  opacity: 0.2;
-  pointer-events: none;
+  display: none;
 }
 
 .board-hp-bar i {
@@ -1180,12 +1175,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 }
 
 .board-hp-bar::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 55%);
-  pointer-events: none;
+  display: none;
 }
 
 .score-banner {
@@ -1800,6 +1790,7 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   background: transparent;
   border: none;
   pointer-events: none;
+  z-index: 1;
 }
 
 .gem-icon {
@@ -1817,18 +1808,125 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   pointer-events: none;
 }
 
-.cell.cell-burning {
-  background:
-    radial-gradient(circle at 50% 100%, rgba(255, 124, 78, 0.18) 0%, rgba(255, 124, 78, 0.1) 34%, rgba(255, 124, 78, 0) 62%),
-    linear-gradient(180deg, #2a1d22 0%, #1b1830 100%);
-  box-shadow: inset 0 0 12px rgba(255, 128, 72, 0.14), 0 0 10px rgba(255, 98, 44, 0.12);
+.cell-effect {
+  position: absolute;
+  inset: -5px;
+  border-radius: 16px;
+  pointer-events: none;
+  z-index: 2;
 }
 
-.cell.cell-frozen {
+.cell-effect::before,
+.cell-effect::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.cell-effect.effect-burning::before {
   background:
-    radial-gradient(circle at 50% 0%, rgba(205, 244, 255, 0.28) 0%, rgba(168, 224, 255, 0.12) 34%, rgba(168, 224, 255, 0) 62%),
-    linear-gradient(180deg, #162533 0%, #121c2c 100%);
-  box-shadow: inset 0 0 18px rgba(174, 230, 255, 0.18), 0 0 14px rgba(142, 214, 255, 0.16);
+    radial-gradient(circle at 50% 100%, rgba(255, 122, 64, 0.42) 0%, rgba(255, 140, 72, 0.24) 28%, rgba(255, 140, 72, 0.08) 52%, rgba(255, 140, 72, 0) 74%),
+    linear-gradient(180deg, rgba(68, 20, 16, 0.28), rgba(38, 12, 16, 0.1));
+  box-shadow: inset 0 0 18px rgba(255, 176, 106, 0.28), 0 0 18px rgba(255, 98, 44, 0.22);
+}
+
+.cell-effect.effect-burning::after {
+  inset: 2px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 186, 118, 0.72);
+  box-shadow: 0 0 10px rgba(255, 132, 60, 0.42), inset 0 0 10px rgba(255, 216, 156, 0.18);
+}
+
+.cell-effect.effect-frozen::before {
+  background:
+    linear-gradient(135deg, rgba(228, 248, 255, 0.26), rgba(116, 182, 236, 0.16)),
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 6px, rgba(178, 226, 255, 0.06) 6px 12px),
+    radial-gradient(circle at 50% 0%, rgba(212, 246, 255, 0.42), rgba(170, 226, 255, 0.14) 38%, rgba(170, 226, 255, 0) 68%);
+  box-shadow: inset 0 0 18px rgba(214, 244, 255, 0.24), 0 0 18px rgba(150, 220, 255, 0.24);
+}
+
+.cell-effect.effect-frozen::after {
+  inset: 1px;
+  border-radius: 14px;
+  border: 2px solid rgba(210, 244, 255, 0.94);
+}
+
+.cell-effect.effect-poisoned::before {
+  background:
+    radial-gradient(circle at 50% 100%, rgba(114, 224, 116, 0.3), rgba(78, 188, 104, 0.14) 34%, rgba(78, 188, 104, 0) 68%),
+    linear-gradient(180deg, rgba(24, 54, 28, 0.24), rgba(10, 28, 14, 0.08));
+  box-shadow: inset 0 0 16px rgba(128, 226, 132, 0.18), 0 0 14px rgba(86, 188, 110, 0.18);
+}
+
+.cell-effect.effect-poisoned::after {
+  inset: 2px;
+  border-radius: 14px;
+  border: 2px solid rgba(130, 222, 132, 0.68);
+}
+
+.cell-effect.effect-glass::before {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.08)),
+    linear-gradient(0deg, rgba(148, 210, 255, 0.08), rgba(255,255,255,0));
+  box-shadow: inset 0 0 14px rgba(214, 242, 255, 0.2), 0 0 12px rgba(186, 230, 255, 0.18);
+}
+
+.cell-effect.effect-glass::after {
+  inset: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.7);
+}
+
+.cell-effect.effect-locked::before {
+  background: linear-gradient(180deg, rgba(114, 196, 255, 0.08), rgba(26, 72, 110, 0.08));
+  box-shadow: inset 0 0 0 2px rgba(36, 92, 128, 0.3), 0 0 12px rgba(150, 220, 255, 0.18);
+}
+
+.cell-effect.effect-locked::after {
+  inset: 3px;
+  border-radius: 12px;
+  border: 2px dashed rgba(178, 232, 255, 0.96);
+}
+
+.cell-effect.effect-holy-marked::before {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 250, 223, 0.4), rgba(255, 241, 187, 0.12) 34%, rgba(255,255,255,0) 64%),
+    linear-gradient(135deg, rgba(255, 248, 220, 0.2), rgba(255, 217, 120, 0.06));
+  box-shadow: inset 0 0 12px rgba(255, 244, 210, 0.14), 0 0 14px rgba(255, 223, 138, 0.22);
+}
+
+.cell-effect.effect-holy-marked::after {
+  inset: 1px;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 244, 190, 0.9);
+}
+
+.cell-effect.effect-void-marked::before {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(188, 122, 255, 0.24), rgba(118, 54, 180, 0.12) 42%, rgba(0,0,0,0) 72%),
+    linear-gradient(180deg, rgba(42, 18, 66, 0.18), rgba(18, 8, 32, 0.08));
+  box-shadow: inset 0 0 14px rgba(150, 88, 255, 0.16), 0 0 16px rgba(170, 98, 255, 0.2);
+}
+
+.cell-effect.effect-void-marked::after {
+  inset: 2px;
+  border-radius: 14px;
+  border: 1px solid rgba(192, 122, 255, 0.82);
+}
+
+.cell-effect.effect-slippery::before {
+  background:
+    linear-gradient(180deg, rgba(132, 232, 255, 0.16), rgba(88, 188, 255, 0.08)),
+    radial-gradient(circle at 50% 12%, rgba(214, 248, 255, 0.22), rgba(214, 248, 255, 0) 48%);
+  box-shadow: inset 0 0 12px rgba(118, 232, 255, 0.14), 0 0 12px rgba(102, 208, 255, 0.16);
+}
+
+.cell-effect.effect-slippery::after {
+  inset: 2px;
+  border-radius: 14px;
+  border: 1px solid rgba(128, 224, 255, 0.72);
 }
 
 .cell.cell-tide-row {
@@ -1864,196 +1962,39 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   box-shadow: inset 0 0 0 2px rgba(255, 230, 126, 0.4), 0 0 14px rgba(255, 209, 102, 0.24);
 }
 
-.gem.burning {
-  filter: saturate(1.2) brightness(1.08) contrast(1.03);
+.gem.burning,
+.gem.poisoned,
+.gem.frozen,
+.gem.glass,
+.gem.locked,
+.gem.holy-marked,
+.gem.void-marked,
+.gem.slippery {
+  filter: none;
 }
 
-.gem.burning::before {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 11px;
-  border: 2px solid rgba(255, 182, 108, 0.7);
-  box-shadow: 0 0 8px rgba(255, 122, 64, 0.55), 0 0 16px rgba(255, 86, 30, 0.36), inset 0 0 10px rgba(255, 214, 142, 0.28);
-  animation: burnRingPulse 560ms ease-in-out infinite alternate;
-  pointer-events: none;
-}
-
-.gem-burn-aura {
-  position: absolute;
-  inset: -1px;
-  border-radius: 8px;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 100%, rgba(255, 120, 68, 0.24) 0%, rgba(255, 138, 64, 0.12) 22%, rgba(255, 138, 64, 0) 58%),
-    radial-gradient(circle at 50% 20%, rgba(255, 226, 156, 0.16) 0%, rgba(255, 178, 86, 0.1) 18%, rgba(255, 108, 40, 0) 46%);
-  mix-blend-mode: screen;
-  box-shadow: 0 0 6px rgba(255, 126, 56, 0.18);
-}
-
-.gem-status {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  z-index: 2;
-  padding: 1px 4px;
-  border-radius: 999px;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  pointer-events: none;
-}
-
-.gem-status.burn {
-  color: #fff6dd;
-  background: linear-gradient(180deg, rgba(255, 210, 120, 0.88), rgba(220, 88, 52, 0.84));
-  box-shadow: 0 0 6px rgba(255, 119, 51, 0.34), 0 0 12px rgba(255, 87, 34, 0.18);
-  transform: scale(1.04);
-}
-
-.gem.poisoned::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: 10px;
-  border: 2px solid rgba(112, 217, 121, 0.55);
-  box-shadow: 0 0 8px rgba(86, 188, 110, 0.24), inset 0 0 8px rgba(86, 188, 110, 0.16);
-  pointer-events: none;
-}
-
-.gem.frozen::before {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 10px;
-  border: 2px solid rgba(196, 240, 255, 0.94);
-  background:
-    linear-gradient(135deg, rgba(226, 248, 255, 0.16), rgba(110, 182, 240, 0.1)),
-    repeating-linear-gradient(135deg, rgba(255,255,255,0.12) 0 4px, rgba(178, 226, 255, 0.04) 4px 8px);
-  box-shadow: 0 0 14px rgba(173, 229, 255, 0.46), inset 0 0 14px rgba(225, 247, 255, 0.2);
-  pointer-events: none;
-}
-
-.gem-status.poison {
-  color: #eaffea;
-  background: linear-gradient(180deg, rgba(136, 228, 151, 0.9), rgba(52, 133, 74, 0.86));
-  box-shadow: 0 0 6px rgba(74, 170, 96, 0.24);
-  transform: scale(1.02);
-}
-
-.gem-status.frozen {
-  color: #eefbff;
-  background: linear-gradient(180deg, rgba(212, 243, 255, 0.96), rgba(115, 184, 232, 0.9));
-  box-shadow: 0 0 8px rgba(170, 226, 255, 0.34);
-  transform: scale(1.04);
-}
-
-.gem-status.holy {
-  color: #fffdf0;
-  background: linear-gradient(180deg, rgba(255, 245, 196, 0.98), rgba(241, 198, 94, 0.92));
-  box-shadow: 0 0 8px rgba(255, 222, 126, 0.42), 0 0 14px rgba(249, 210, 111, 0.24);
-  transform: scale(1.04);
-}
-
-.gem.glass::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  border: 1px solid rgba(255,255,255,0.65);
-  background: linear-gradient(135deg, rgba(255,255,255,0.36), rgba(255,255,255,0.05));
-  box-shadow: 0 0 10px rgba(186, 230, 255, 0.26), inset 0 0 10px rgba(214, 242, 255, 0.14);
-  pointer-events: none;
-}
-
-.gem.holy-marked::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 244, 190, 0.92);
-  background:
-    radial-gradient(circle at 50% 16%, rgba(255, 250, 223, 0.34), rgba(255, 241, 187, 0.08) 34%, rgba(255,255,255,0) 62%),
-    linear-gradient(135deg, rgba(255, 248, 220, 0.22), rgba(255, 217, 120, 0.04));
-  box-shadow: 0 0 12px rgba(255, 223, 138, 0.32), inset 0 0 10px rgba(255, 244, 210, 0.14);
-  pointer-events: none;
-}
-
-.gem.holy-marked::before {
-  content: "";
-  position: absolute;
-  inset: -4px;
-  border-radius: 10px;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(255,255,255,0), rgba(255, 241, 187, 0.76), rgba(255,255,255,0)),
-    linear-gradient(180deg, rgba(255,255,255,0), rgba(255, 222, 126, 0.5), rgba(255,255,255,0));
-  filter: blur(3px);
-  opacity: 0.62;
-  animation: holyMarkPulse 900ms ease-in-out infinite alternate;
-}
-
-.gem.locked::before {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border-radius: 7px;
-  border: 2px dashed rgba(178, 232, 255, 0.96);
-  box-shadow: 0 0 0 2px rgba(36, 92, 128, 0.34) inset, 0 0 10px rgba(150, 220, 255, 0.38);
-  pointer-events: none;
-}
-
-.gem.void-marked::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: 10px;
-  border: 1px solid rgba(192, 122, 255, 0.82);
-  box-shadow: 0 0 10px rgba(170, 98, 255, 0.32), inset 0 0 8px rgba(118, 54, 180, 0.22);
-  pointer-events: none;
-}
-
-.gem.slippery::after {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: 10px;
-  border: 1px solid rgba(128, 224, 255, 0.72);
-  box-shadow: 0 0 8px rgba(102, 208, 255, 0.28), inset 0 0 8px rgba(118, 232, 255, 0.12);
-  pointer-events: none;
-}
-
-body[data-theme="frozen_archive"] .gem.glass::after {
-  border-color: rgba(204, 242, 255, 0.9);
+body[data-theme="frozen_archive"] .cell-effect.effect-glass::before {
   background:
     linear-gradient(135deg, rgba(228, 248, 255, 0.52), rgba(178, 224, 255, 0.12)),
     linear-gradient(0deg, rgba(120, 182, 255, 0.08), rgba(255, 255, 255, 0));
   box-shadow: 0 0 14px rgba(174, 229, 255, 0.42), inset 0 0 14px rgba(226, 247, 255, 0.18);
 }
 
-body[data-theme="frozen_archive"] .gem.locked::before,
-body[data-theme="frozen_archive"] .gem.frozen::before {
-  inset: 0;
-  border: 2px solid rgba(188, 236, 255, 0.96);
+body[data-theme="frozen_archive"] .cell-effect.effect-glass::after {
+  border-color: rgba(204, 242, 255, 0.9);
+}
+
+body[data-theme="frozen_archive"] .cell-effect.effect-locked::before,
+body[data-theme="frozen_archive"] .cell-effect.effect-frozen::before {
   background:
     repeating-linear-gradient(135deg, rgba(210, 244, 255, 0.18) 0 4px, rgba(140, 210, 255, 0.08) 4px 8px),
     linear-gradient(180deg, rgba(210, 244, 255, 0.08), rgba(84, 154, 210, 0.08));
   box-shadow: 0 0 0 2px rgba(73, 134, 189, 0.34) inset, 0 0 16px rgba(168, 227, 255, 0.48), inset 0 0 18px rgba(221, 247, 255, 0.18);
 }
 
-body[data-theme="frozen_archive"] .gem.locked::after,
-body[data-theme="frozen_archive"] .gem.frozen::after {
-  content: "";
-  position: absolute;
-  inset: -4px;
-  border-radius: 10px;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(255,255,255,0), rgba(220, 245, 255, 0.85), rgba(255,255,255,0)),
-    linear-gradient(180deg, rgba(255,255,255,0), rgba(194, 237, 255, 0.65), rgba(255,255,255,0));
-  filter: blur(3px);
-  opacity: 0.68;
-  animation: iceRunePulse 720ms ease-in-out infinite alternate;
+body[data-theme="frozen_archive"] .cell-effect.effect-locked::after,
+body[data-theme="frozen_archive"] .cell-effect.effect-frozen::after {
+  border-color: rgba(188, 236, 255, 0.96);
 }
 
 @keyframes iceRunePulse {
@@ -2151,13 +2092,14 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
 .g-5 { background: transparent; }
 
 .obstacle {
-  width: 84%;
-  height: 84%;
-  border-radius: 8px;
+  width: calc(100% + 10px);
+  height: calc(100% + 10px);
+  border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.18);
+  margin: -5px;
   background:
     linear-gradient(180deg, rgba(10, 14, 24, 0.12), rgba(10, 14, 24, 0.12)),
-    var(--obstacle-image) center / contain no-repeat;
+    var(--obstacle-image) center / cover no-repeat;
   box-shadow: 0 6px 14px rgba(4, 9, 18, 0.22);
 }
 
@@ -2282,6 +2224,31 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
   border-radius: 26px;
   background: radial-gradient(circle at 50% 20%, rgba(255,255,255,0.08), rgba(255,255,255,0) 58%);
   overflow: hidden;
+  position: relative;
+}
+
+.boss-portrait-wrap::before,
+.boss-portrait-wrap::after,
+.boss-portrait-shell::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.boss-portrait-wrap::before {
+  inset: -10% -6%;
+  border-radius: 32px;
+  opacity: 0.68;
+  filter: blur(14px);
+  z-index: 0;
+}
+
+.boss-portrait-wrap::after {
+  inset: 8% 12%;
+  border-radius: 999px;
+  opacity: 0.42;
+  filter: blur(10px);
+  z-index: 0;
 }
 
 .boss-portrait-shell {
@@ -2290,16 +2257,19 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
   min-height: 420px;
   display: grid;
   place-items: center;
+  isolation: isolate;
+}
+
+.boss-portrait-shell::before {
+  inset: 10% 14%;
+  border-radius: 999px;
+  opacity: 0.28;
+  filter: blur(6px);
+  z-index: 0;
 }
 
 .portrait-meter {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  padding: 10px 0 18px;
+  display: none;
 }
 
 .portrait-meter > span {
@@ -2311,28 +2281,33 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
   height: 100%;
   margin-top: 0;
   border-radius: 28px;
-  background: linear-gradient(180deg, rgba(16, 8, 14, 0.88), rgba(45, 16, 28, 0.32));
-  border: 1px solid rgba(255, 154, 178, 0.12);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .portrait-meter .bar i {
-  width: 100%;
-  height: 0%;
-  margin-top: auto;
-  background: linear-gradient(180deg, rgba(255, 148, 176, 0.94), rgba(255, 88, 116, 0.98));
+  display: none;
 }
 
 .portrait-meter strong {
   position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 14px;
-  z-index: 1;
+  left: 50%;
+  bottom: 18px;
+  z-index: 3;
+  transform: translateX(-50%);
   text-align: center;
   font-size: 12px;
   line-height: 1.45;
   color: #ffe4eb;
   text-shadow: 0 0 12px rgba(20, 6, 10, 0.62);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(20, 18, 30, 0.72), rgba(10, 12, 20, 0.4));
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 10px 26px rgba(6, 10, 18, 0.24);
+  backdrop-filter: blur(6px);
+  min-width: min(78%, 260px);
 }
 
 .boss-portrait-shell::after {
@@ -2354,6 +2329,14 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
   animation: encounterPortraitCastPulse 420ms ease-out;
 }
 
+.boss-portrait-shell.hit::before,
+.boss-portrait-shell.casting::before,
+.boss-panel.boss-cast .boss-portrait-wrap::before,
+.boss-panel.boss-cast .boss-portrait-wrap::after {
+  opacity: 0.72;
+  filter: blur(16px) saturate(1.12) brightness(1.08);
+}
+
 .boss-portrait-image {
   position: relative;
   z-index: 2;
@@ -2362,6 +2345,222 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
   object-fit: contain;
   filter: drop-shadow(0 18px 40px rgba(8, 6, 14, 0.4));
   transform-origin: center bottom;
+}
+
+body[data-theme="ember_hollows"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 82%, rgba(255, 116, 64, 0.34), rgba(255, 116, 64, 0.14) 30%, rgba(255, 116, 64, 0) 62%),
+    radial-gradient(circle at 26% 64%, rgba(255, 196, 118, 0.22), rgba(255, 196, 118, 0) 34%),
+    radial-gradient(circle at 72% 58%, rgba(255, 154, 72, 0.22), rgba(255, 154, 72, 0) 34%);
+  animation: emberPortraitFlare 2.6s ease-in-out infinite alternate;
+}
+
+body[data-theme="ember_hollows"] .boss-portrait-wrap::after {
+  background: linear-gradient(180deg, rgba(255, 214, 132, 0.16), rgba(255, 102, 64, 0.04));
+  animation: emberPortraitHeat 3.2s ease-in-out infinite alternate;
+}
+
+body[data-theme="frost_spire"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(214, 246, 255, 0.34), rgba(214, 246, 255, 0.1) 34%, rgba(214, 246, 255, 0) 64%),
+    linear-gradient(180deg, rgba(164, 220, 255, 0.14), rgba(114, 178, 236, 0.04));
+  animation: frostPortraitMist 3.4s ease-in-out infinite alternate;
+}
+
+body[data-theme="frost_spire"] .boss-portrait-shell::before {
+  background: repeating-linear-gradient(135deg, rgba(220, 248, 255, 0.16) 0 8px, rgba(220, 248, 255, 0.04) 8px 16px);
+  animation: frostPortraitRunes 4s linear infinite;
+}
+
+body[data-theme="stone_grove"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 82%, rgba(176, 138, 92, 0.28), rgba(176, 138, 92, 0.08) 36%, rgba(176, 138, 92, 0) 68%),
+    radial-gradient(circle at 22% 52%, rgba(214, 188, 146, 0.14), rgba(214, 188, 146, 0) 28%),
+    radial-gradient(circle at 78% 44%, rgba(148, 112, 78, 0.18), rgba(148, 112, 78, 0) 30%);
+  animation: stonePortraitDust 4.2s ease-in-out infinite alternate;
+}
+
+body[data-theme="stone_grove"] .boss-portrait-shell::before {
+  background: linear-gradient(180deg, rgba(224, 204, 160, 0.08), rgba(92, 68, 48, 0.04));
+}
+
+body[data-theme="storm_peaks"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 24%, rgba(210, 226, 255, 0.24), rgba(210, 226, 255, 0) 44%),
+    linear-gradient(135deg, rgba(150, 156, 255, 0.16), rgba(102, 128, 255, 0.04));
+  animation: stormPortraitGlow 2.4s ease-in-out infinite alternate;
+}
+
+body[data-theme="storm_peaks"] .boss-portrait-shell::before {
+  background:
+    linear-gradient(115deg, rgba(255,255,255,0), rgba(196, 218, 255, 0.28), rgba(255,255,255,0)),
+    linear-gradient(245deg, rgba(255,255,255,0), rgba(120, 148, 255, 0.2), rgba(255,255,255,0));
+  animation: stormPortraitArc 1.6s ease-in-out infinite alternate;
+}
+
+body[data-theme="venom_bloom"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 84%, rgba(122, 214, 112, 0.28), rgba(122, 214, 112, 0.1) 34%, rgba(122, 214, 112, 0) 68%),
+    radial-gradient(circle at 26% 40%, rgba(196, 244, 152, 0.18), rgba(196, 244, 152, 0) 28%),
+    radial-gradient(circle at 74% 34%, rgba(92, 180, 96, 0.16), rgba(92, 180, 96, 0) 28%);
+  animation: venomPortraitBreath 3.6s ease-in-out infinite alternate;
+}
+
+body[data-theme="venom_bloom"] .boss-portrait-wrap::after {
+  background: linear-gradient(180deg, rgba(142, 226, 126, 0.1), rgba(52, 116, 62, 0.04));
+}
+
+body[data-theme="tidal_depths"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 78%, rgba(116, 220, 255, 0.24), rgba(116, 220, 255, 0.08) 34%, rgba(116, 220, 255, 0) 68%),
+    linear-gradient(180deg, rgba(104, 198, 255, 0.14), rgba(64, 112, 196, 0.04));
+  animation: tidePortraitFlow 3.2s ease-in-out infinite alternate;
+}
+
+body[data-theme="tidal_depths"] .boss-portrait-shell::before {
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(168, 242, 255, 0.22), rgba(255,255,255,0));
+  animation: tidePortraitSweep 2.4s linear infinite;
+}
+
+body[data-theme="mirror_circus"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 212, 250, 0.24), rgba(255, 212, 250, 0.06) 32%, rgba(255, 212, 250, 0) 62%),
+    linear-gradient(135deg, rgba(218, 132, 255, 0.14), rgba(126, 102, 255, 0.04));
+  animation: mirrorPortraitShimmer 2.2s ease-in-out infinite alternate;
+}
+
+body[data-theme="mirror_circus"] .boss-portrait-shell::before {
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0), rgba(255, 218, 248, 0.26), rgba(255,255,255,0)),
+    linear-gradient(300deg, rgba(255,255,255,0), rgba(166, 130, 255, 0.18), rgba(255,255,255,0));
+  animation: mirrorPortraitSweep 2.8s linear infinite;
+}
+
+body[data-theme="iron_forge"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 82%, rgba(255, 138, 84, 0.3), rgba(255, 138, 84, 0.12) 34%, rgba(255, 138, 84, 0) 68%),
+    radial-gradient(circle at 24% 40%, rgba(255, 212, 132, 0.16), rgba(255, 212, 132, 0) 28%),
+    radial-gradient(circle at 76% 46%, rgba(196, 94, 48, 0.18), rgba(196, 94, 48, 0) 30%);
+  animation: forgePortraitEmbers 2.8s ease-in-out infinite alternate;
+}
+
+body[data-theme="iron_forge"] .boss-portrait-shell::before {
+  background: repeating-linear-gradient(90deg, rgba(255, 188, 112, 0.08) 0 8px, rgba(255, 188, 112, 0) 8px 18px);
+  animation: forgePortraitHeat 2.2s linear infinite;
+}
+
+body[data-theme="eclipse_sanctum"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 244, 188, 0.24), rgba(255, 244, 188, 0.06) 34%, rgba(255, 244, 188, 0) 66%),
+    radial-gradient(circle at 50% 82%, rgba(196, 140, 255, 0.18), rgba(196, 140, 255, 0.04) 34%, rgba(196, 140, 255, 0) 66%);
+  animation: eclipsePortraitHalo 3.4s ease-in-out infinite alternate;
+}
+
+body[data-theme="eclipse_sanctum"] .boss-portrait-shell::before {
+  background: linear-gradient(180deg, rgba(255, 238, 170, 0.14), rgba(188, 126, 255, 0.06));
+  animation: eclipsePortraitPulse 2.8s ease-in-out infinite alternate;
+}
+
+body[data-theme="void_throne"] .boss-portrait-wrap::before {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(162, 108, 255, 0.26), rgba(98, 72, 196, 0.1) 36%, rgba(98, 72, 196, 0) 68%),
+    linear-gradient(180deg, rgba(98, 82, 196, 0.12), rgba(32, 22, 72, 0.04));
+  animation: voidPortraitBreath 4s ease-in-out infinite alternate;
+}
+
+body[data-theme="void_throne"] .boss-portrait-wrap::after {
+  background: radial-gradient(circle at 50% 50%, rgba(220, 178, 255, 0.14), rgba(220, 178, 255, 0) 60%);
+  animation: voidPortraitOrbit 5s linear infinite;
+}
+
+@keyframes emberPortraitFlare {
+  from { transform: translateY(4px) scale(0.98); opacity: 0.48; }
+  to { transform: translateY(-8px) scale(1.05); opacity: 0.82; }
+}
+
+@keyframes emberPortraitHeat {
+  from { transform: scaleY(0.96); opacity: 0.18; }
+  to { transform: scaleY(1.06); opacity: 0.42; }
+}
+
+@keyframes frostPortraitMist {
+  from { transform: translateY(8px) scale(0.98); opacity: 0.34; }
+  to { transform: translateY(-6px) scale(1.04); opacity: 0.62; }
+}
+
+@keyframes frostPortraitRunes {
+  from { transform: translateX(-10px) rotate(0deg); opacity: 0.12; }
+  to { transform: translateX(10px) rotate(1deg); opacity: 0.34; }
+}
+
+@keyframes stonePortraitDust {
+  from { transform: translateY(8px) scale(0.98); opacity: 0.3; }
+  to { transform: translateY(-4px) scale(1.04); opacity: 0.54; }
+}
+
+@keyframes stormPortraitGlow {
+  from { opacity: 0.22; transform: scale(0.98); }
+  to { opacity: 0.52; transform: scale(1.04); }
+}
+
+@keyframes stormPortraitArc {
+  from { transform: skewX(-8deg) translateX(-10px); opacity: 0.12; }
+  to { transform: skewX(8deg) translateX(10px); opacity: 0.32; }
+}
+
+@keyframes venomPortraitBreath {
+  from { transform: translateY(10px) scale(0.98); opacity: 0.28; }
+  to { transform: translateY(-6px) scale(1.05); opacity: 0.56; }
+}
+
+@keyframes tidePortraitFlow {
+  from { transform: translateY(6px) scaleY(0.98); opacity: 0.28; }
+  to { transform: translateY(-8px) scaleY(1.04); opacity: 0.54; }
+}
+
+@keyframes tidePortraitSweep {
+  from { transform: translateX(-24px); opacity: 0.1; }
+  to { transform: translateX(24px); opacity: 0.28; }
+}
+
+@keyframes mirrorPortraitShimmer {
+  from { opacity: 0.22; transform: rotate(-1deg) scale(0.98); }
+  to { opacity: 0.46; transform: rotate(1deg) scale(1.04); }
+}
+
+@keyframes mirrorPortraitSweep {
+  from { transform: translateX(-18px) rotate(-4deg); opacity: 0.14; }
+  to { transform: translateX(18px) rotate(4deg); opacity: 0.3; }
+}
+
+@keyframes forgePortraitEmbers {
+  from { transform: translateY(8px) scale(0.98); opacity: 0.26; }
+  to { transform: translateY(-10px) scale(1.05); opacity: 0.6; }
+}
+
+@keyframes forgePortraitHeat {
+  from { transform: translateX(-8px) skewY(0deg); opacity: 0.1; }
+  to { transform: translateX(8px) skewY(2deg); opacity: 0.26; }
+}
+
+@keyframes eclipsePortraitHalo {
+  from { transform: scale(0.96); opacity: 0.26; }
+  to { transform: scale(1.05); opacity: 0.5; }
+}
+
+@keyframes eclipsePortraitPulse {
+  from { opacity: 0.14; transform: scale(0.98); }
+  to { opacity: 0.34; transform: scale(1.04); }
+}
+
+@keyframes voidPortraitBreath {
+  from { transform: scale(0.96); opacity: 0.24; }
+  to { transform: scale(1.06); opacity: 0.5; }
+}
+
+@keyframes voidPortraitOrbit {
+  from { transform: rotate(0deg) scale(0.96); opacity: 0.12; }
+  to { transform: rotate(360deg) scale(1.04); opacity: 0.26; }
 }
 
 .boss-panel.boss-cast .boss-portrait-image,
@@ -2905,59 +3104,7 @@ body[data-theme="frozen_archive"] .gem.frozen::after {
 }
 
 .boss-hp-ring {
-  --hp-angle: 360deg;
-  position: absolute;
-  inset: 8px;
-  border-radius: 999px;
-  padding: 12px;
-  background:
-    conic-gradient(from 180deg, rgba(255, 112, 144, 0.16) 0deg, rgba(255, 112, 144, 0.16) calc(360deg - var(--hp-angle)), rgba(255, 231, 166, 0.98) calc(360deg - var(--hp-angle)), rgba(255, 102, 137, 0.98) 360deg);
-  box-shadow: 0 18px 34px rgba(18, 5, 13, 0.28), 0 0 22px rgba(255, 120, 152, 0.18);
-  transition: background 220ms ease, transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
-  animation: bossHpRingGlow 1.4s ease-in-out infinite alternate;
-}
-
-.boss-hp-ring::before {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: inherit;
-  background: radial-gradient(circle at 50% 50%, rgba(255, 142, 170, 0.14), rgba(255, 142, 170, 0) 66%);
-  filter: blur(8px);
-  opacity: 0.9;
-  animation: bossHpRingPulse 1.4s ease-in-out infinite alternate;
-}
-
-.boss-hp-ring.empty {
-  filter: grayscale(0.35);
-  opacity: 0.72;
-}
-
-.boss-hp-ring-inner {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 50% 35%, rgba(82, 30, 46, 0.96), rgba(26, 13, 20, 0.98));
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: inset 0 0 18px rgba(255, 166, 194, 0.08);
-}
-
-.boss-hp-ring-inner strong {
-  font-size: 18px;
-  line-height: 1;
-  color: #fff5ea;
-}
-
-.boss-hp-ring-inner small {
-  margin-top: 2px;
-  font-size: 11px;
-  color: #f2bfcb;
+  display: none;
 }
 
 .boss-sigil-image {

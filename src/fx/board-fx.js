@@ -1,3 +1,34 @@
+const activeFloatAnchors = [];
+
+function reserveFloatAnchor(x, y, duration, scope = "board") {
+  const now = performance.now();
+  for (let i = activeFloatAnchors.length - 1; i >= 0; i -= 1) {
+    if (activeFloatAnchors[i].expiresAt <= now) activeFloatAnchors.splice(i, 1);
+  }
+
+  const nearby = activeFloatAnchors.filter((entry) => {
+    const dx = entry.x - x;
+    const dy = entry.y - y;
+    return entry.scope === scope && (dx * dx + dy * dy) <= 72 * 72;
+  });
+
+  const slot = nearby.length;
+  const delay = Math.min(220, slot * 90);
+  const direction = slot % 2 === 0 ? 1 : -1;
+  const spreadIndex = Math.floor(slot / 2) + 1;
+  const offsetX = direction * spreadIndex * 22;
+  const offsetY = slot * 16;
+
+  activeFloatAnchors.push({
+    x: x + offsetX,
+    y: y - offsetY,
+    expiresAt: now + delay + duration + 220,
+    scope,
+  });
+
+  return { x: x + offsetX, y: y - offsetY, slot, delay };
+}
+
 export async function playSwapAnimation(boardEl, a, b, sleep) {
   const cellA = boardEl.querySelector(`.cell[data-index="${a}"]`);
   const cellB = boardEl.querySelector(`.cell[data-index="${b}"]`);
@@ -172,10 +203,25 @@ export function spawnFloatText({ boardEl, fxLayerEl, text, index }) {
   const el = document.createElement("i");
   el.className = "fx-text";
   el.textContent = text;
-  el.style.left = `${r.left + r.width / 2}px`;
-  el.style.top = `${r.top + r.height / 2}px`;
-  host.appendChild(el);
-  setTimeout(() => el.remove(), 540);
+  const baseSize = Math.max(22, Math.min(54, r.width * 0.6));
+  const rise = Math.max(42, Math.min(96, r.height * 1.2));
+  const drift = (Math.random() * 24 - 12).toFixed(1);
+  const rotate = (Math.random() * 10 - 5).toFixed(1);
+  const duration = Math.round(Math.max(1260, Math.min(1860, 1320 + r.width * 5.2)));
+  const anchor = reserveFloatAnchor(r.left + r.width / 2, r.top + r.height / 2, duration, "board");
+  el.style.setProperty("--fx-text-size", `${baseSize}px`);
+  el.style.setProperty("--float-rise", `${rise}px`);
+  el.style.setProperty("--float-drift", `${Number(drift) + anchor.slot * 4}px`);
+  el.style.setProperty("--float-rotate", `${Number(rotate) + anchor.slot * 1.5}deg`);
+  el.style.setProperty("--float-duration", `${duration}ms`);
+  el.style.left = `${anchor.x}px`;
+  el.style.top = `${anchor.y}px`;
+  setTimeout(() => host.appendChild(el), anchor.delay);
+  setTimeout(() => el.remove(), anchor.delay + duration + 140);
+}
+
+export function reserveViewportFloatAnchor(x, y, duration, scope = "viewport") {
+  return reserveFloatAnchor(x, y, duration, scope);
 }
 
 export function spawnScreenPulse({ fxLayerEl, theme = "boss", duration = 420 }) {

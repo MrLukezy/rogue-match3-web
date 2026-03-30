@@ -26,5 +26,7 @@ All audio files in this folder were chosen for free commercial use.
 - `swap.ogg`, `match_clear.ogg`, `fever.ogg`: board interaction feedback
 - `item_cast.ogg`, `item_gain.ogg`: item use / item gain feedback
 - `boss_cast.ogg`, `victory.ogg`, `defeat.ogg`, `floor_start.ogg`: game state events
+- `gem_sfx/gem_tap_main.mp3`: derived from Freesound preview of `Item Pickup Chime` by Irolan. License of source sound: CC0. Source page: https://freesound.org/people/Irolan/sounds/735168/
+- `gem_sfx/gem_clear_main.mp3`: derived from Freesound preview of `snd_fragment_retrieve.wav` by gristi. License of source sound: CC0. Source page: https://freesound.org/people/gristi/sounds/562196/
 
 Kenney credit is appreciated but not required on CC0 assets.
