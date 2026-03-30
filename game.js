@@ -75,6 +75,7 @@ import {
   spawnShatterFX as runShatterFX,
   spawnShockwaveFX as runShockwaveFX,
   spawnFloatText as runFloatText,
+  reserveViewportFloatAnchor,
   spawnScreenPulse as runScreenPulse,
   shakeBoard as runShakeBoard,
 } from "./src/fx/board-fx.js";
@@ -126,8 +127,11 @@ import { createI18n } from "./src/ui/i18n.js";
     movesLeftEl,
     floorScoreEl,
     scoreEl,
+    boardMovesLeftEl,
     boardTargetScoreEl,
     boardFloorScoreEl,
+    boardFloorTotalScoreEl,
+    boardHpBarFillEl,
     bestFloorEl,
     bestScoreEl,
     momentumBarEl,
@@ -202,6 +206,7 @@ import { createI18n } from "./src/ui/i18n.js";
   let itemAnimTimer = null;
   let bossHudTimer = null;
   let bossAiTicking = false;
+  let lastBoardBossHp = null;
   const audio = createAudioManager();
 
   bindEvents();
@@ -478,9 +483,8 @@ import { createI18n } from "./src/ui/i18n.js";
     setTextBySelector(".panel-note", t("raritySummary"));
     if (restartBtn) restartBtn.textContent = t("restartRun");
     if (codexBtn) codexBtn.textContent = t("codex");
-    setTextBySelector(".score-banner span", t("totalScore"));
-    setTextBySelector(".target-chip span", t("encounterMaxHp"));
-    setTextBySelector(".board-chip.accent span", t("encounterHp"));
+    setTextBySelector(".move-chip span", t("movesLeft"));
+    setTextBySelector(".board-chip.accent span", i18n.getLanguage() === "zh-CN" ? "敌人血量" : "Enemy HP");
     setTextBySelector(".dock-title span", t("equippedItems"));
     setTextBySelector(".dock-title small", t("equippedItemsHint"));
     const encounterUiText = getEncounterUiText();
@@ -818,6 +822,11 @@ import { createI18n } from "./src/ui/i18n.js";
     };
   }
 
+  function getEncounterPortraitPath(theme = state.floorTheme, floor = state.floor) {
+    if (isMinionEncounter(theme, floor)) return theme?.minionPortrait || theme?.bossPortrait || "";
+    return theme?.bossPortrait || "";
+  }
+
   function getEncounterMaxHp(cfg, threat, route, theme = state.floorTheme, floor = state.floor) {
     const localFloor = getThemeLocalFloor(floor, theme);
     const baseHp = Math.floor(cfg.target * (threat.targetMul + route.targetMulDelta));
@@ -1034,9 +1043,12 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function getBossChargeRatePerSecond() {
     const profile = getBossProfile();
+    const hp = Math.max(0, Number(state.boss.hp || 0));
+    const maxHp = Math.max(1, Number(state.boss.maxHp || 1));
+    const lowHpEnrage = !profile.isMinion && hp / maxHp <= 0.2 ? 1.45 : 1;
     return profile.isMinion
       ? Math.max(8, Math.round(getBossEnergyGain() * 0.92))
-      : Math.max(5, Math.round(getBossEnergyGain() * 0.6));
+      : Math.max(5, Math.round(getBossEnergyGain() * 0.6 * lowHpEnrage));
   }
 
   function getBossIdleChargeGain(idleMs = 0) {
@@ -1115,7 +1127,7 @@ import { createI18n } from "./src/ui/i18n.js";
     document.documentElement.style.setProperty("--bg-board-image", `url("${theme.boardImage}")`);
     document.documentElement.style.setProperty("--obstacle-image", `url("${theme.obstacleImage}")`);
     document.documentElement.style.setProperty("--chapter-gem-filter", theme.gemTone || "none");
-    if (bossPortraitEl) bossPortraitEl.src = theme.bossPortrait;
+    if (bossPortraitEl) bossPortraitEl.src = getEncounterPortraitPath(theme, state.floor);
   }
 
   function getGemPoolForFloor(floor) {
@@ -1970,6 +1982,8 @@ import { createI18n } from "./src/ui/i18n.js";
     const lastDecayAt = Number(state.momentumLastDecayAt || now);
     const idleSinceAction = Math.max(0, now - Number(state.boss.lastActionEndedAt || now));
     const profile = getBossProfile();
+    const bossCurrentHp = Math.max(0, Number(state.boss.hp || 0));
+    const bossMaxHp = Math.max(1, Number(state.boss.maxHp || 1));
     const castThreshold = getEncounterCastThreshold(profile);
     const gain = getBossIdleChargeGain(elapsedMs);
     state.boss.lastChargeTickAt = now;
@@ -2000,9 +2014,10 @@ import { createI18n } from "./src/ui/i18n.js";
     state.boss.phase = state.boss.charge >= castThreshold ? "ready" : "charging";
     if (state.boss.charge < castThreshold) {
       const rate = getBossChargeRatePerSecond();
+      const enragedCharge = !profile.isMinion && bossCurrentHp / Math.max(1, bossMaxHp) <= 0.2;
       state.boss.hint = i18n.getLanguage() === "zh-CN"
-        ? `${profile.isMinion ? "小怪" : "Boss"} 每秒蓄能 ${rate}，满能后自动出招`
-        : `${profile.isMinion ? "Minion" : "Boss"} gains ${rate} charge per second and auto-casts at full charge`;
+        ? `${profile.isMinion ? "小怪" : "Boss"} 每秒蓄能 ${rate}${enragedCharge ? "（残血狂暴加速）" : ""}，满能后自动出招`
+        : `${profile.isMinion ? "Minion" : "Boss"} gains ${rate} charge per second${enragedCharge ? " (low-HP enrage)" : ""} and auto-casts at full charge`;
       return;
     }
 
@@ -3178,10 +3193,7 @@ import { createI18n } from "./src/ui/i18n.js";
         spawnFloatText(i18n.getLanguage() === "zh-CN" ? `连锁技能 x${expandedInfo.chainCount}` : `Chain Skill x${expandedInfo.chainCount}`, valid[0]);
       }
 
-      audio.play("matchClear", {
-        volume: Math.min(0.58, 0.24 + valid.length * 0.012 + (expandedInfo.chainCount > 1 ? 0.06 : 0)),
-        rate: Math.max(0.82, 1.06 - (chain - 1) * 0.04),
-      });
+      playMatchDestructionAudio(valid, expandedInfo, chain);
 
       clearAnim = new Set(valid);
       if (expandedInfo.chainCount > 1) shakeBoard(1.25);
@@ -3596,6 +3608,7 @@ import { createI18n } from "./src/ui/i18n.js";
   function showChapterBlessings(isChapterStart = false) {
     overlayTitleEl.textContent = `${t("conditionalPassivePrefix") || t("chapterBlessingPrefix")}${lt(state.floorTheme.title)}`;
     overlayDescEl.textContent = isChapterStart ? t("conditionalPassiveStart") || t("chapterBlessingStart") : t("conditionalPassiveNext") || t("chapterBlessingNext");
+    overlayEl?.querySelector(".modal")?.style.setProperty("--modal-enter-duration", isChapterStart ? "540ms" : "180ms");
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
@@ -3625,6 +3638,7 @@ import { createI18n } from "./src/ui/i18n.js";
   function showLateChapterSkillDraft(chapter, draftsRemaining) {
     overlayTitleEl.textContent = t("lateChapterDraftTitle");
     overlayDescEl.textContent = t("lateChapterDraftDesc", { count: draftsRemaining });
+    overlayEl?.querySelector(".modal")?.style.setProperty("--modal-enter-duration", "540ms");
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
@@ -3973,6 +3987,7 @@ import { createI18n } from "./src/ui/i18n.js";
     const choices = buildRewardChoices();
     overlayTitleEl.textContent = t("floorCleared", { floor: state.floor });
     overlayDescEl.textContent = t("rewardChooseDesc");
+    overlayEl?.querySelector(".modal")?.style.setProperty("--modal-enter-duration", "180ms");
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
@@ -4066,6 +4081,7 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function showSkillReplacementChoices({ newId, levelGain = 1, onCancel = null }) {
     return new Promise((resolve) => {
+    overlayEl?.querySelector(".modal")?.style.setProperty("--modal-enter-duration", "180ms");
     overlayTitleEl.textContent = i18n.getLanguage() === "zh-CN" ? `替换为 ${lt(ITEM_DEFS[newId].name)}` : `Replace with ${lt(ITEM_DEFS[newId].name)}`;
     overlayDescEl.textContent = i18n.getLanguage() === "zh-CN"
       ? "技能栏已满，请主动选择一个已有技能进行替换，或者取消本次选择。"
@@ -4243,13 +4259,19 @@ import { createI18n } from "./src/ui/i18n.js";
 
   function spawnViewportFloatText(text, point, className = "fx-text") {
     if (!point) return;
+    const duration = 1680;
+    const anchor = reserveViewportFloatAnchor(point.x, point.y, duration, className.includes("fx-text-damage") ? "damage" : "viewport");
     const el = document.createElement("i");
     el.className = className;
     el.textContent = text;
-    el.style.left = `${point.x}px`;
-    el.style.top = `${point.y}px`;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 560);
+    el.style.setProperty("--float-duration", `${duration}ms`);
+    el.style.setProperty("--float-rise", `${82 + anchor.slot * 12}px`);
+    el.style.setProperty("--float-drift", `${anchor.slot % 2 === 0 ? 10 + anchor.slot * 2 : -10 - anchor.slot * 2}px`);
+    el.style.setProperty("--float-rotate", `${anchor.slot % 2 === 0 ? 3 + anchor.slot : -3 - anchor.slot}deg`);
+    el.style.left = `${anchor.x}px`;
+    el.style.top = `${anchor.y}px`;
+    setTimeout(() => document.body.appendChild(el), anchor.delay);
+    setTimeout(() => el.remove(), anchor.delay + duration + 80);
   }
 
   function spawnPassiveSkillMarker(point, skillId, delay = 0, scale = 1) {
@@ -4473,6 +4495,26 @@ import { createI18n } from "./src/ui/i18n.js";
     return map[skillId] || { sound: "enemyBossCast", volume: 0.28, rate: 1.02 };
   }
 
+  function playMatchDestructionAudio(valid, expandedInfo, chain) {
+    const gemCount = valid.filter((idx) => isGem(state.board[idx])).length;
+    const baseRate = Math.min(1.32, 0.98 + Math.max(0, gemCount - 3) * 0.03 + (chain - 1) * 0.05);
+
+    if (gemCount >= 5) {
+      audio.play("matchClearBurst", { volume: Math.min(0.42, 0.24 + gemCount * 0.015), rate: Math.max(0.84, baseRate - 0.08) });
+    } else if (gemCount >= 4) {
+      audio.play("matchClearHeavy", { volume: Math.min(0.38, 0.22 + gemCount * 0.014), rate: baseRate });
+    } else {
+      audio.play("matchClear", { volume: Math.min(0.34, 0.22 + gemCount * 0.016), rate: baseRate });
+    }
+
+    if (expandedInfo.chainCount > 1) {
+      audio.play("comboRise", {
+        volume: Math.min(0.24, 0.1 + expandedInfo.chainCount * 0.025),
+        rate: Math.min(1.42, 1.04 + expandedInfo.chainCount * 0.08),
+      });
+    }
+  }
+
   async function playPassiveSkillSequence(effects) {
     if (!effects || effects.length === 0) return;
     for (const effect of effects) {
@@ -4654,7 +4696,7 @@ import { createI18n } from "./src/ui/i18n.js";
     const target = getEncounterPortraitCenter();
     if (!target || !indices?.length) {
       const applied = damageEncounter(damage, "attack");
-      if (applied > 0) spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, getEncounterPortraitCenter() || getViewportCenter());
+      if (applied > 0) spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, getEncounterPortraitCenter() || getViewportCenter(), "fx-text fx-text-damage");
       return applied;
     }
     spawnShatterFX(indices);
@@ -4670,7 +4712,7 @@ import { createI18n } from "./src/ui/i18n.js";
     if (shell) shell.classList.add("hit");
     if (bossPortraitEl) bossPortraitEl.classList.add("hit");
     const applied = damageEncounter(damage, "fx");
-    if (applied > 0) spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, target);
+    if (applied > 0) spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `-${applied} 血` : `-${applied} HP`, target, "fx-text fx-text-damage");
     await sleep(220);
     if (shell) shell.classList.remove("hit");
     if (bossPortraitEl) bossPortraitEl.classList.remove("hit");
@@ -4765,12 +4807,34 @@ import { createI18n } from "./src/ui/i18n.js";
   function renderHUD() {
     const encounterUiText = getEncounterUiText();
     const chapterLength = state.selectedChapter ? state.selectedChapter.end - state.selectedChapter.start + 1 : TOTAL_FLOORS;
+    const bossMaxHp = state.boss.maxHp || 0;
+    const bossCurrentHp = state.boss.hp || 0;
+    const boardHpRatio = bossMaxHp > 0 ? Math.max(0, Math.min(1, bossCurrentHp / bossMaxHp)) : 0;
+    const boardHpBarEl = boardHpBarFillEl?.parentElement;
+    const lowMovesWarning = state.movesLeft < 5;
     floorEl.textContent = state.selectedChapter ? `${getChapterLocalFloor()}/${chapterLength}` : `${state.floor}/${TOTAL_FLOORS}`;
-    if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(state.boss.maxHp || 0);
+    if (boardMovesLeftEl) boardMovesLeftEl.textContent = String(state.movesLeft);
+    if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(bossMaxHp);
     movesLeftEl.textContent = String(state.movesLeft);
-    floorScoreEl.textContent = String(state.boss.hp || 0);
-    if (boardFloorScoreEl) boardFloorScoreEl.textContent = String(state.boss.hp || 0);
-    scoreEl.textContent = String(state.score);
+    movesLeftEl.classList.toggle("low-moves-warning", lowMovesWarning);
+    boardMovesLeftEl?.classList.toggle("low-moves-warning", lowMovesWarning);
+    floorScoreEl.textContent = String(bossCurrentHp);
+    if (boardFloorScoreEl) boardFloorScoreEl.textContent = String(bossCurrentHp);
+    if (boardFloorTotalScoreEl) boardFloorTotalScoreEl.textContent = String(bossMaxHp);
+    if (boardHpBarFillEl) boardHpBarFillEl.style.width = `${boardHpRatio * 100}%`;
+    if (boardHpBarEl) {
+      boardHpBarEl.classList.remove("hp-high", "hp-mid", "hp-low");
+      if (boardHpRatio <= 0.25) boardHpBarEl.classList.add("hp-low");
+      else if (boardHpRatio <= 0.6) boardHpBarEl.classList.add("hp-mid");
+      else boardHpBarEl.classList.add("hp-high");
+      if (lastBoardBossHp !== null && bossCurrentHp < lastBoardBossHp) {
+        boardHpBarEl.classList.remove("hp-hit");
+        boardHpBarEl.offsetWidth;
+        boardHpBarEl.classList.add("hp-hit");
+      }
+    }
+    lastBoardBossHp = bossCurrentHp;
+    if (scoreEl) scoreEl.textContent = String(state.score);
     bestFloorEl.textContent = String(meta.bestFloor);
     bestScoreEl.textContent = String(meta.bestScore);
 
@@ -4865,9 +4929,14 @@ import { createI18n } from "./src/ui/i18n.js";
       const entry = document.createElement("div");
       entry.className = "boss-skill-entry";
       const isUltimate = !profile.isMinion && profile.ultimateSkill?.id === skill.id;
+      const smallCastCount = Number(state.boss.smallCastCount || 0);
       const cycleReady = profile.isMinion ? charge >= skill.cost : (isUltimate ? Number(state.boss.smallCastCount || 0) >= 5 : Number(state.boss.smallCastCount || 0) < 5);
       if (charge >= skill.cost && cycleReady) entry.classList.add("ready");
-      const pct = Math.max(0, Math.min(100, Math.round((charge / Math.max(1, skill.cost)) * 100)));
+      const pct = profile.isMinion
+        ? Math.max(0, Math.min(100, Math.round((charge / Math.max(1, skill.cost)) * 100)))
+        : (isUltimate
+            ? Math.max(0, Math.min(100, Math.round((smallCastCount / 5) * 100)))
+            : Math.max(0, Math.min(100, Math.round((charge / Math.max(1, skill.cost)) * 100))));
       entry.style.setProperty("--skill-charge", `${pct}%`);
 
       const meter = document.createElement("div");
@@ -4881,7 +4950,11 @@ import { createI18n } from "./src/ui/i18n.js";
       body.className = "boss-skill-body";
 
       const title = document.createElement("strong");
-      title.textContent = `${lt(skill.name)} · ${charge}/${skill.cost}`;
+      title.textContent = profile.isMinion
+        ? `${lt(skill.name)} · ${charge}/${skill.cost}`
+        : (isUltimate
+            ? `${lt(skill.name)} · ${smallCastCount}/5`
+            : `${lt(skill.name)} · ${charge}/${skill.cost}`);
 
       const desc = document.createElement("small");
       desc.textContent = lt(skill.desc) || t("chapterBossAttackFallback");
@@ -4892,7 +4965,7 @@ import { createI18n } from "./src/ui/i18n.js";
         ? (i18n.getLanguage() === "zh-CN" ? `阈值 ${skill.cost}` : `Need ${skill.cost}`)
         : (isUltimate
             ? (i18n.getLanguage() === "zh-CN" ? `累计 5 次小技能后触发` : `Triggers after 5 small casts`)
-            : `${skill.cycleLabel} · ${i18n.getLanguage() === "zh-CN" ? "满能随机释放" : "Random on full charge"}`);
+            : `${skill.cycleLabel} · ${i18n.getLanguage() === "zh-CN" ? "满能后参与轮转" : "Enters rotation at full charge"}`);
 
       body.appendChild(title);
       body.appendChild(desc);

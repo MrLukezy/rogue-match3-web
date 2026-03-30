@@ -101,7 +101,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_storm_forge.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_forge.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_storm_forge.png",
-    bossPortrait: "./assets/generated/boss/chapter01_ember_cub.png",
+    minionPortrait: "./assets/generated/chapters/chapter01/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter01/boss/boss_portrait.png",
     gemTone: "saturate(1.08) brightness(1.03)",
   },
   {
@@ -118,7 +119,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_frozen_archive.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_archive.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_frozen_archive.png",
-    bossPortrait: "./assets/generated/boss/chapter02_frost_archivist.png",
+    minionPortrait: "./assets/generated/chapters/chapter02/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter02/boss/boss_portrait.png",
     gemTone: "hue-rotate(8deg) saturate(0.92) brightness(1.06)",
   },
   {
@@ -135,7 +137,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_crystal_mines.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_mines.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_crystal_mines.png",
-    bossPortrait: "./assets/generated/boss/chapter03_stone_burrower.png",
+    minionPortrait: "./assets/generated/chapters/chapter03/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter03/boss/boss_portrait.png",
     gemTone: "sepia(0.12) saturate(0.96) brightness(1.02)",
   },
   {
@@ -152,7 +155,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_storm_forge.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_forge.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_storm_forge.png",
-    bossPortrait: "./assets/generated/boss/chapter04_storm_duelist.png",
+    minionPortrait: "./assets/generated/chapters/chapter04/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter04/boss/boss_portrait.png",
     gemTone: "saturate(1.14) brightness(1.05)",
   },
   {
@@ -169,7 +173,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_arcane_frame.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_archive.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_arcane_frame.png",
-    bossPortrait: "./assets/generated/boss/chapter05_venom_bloom_queen.png",
+    minionPortrait: "./assets/generated/chapters/chapter05/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter05/boss/boss_portrait.png",
     gemTone: "hue-rotate(44deg) saturate(1.08) brightness(0.98)",
   },
   {
@@ -186,7 +191,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_void_rift.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_rift.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_void_rift.png",
-    bossPortrait: "./assets/generated/boss/chapter06_tidal_leviathan.png",
+    minionPortrait: "./assets/generated/chapters/chapter06/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter06/boss/boss_portrait.png",
     gemTone: "hue-rotate(-8deg) saturate(1.08) brightness(1.02)",
   },
   {
@@ -203,7 +209,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_modal_arcane_reward.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_obsidian.png",
     chapterPreviewImage: "./assets/generated/ui/bg_modal_arcane_reward.png",
-    bossPortrait: "./assets/generated/boss/chapter07_mirror_trickster.png",
+    minionPortrait: "./assets/generated/chapters/chapter07/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter07/boss/boss_portrait.png",
     gemTone: "hue-rotate(58deg) saturate(1.1) brightness(1.01)",
   },
   {
@@ -220,7 +227,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_storm_forge.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_forge.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_storm_forge.png",
-    bossPortrait: "./assets/generated/boss/chapter08_iron_forge_colossus.png",
+    minionPortrait: "./assets/generated/chapters/chapter08/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter08/boss/boss_portrait.png",
     gemTone: "sepia(0.08) saturate(1.1) brightness(0.98)",
   },
   {
@@ -237,7 +245,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_void_rift.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_archive.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_void_rift.png",
-    bossPortrait: "./assets/generated/boss/chapter09_eclipse_seraph.png",
+    minionPortrait: "./assets/generated/chapters/chapter09/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter09/boss/boss_portrait.png",
     gemTone: "hue-rotate(-20deg) saturate(1.16) brightness(0.96)",
   },
   {
@@ -254,7 +263,8 @@ export const CHAPTER_THEMES = [
     boardImage: "./assets/generated/ui/bg_board_void_rift.png",
     obstacleImage: "./assets/generated/ui/tile_obstacle_rift.png",
     chapterPreviewImage: "./assets/generated/ui/bg_board_void_rift.png",
-    bossPortrait: "./assets/generated/boss/chapter10_void_dragon_emperor.png",
+    minionPortrait: "./assets/generated/chapters/chapter10/minion/minion_portrait.png",
+    bossPortrait: "./assets/generated/chapters/chapter10/boss/boss_portrait.png",
     gemTone: "hue-rotate(-34deg) saturate(1.16) brightness(0.94)",
   },
 ];

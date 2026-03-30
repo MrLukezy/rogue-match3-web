@@ -70,17 +70,18 @@
 
       <main class="board-wrap" id="boardWrap">
         <div class="board-topbar">
-          <div class="score-banner">
-            <span>Total Score</span>
-            <strong id="score">0</strong>
+          <div class="board-chip move-chip">
+            <span>Moves Left</span>
+            <strong id="boardMovesLeft">0</strong>
           </div>
-          <div class="board-chip target-chip">
-            <span>Max HP</span>
-            <strong id="boardTargetScore">0</strong>
-          </div>
-          <div class="board-chip accent">
-            <span>Current HP</span>
-            <strong id="boardFloorScore">0</strong>
+          <div class="board-chip accent hp-chip enemy-hp-chip">
+            <div class="hp-chip-head">
+              <span>Enemy HP</span>
+              <strong><b id="boardFloorScore">0</b><small>/ <i id="boardFloorTotalScore">0</i></small></strong>
+            </div>
+            <div class="board-hp-bar" aria-label="Enemy HP bar">
+              <i id="boardHpBarFill"></i>
+            </div>
           </div>
         </div>
         <div id="board" class="board" aria-label="match3 board"></div>
@@ -119,7 +120,7 @@
                   <small id="bossHpMax">/0</small>
                 </div>
               </div>
-              <img id="bossPortrait" src="./assets/generated/boss/chapter01_ember_cub.png" alt="Encounter portrait" class="boss-portrait-image" />
+              <img id="bossPortrait" src="./assets/generated/chapters/chapter01/boss/boss_portrait.png" alt="Encounter portrait" class="boss-portrait-image" />
             </div>
           </div>
           <div class="boss-skillbook">
