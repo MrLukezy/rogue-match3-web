@@ -62,6 +62,7 @@ import {
   indicesInCol as getIndicesInCol,
   isAdjacent as checkIsAdjacent,
   swap as swapBoardCells,
+  hasPossibleMatchSwap as checkHasPossibleMatchSwap,
   randColor as pickRandColor,
   randomPick as pickRandom,
   shuffle as shuffleArray,
@@ -1312,12 +1313,12 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (state.mode.type === "target_item") return useTargetItem(state.mode.item, idx);
 
     if (selected === null) {
-      audio.play("gemTap", { volume: 0.1, rate: 1.02 });
+      audio.play("gemTap", { volume: 0.9, rate: 1.02 });
       selected = idx;
       return renderBoard();
     }
     if (selected === idx) {
-      audio.play("gemTap", { volume: 0.06, rate: 0.94 });
+      audio.play("gemTap", { volume: 0.9, rate: 0.94 });
       selected = null;
       return renderBoard();
     }
@@ -1327,7 +1328,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     selected = null;
 
     if (!isAdjacent(a, b)) {
-      audio.play("gemTap", { volume: 0.08, rate: 0.98 });
+      audio.play("gemTap", { volume: 0.9, rate: 0.98 });
       selected = b;
       return renderBoard();
     }
@@ -1338,11 +1339,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const ca = state.board[a];
     const cb = state.board[b];
     if (!isGem(ca) || !isGem(cb)) {
-      audio.play("uiError");
       return notify(i18n.getLanguage() === "zh-CN" ? "障碍格无法交换。" : "Obstacle tiles cannot be swapped.", "warn");
     }
     if (ca.lockedTurns > 0 || cb.lockedTurns > 0 || ca.frozen || cb.frozen) {
-      audio.play("uiError");
       return notify(i18n.getLanguage() === "zh-CN" ? "被锁定的宝石无法交换。" : "A locked gem cannot be swapped.", "warn");
     }
 
@@ -1368,7 +1367,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
       await playSwapAnimation(a, b);
       inputLocked = false;
       renderAll();
-      audio.play("uiError", { volume: 0.34 });
       return notify(i18n.getLanguage() === "zh-CN" ? "无效交换：未形成匹配。" : "Invalid swap: no match formed.", "warn");
     }
 
@@ -1733,6 +1731,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (state.taxColorTurns <= 0) state.taxColor = null;
   }
 
+  function hasPlayableSwap() {
+    return checkHasPossibleMatchSwap(state.board, boardSize, isGem, isObstacle);
+  }
+
   function resolveTideFlow() {
     const tideRows = [...new Set(state.tideRows || [])].filter((row) => row >= 0 && row < boardSize);
     const tideCols = [...new Set(state.tideCols || [])].filter((col) => col >= 0 && col < boardSize);
@@ -2062,7 +2064,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
       notify(i18n.getLanguage() === "zh-CN"
         ? `${profile.isMinion ? "小怪" : "Boss"} 蓄能即将拉满！`
         : `${profile.isMinion ? "Minion" : "Boss"} is about to hit full charge!`, "warn");
-      audio.play("uiError", { volume: 0.22, rate: 1.18 });
     } else if (chargePct >= 0.8 && state.boss.warningStage < 1) {
       state.boss.warningStage = 1;
       notify(i18n.getLanguage() === "zh-CN"
@@ -2135,6 +2136,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     await resolveBossSkill(skill);
     state.boss.charge = 0;
     renderAll();
+    checkFloorState();
     await sleep(220);
     if (bossPortraitEl) bossPortraitEl.classList.remove("casting");
     boardWrapEl.classList.remove("boss-cast");
@@ -3651,7 +3653,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function checkFloorState() {
     if (Number(state.boss.hp || 0) <= 0) return onFloorCleared();
-    if (state.movesLeft <= 0) return onDefeat();
+    if (state.movesLeft <= 0) return onDefeat("moves");
+    if (!hasPlayableSwap()) return onDefeat("no_moves");
   }
 
   function onFloorCleared() {
@@ -3793,16 +3796,20 @@ const CHAPTER_BOSS_ANIMATIONS = {
     showChapterBlessings(true);
   }
 
-  function onDefeat() {
+  function onDefeat(reason = "moves") {
+    if (state.gameOver) return;
     state.gameOver = true;
     grantMetaShards(Math.max(2, state.floor - 1));
     updateMeta();
     renderAll();
     audio.play("defeat");
-    overlayTitleEl.textContent = t("runFailed");
+    overlayTitleEl.textContent = t(reason === "no_moves" ? "noMovesFailed" : "runFailed");
+    const detail = reason === "no_moves"
+      ? t("runFailedNoMovesDetail")
+      : t("runFailedOutOfMovesDetail");
     overlayDescEl.textContent = i18n.getLanguage() === "zh-CN"
-      ? `${lt(state.selectedChapter?.title || { zh: "本轮", en: "Run" })} 在第 ${getChapterLocalFloor()} 层结束。最终分数：${state.score}。`
-      : `Chapter ${lt(state.selectedChapter?.title || { zh: "本轮", en: "Run" })} ended on floor ${getChapterLocalFloor()}. Final score: ${state.score}.`;
+      ? `${lt(state.selectedChapter?.title || { zh: "本轮", en: "Run" })} 在第 ${getChapterLocalFloor()} 层结束。${detail} 最终分数：${state.score}。`
+      : `Chapter ${lt(state.selectedChapter?.title || { zh: "本轮", en: "Run" })} ended on floor ${getChapterLocalFloor()}. ${detail} Final score: ${state.score}.`;
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = `<button type="button" class="btn danger overlay-btn" data-action="restart-run">${t("restartNow")}</button>`;
     bindOverlayActions();
