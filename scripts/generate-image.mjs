@@ -3,7 +3,7 @@ import path from "node:path";
 import os from "node:os";
 
 const DEFAULT_PROVIDER = "suxi";
-const DEFAULT_MODEL = "sora-image";
+const DEFAULT_MODEL = "grok-4.1-image";
 const DEFAULT_SIZE = "512x512";
 const SIZE_PRESETS = {
   gem: "512x512",

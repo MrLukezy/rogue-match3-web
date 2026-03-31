@@ -150,6 +150,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
     chapterSettingsBtn,
     chapterShellEl,
     chapterListEl,
+    chapterOrderTextEl,
+    chapterNameTextEl,
+    chapterMetaTextEl,
     appSettingsBtn,
     floorEl,
     modifierEl,
@@ -204,6 +207,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
     guideSettingsBtn,
     guideModalTitleEl,
     guideModalDescEl,
+    guideTabRowEl,
+    guideTabGemsEl,
+    guideTabSkillsEl,
     guideModalContentEl,
     guideCloseBtn,
     settingsModalEl,
@@ -233,6 +239,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   let boardSize = MIN_BOARD_SIZE;
   let guideQueue = [];
   let guideActive = false;
+  let activeGuideTab = "gems";
   let itemAnimFrameIndex = 0;
   let itemAnimTimer = null;
   let bossHudTimer = null;
@@ -262,6 +269,85 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function getAnimatedItemImage(id, frameIndex = itemAnimFrameIndex) {
     return pickAnimatedItemImage(id, frameIndex, ITEM_ANIM_FRAMES, ITEM_DEFS);
+  }
+
+  function getItemAnimationFrames(id) {
+    return ITEM_ANIM_FRAMES[id] || [ITEM_DEFS[id]?.image].filter(Boolean);
+  }
+
+  function getSkillRevealPalette(skillId, theme = "screen") {
+    const rarity = ITEM_DEFS[skillId]?.rarity || "common";
+    const palettes = {
+      common:    { glow: "rgba(122,214,255,0.34)",  border: "rgba(150,224,255,0.72)",  accent: "rgba(207,245,255,0.92)" },
+      rare:      { glow: "rgba(143,134,255,0.36)",  border: "rgba(177,162,255,0.76)",  accent: "rgba(230,222,255,0.94)" },
+      epic:      { glow: theme === "rainbow" ? "rgba(255,114,184,0.42)" : "rgba(255,211,96,0.40)",  border: theme === "rainbow" ? "rgba(255,161,219,0.80)" : "rgba(255,223,132,0.82)",  accent: "rgba(255,247,221,0.96)" },
+      legendary: { glow: "rgba(255,89,116,0.48)",   border: "rgba(255,189,122,0.84)",  accent: "rgba(255,238,198,0.98)" },
+    };
+    return palettes[rarity] || palettes.common;
+  }
+
+  function spawnSkillCastReveal({ skillId, skillName = "", origin = null, center = null, theme = "screen", duration = 960, withLabel = true }) {
+    const target = center || getViewportCenter();
+    if (!fxLayerEl || !target) return null;
+    const start = origin || getSkillButtonCenter(skillId) || target;
+    const frames = getItemAnimationFrames(skillId);
+    const palette = getSkillRevealPalette(skillId, theme);
+
+    const el = document.createElement("div");
+    el.className = `fx-skill-cast-icon ${theme}`;
+    el.style.left = `${target.x}px`;
+    el.style.top = `${target.y}px`;
+    el.style.setProperty("--from-dx", `${start.x - target.x}px`);
+    el.style.setProperty("--from-dy", `${start.y - target.y}px`);
+    el.style.setProperty("--skill-glow", palette.glow);
+    el.style.setProperty("--skill-border", palette.border);
+    el.style.setProperty("--skill-accent", palette.accent);
+
+    const backdrop = document.createElement("span");
+    backdrop.className = "fx-skill-cast-backdrop";
+    el.appendChild(backdrop);
+
+    const ringA = document.createElement("span");
+    ringA.className = "fx-skill-cast-ring ring-a";
+    el.appendChild(ringA);
+
+    const ringB = document.createElement("span");
+    ringB.className = "fx-skill-cast-ring ring-b";
+    el.appendChild(ringB);
+
+    const imgShell = document.createElement("span");
+    imgShell.className = "fx-skill-cast-image-shell";
+    const img = document.createElement("img");
+    img.className = "fx-skill-cast-image";
+    img.alt = skillName || skillId || "skill icon";
+    if (frames[0]) img.src = frames[0];
+    imgShell.appendChild(img);
+    el.appendChild(imgShell);
+
+    if (withLabel && skillName) {
+      const lbl = document.createElement("strong");
+      lbl.className = "fx-skill-cast-label";
+      lbl.textContent = skillName;
+      el.appendChild(lbl);
+    }
+
+    fxLayerEl.appendChild(el);
+
+    let frameTimer = null;
+    if (frames.length > 1) {
+      let frameIdx = 0;
+      frameTimer = setInterval(() => {
+        frameIdx = (frameIdx + 1) % frames.length;
+        img.src = frames[frameIdx];
+      }, 125);
+    }
+
+    setTimeout(() => {
+      if (frameTimer) clearInterval(frameTimer);
+      el.remove();
+    }, duration);
+
+    return el;
   }
 
   function getAnimatedGemImage(color, frameIndex = itemAnimFrameIndex) {
@@ -340,6 +426,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (!hasItemType(id)) ensureItemType(id);
     state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(id) + levelGain);
     state.items[id] = 0;
+    queueSkillGuideIfNew(id);
   }
 
   function unlockOrUpgradeSkill(id, levelGain = 1) {
@@ -354,6 +441,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     state.itemSlots[slotIndex] = newId;
     state.itemLevels[newId] = Math.max(ITEM_BASE_LEVEL, (state.itemLevels[newId] || 0) + levelGain);
     state.items[newId] = 0;
+    queueSkillGuideIfNew(newId);
     return true;
   }
 
@@ -371,6 +459,26 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function saveMeta() {
     persistMeta(localStorage, META_KEY, meta);
+  }
+
+  function getGuideSeenKey(kind, id) {
+    return kind === "skills" ? `skill_${id}` : id;
+  }
+
+  function isGuideEntrySeen(kind, id) {
+    return Boolean(meta.codex.guideSeen[getGuideSeenKey(kind, id)]);
+  }
+
+  function markGuideEntrySeen(kind, id) {
+    const key = getGuideSeenKey(kind, id);
+    if (meta.codex.guideSeen[key]) return false;
+    meta.codex.guideSeen[key] = 1;
+    saveMeta();
+    return true;
+  }
+
+  function getSkillGuideDefs() {
+    return ITEM_ORDER.map((id) => ({ id, def: ITEM_DEFS[id] })).filter((entry) => entry.def);
   }
 
   function recordCodex(group, key, delta = 1) {
@@ -430,6 +538,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (testPassBtn) {
       testPassBtn.addEventListener("click", triggerTestPassCurrentFloor);
     }
+    if (guideTabGemsEl) guideTabGemsEl.addEventListener("click", () => setGuideTab("gems"));
+    if (guideTabSkillsEl) guideTabSkillsEl.addEventListener("click", () => setGuideTab("skills"));
 
     window.addEventListener("resize", updateResponsiveScale);
     window.addEventListener("orientationchange", updateResponsiveScale);
@@ -509,16 +619,11 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (audioToggleBtn) audioToggleBtn.textContent = audio.isMuted() ? t("audioOff") : t("audioOn");
 
     setTextBySelector(".hero-stat span", t("movesLeft"));
-    setPanelRowLabel(0, t("floor"));
-    setPanelRowLabel(1, t("modifier"));
-    setPanelRowLabel(2, t("encounterHp"));
-    setPanelRowLabel(3, t("bestFloor"));
-    setPanelRowLabel(4, t("bestScore"));
+    setPanelRowLabel(0, t("modifier"));
     setTextBySelector(".momentum > span", t("momentum"));
-    setTextBySelector(".glossary-panel h2", t("tileGuide"));
+    setTextBySelector(".left-summary-title", t("currentGoal"));
+    setTextBySelector(".chapter-panel-title", t("currentChapter"));
     if (guideBtn) guideBtn.textContent = t("openGuide");
-    setTextBySelector(".build-panel h2", t("rogueSkills"));
-    setTextBySelector(".panel-note", t("raritySummary"));
     if (restartBtn) restartBtn.textContent = t("restartRun");
     if (codexBtn) codexBtn.textContent = t("codex");
     setTextBySelector(".move-chip span", t("movesLeft"));
@@ -538,6 +643,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (overlayEl && overlayEl.classList.contains("hidden") && overlayDescEl) overlayDescEl.textContent = t("rewardDesc");
     if (guideModalTitleEl && guideModalEl?.classList.contains("hidden")) guideModalTitleEl.textContent = t("tileGuide");
     if (guideModalDescEl && guideModalEl?.classList.contains("hidden")) guideModalDescEl.textContent = t("guideModalDesc");
+    if (guideTabGemsEl) guideTabGemsEl.textContent = t("guideTabsGems");
+    if (guideTabSkillsEl) guideTabSkillsEl.textContent = t("guideTabsSkills");
     const guideClose = document.getElementById("guideCloseBtn");
     if (guideClose) guideClose.textContent = t("close");
     const codexTitle = codexModalEl?.querySelector("h3");
@@ -574,12 +681,34 @@ const CHAPTER_BOSS_ANIMATIONS = {
     codexModalEl.classList.remove("hidden");
   }
 
-  function openGuidePanel(entryId = null) {
-    renderGuideList(entryId);
+  function setGuideTab(nextTab = "gems", highlightId = null) {
+    activeGuideTab = nextTab === "skills" ? "skills" : "gems";
+    if (guideTabGemsEl) {
+      guideTabGemsEl.classList.toggle("active", activeGuideTab === "gems");
+      guideTabGemsEl.setAttribute("aria-selected", activeGuideTab === "gems" ? "true" : "false");
+    }
+    if (guideTabSkillsEl) {
+      guideTabSkillsEl.classList.toggle("active", activeGuideTab === "skills");
+      guideTabSkillsEl.setAttribute("aria-selected", activeGuideTab === "skills" ? "true" : "false");
+    }
+    renderGuideList(highlightId);
+    updateGuideHeader(activeGuideTab, highlightId);
+  }
+
+  function updateGuideHeader(tab = activeGuideTab, entryId = null) {
+    if (tab === "skills") {
+      guideModalTitleEl.textContent = entryId && ITEM_DEFS[entryId] ? lt(ITEM_DEFS[entryId].name) : t("guideSkillsTitle");
+      guideModalDescEl.textContent = entryId && ITEM_DEFS[entryId] ? t("guideSkillsDiscoverDesc") : t("guideSkillsDesc");
+      return;
+    }
     guideModalTitleEl.textContent = entryId && GUIDE_DEFS[entryId] ? lt(GUIDE_DEFS[entryId].title) : t("tileGuide");
     guideModalDescEl.textContent = entryId && GUIDE_DEFS[entryId]
       ? t("guideModalDiscoverDesc")
       : t("guideModalDesc");
+  }
+
+  function openGuidePanel(entryId = null, tab = "gems") {
+    setGuideTab(tab, entryId);
     audio.play("uiClick");
     guideModalEl.classList.remove("hidden");
   }
@@ -592,41 +721,117 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function renderGuideList(highlightId = null) {
-    const entries = Object.entries(GUIDE_DEFS);
     guideModalContentEl.innerHTML = "";
 
+    if (activeGuideTab === "skills") {
+      for (const { id, def } of getSkillGuideDefs()) {
+        const detail = createGuideEntry(id, def, highlightId === id, true, "skills");
+        detail.addEventListener("click", () => {});
+        guideModalContentEl.appendChild(detail);
+      }
+      return;
+    }
+
+    const entries = Object.entries(GUIDE_DEFS);
     for (const [id, def] of entries) {
-      const detail = createGuideEntry(id, def, highlightId === id, true);
+      const detail = createGuideEntry(id, def, highlightId === id, true, "gems");
       detail.addEventListener("click", () => {});
       guideModalContentEl.appendChild(detail);
     }
   }
 
-  function createGuideEntry(id, def, highlighted = false, detailed = false) {
+  function createGuideEntry(id, def, highlighted = false, detailed = false, kind = "gems") {
+    const unlocked = isGuideEntrySeen(kind, id);
     const entry = document.createElement("div");
-    entry.className = `guide-item${detailed ? " modal-item" : ""}${highlighted ? " highlighted" : ""}`;
+    entry.className = `guide-item${detailed ? " modal-item" : ""}${highlighted ? " highlighted" : ""}${unlocked ? "" : " locked"}`;
 
     const preview = document.createElement("div");
     preview.className = "guide-preview";
-    preview.appendChild(createGuidePreview(def.preview));
+    preview.appendChild(kind === "skills" ? createSkillGuidePreview(id) : createGuidePreview(def.preview));
 
     const text = document.createElement("div");
-    text.innerHTML = `<strong>${lt(def.title)}</strong><small>${lt(def.desc)}</small>`;
+    const title = kind === "skills" ? lt(def.name) : lt(def.title);
+    const desc = lt(def.desc);
+    const chips = kind === "skills"
+      ? `<span class="guide-entry-chip">${lt(RARITY_LABELS[def.rarity])}</span><span class="guide-entry-chip">${t("guidePassiveTag")}</span>`
+      : `<span class="guide-entry-chip">${t("guideCategoryGem")}</span>`;
+    const stateChip = `<span class="guide-entry-chip lock-state">${unlocked ? t("guideSeenHint") : t("guideLockedHint")}</span>`;
+    text.innerHTML = `<strong>${title}</strong><small>${desc}</small><div class="guide-entry-meta">${chips}${stateChip}</div>`;
 
     entry.appendChild(preview);
     entry.appendChild(text);
     entry.dataset.guide = id;
+    entry.dataset.guideKind = kind;
     return entry;
+  }
+
+  function createGuideCellShell() {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    return cell;
+  }
+
+  function appendGuideOverlay(cell, overlayType) {
+    const overlay = document.createElement("span");
+    overlay.className = `cell-effect effect-${overlayType}`;
+
+    if (overlayType === "burning") {
+      const haze = document.createElement("span");
+      haze.className = "effect-burning-haze";
+      overlay.appendChild(haze);
+      const emberLayer = document.createElement("span");
+      emberLayer.className = "effect-burning-embers";
+      overlay.appendChild(emberLayer);
+      const flameBase = "assets/images/effects/flame4_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-burning-img flame-img-${n + 1}`;
+        img.src = `${flameBase}${n + 1}.png`;
+        img.alt = "flame";
+        overlay.appendChild(img);
+      }
+    } else if (overlayType === "poisoned") {
+      const base = "assets/images/effects/poison_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-poisoned-img poison-img-${n + 1}`;
+        img.src = `${base}${n + 1}.png`;
+        img.alt = "poison";
+        overlay.appendChild(img);
+      }
+    } else if (overlayType === "frozen") {
+      const base = "assets/images/effects/frz_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-frozen-img ice-img-${n + 1}`;
+        img.src = `${base}${n + 1}.png`;
+        img.alt = "ice";
+        overlay.appendChild(img);
+      }
+    } else if (overlayType === "locked") {
+      const base = "assets/images/effects/lock_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-locked-img lock-img-${n + 1}`;
+        img.src = `${base}${n + 1}.png`;
+        img.alt = "lock";
+        overlay.appendChild(img);
+      }
+    }
+
+    cell.appendChild(overlay);
   }
 
   function createGuidePreview(preview) {
     const frame = document.createElement("div");
     frame.className = "guide-preview-frame";
+    const cell = createGuideCellShell();
 
     if (!preview || preview.kind === "obstacle") {
       const obstacle = document.createElement("div");
       obstacle.className = "obstacle";
-      frame.appendChild(obstacle);
+      cell.appendChild(obstacle);
+      frame.appendChild(cell);
       return frame;
     }
 
@@ -671,16 +876,42 @@ const CHAPTER_BOSS_ANIMATIONS = {
       gem.appendChild(frozenTag);
     }
 
-    frame.appendChild(gem);
+    if (preview.glass) appendGuideOverlay(cell, "glass");
+    if (preview.burning) appendGuideOverlay(cell, "burning");
+    if ((preview.poisonedTurns || 0) > 0) appendGuideOverlay(cell, "poisoned");
+    if (preview.frozen) appendGuideOverlay(cell, "frozen");
+    if (preview.locked) appendGuideOverlay(cell, "locked");
+
+    cell.appendChild(gem);
+    frame.appendChild(cell);
+    return frame;
+  }
+
+  function createSkillGuidePreview(id) {
+    const frame = document.createElement("div");
+    frame.className = "guide-preview-frame";
+    const cell = createGuideCellShell();
+    const icon = document.createElement("img");
+    icon.className = "item-icon item-image guide-skill-icon";
+    icon.dataset.animItem = id;
+    icon.src = getAnimatedItemImage(id);
+    icon.alt = lt(ITEM_DEFS[id]?.name) || id;
+    cell.appendChild(icon);
+    frame.appendChild(cell);
     return frame;
   }
 
   function queueGuideIfNew(id) {
     if (!GUIDE_DEFS[id]) return;
-    if (meta.codex.guideSeen[id]) return;
-    meta.codex.guideSeen[id] = 1;
-    saveMeta();
+    if (!markGuideEntrySeen("gems", id)) return;
     guideQueue.push(id);
+  }
+
+  function queueSkillGuideIfNew(id) {
+    if (!ITEM_DEFS[id]) return;
+    if (!markGuideEntrySeen("skills", id)) return;
+    guideQueue.push({ type: "skills", id });
+    maybeShowNextGuide();
   }
 
   function scanGuideDiscoveries() {
@@ -713,7 +944,17 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const next = guideQueue.shift();
     if (!next) return;
     guideActive = true;
-    openGuidePanel(next);
+    if (typeof next === "object" && next?.type === "skills") {
+      openGuidePanel(next.id, "skills");
+      return;
+    }
+    openGuidePanel(next, "gems");
+  }
+
+  function syncSkillGuideDiscoveries() {
+    for (const id of getCarriedItems()) {
+      queueSkillGuideIfNew(id);
+    }
   }
 
   function bindOverlayActions() {
@@ -807,6 +1048,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     fallAnim = new Set();
     guideQueue = [];
     guideActive = false;
+    activeGuideTab = "gems";
     overlayEl.classList.add("hidden");
     codexModalEl.classList.add("hidden");
     guideModalEl.classList.add("hidden");
@@ -1493,7 +1735,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   async function useLegendSkill(skill) {
     if (skill === "screen_wipe") {
-      await playSkillShowcase(lt(ITEM_DEFS.screen_wipe.name), "screen");
+      await playSkillShowcase(lt(ITEM_DEFS.screen_wipe.name), "screen", "screen_wipe");
       const targets = collectIndices((x) => isGem(x) || (itemPower(skill) >= 2 && isObstacle(x)));
       recordCodex("skillUse", "screen_wipe");
       applyLegendBossPressure();
@@ -1506,7 +1748,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
 
     if (skill === "rainbow_burst") {
-      await playSkillShowcase(lt(ITEM_DEFS.rainbow_burst.name), "rainbow");
+      await playSkillShowcase(lt(ITEM_DEFS.rainbow_burst.name), "rainbow", "rainbow_burst");
       const first = randColor();
       let second = randColor();
       if (second === first) second = nextGemColor(first);
@@ -1524,7 +1766,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
 
     if (skill === "time_freeze") {
-      await playSkillShowcase(lt(ITEM_DEFS.time_freeze.name), "screen");
+      await playSkillShowcase(lt(ITEM_DEFS.time_freeze.name), "screen", "time_freeze");
       state.movesLeft += 2 + itemPower(skill);
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 18 + itemPower(skill) * 4 + (state.perks.fever_smith ? 8 : 0));
       for (let i = 0; i < state.board.length; i += 1) {
@@ -1542,7 +1784,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
 
     if (skill === "boss_breaker") {
-      await playSkillShowcase(lt(ITEM_DEFS.boss_breaker.name), "rainbow");
+      await playSkillShowcase(lt(ITEM_DEFS.boss_breaker.name), "rainbow", "boss_breaker");
       const targets = collectIndices((x) => isGem(x));
       shuffle(targets);
       const chosen = targets.slice(0, Math.min(12 + itemPower(skill) * 3, targets.length));
@@ -1561,7 +1803,18 @@ const CHAPTER_BOSS_ANIMATIONS = {
     inputLocked = false;
   }
 
-  async function playSkillShowcase(name, theme = "screen") {
+  async function playSkillShowcase(name, theme = "screen", skillId = null) {
+    if (skillId) {
+      spawnSkillCastReveal({
+        skillId,
+        skillName: name,
+        origin: getSkillButtonCenter(skillId),
+        center: { x: window.innerWidth / 2, y: window.innerHeight * 0.34 },
+        theme,
+        duration: 980,
+        withLabel: false,
+      });
+    }
     const fx = document.createElement("div");
     fx.className = `skill-showcase ${theme}`;
     fx.textContent = name;
@@ -4434,13 +4687,17 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   async function playSkillIconReveal(effect) {
-    const button = itemWrapEl?.querySelector(`.ability[data-item="${effect.id}"] .item-image`);
-    const center = getViewportCenter();
-    spawnTransientFx("fx-skill-cast-icon", center, 900, {
-      "--fx-delay": "0ms",
-      "--skill-icon": button ? `url("${button.getAttribute("src")}")` : "none",
+    const center = { x: window.innerWidth / 2, y: window.innerHeight * 0.36 };
+    spawnSkillCastReveal({
+      skillId: effect.id,
+      skillName: effect.name,
+      origin: getSkillButtonCenter(effect.id),
+      center,
+      theme: ["rainbow_burst", "boss_breaker"].includes(effect.id) ? "rainbow" : "screen",
+      duration: 960,
+      withLabel: true,
     });
-    await sleep(320);
+    await sleep(340);
     return center;
   }
 
@@ -4918,18 +5175,21 @@ const CHAPTER_BOSS_ANIMATIONS = {
   function renderHUD() {
     const encounterUiText = getEncounterUiText();
     const chapterLength = state.selectedChapter ? state.selectedChapter.end - state.selectedChapter.start + 1 : TOTAL_FLOORS;
+    const chapterOrder = getChapterOrder();
     const bossMaxHp = state.boss.maxHp || 0;
     const bossCurrentHp = state.boss.hp || 0;
     const boardHpRatio = bossMaxHp > 0 ? Math.max(0, Math.min(1, bossCurrentHp / bossMaxHp)) : 0;
     const boardHpBarEl = boardHpBarFillEl?.parentElement;
     const lowMovesWarning = state.movesLeft < 5;
-    floorEl.textContent = state.selectedChapter ? `${getChapterLocalFloor()}/${chapterLength}` : `${state.floor}/${TOTAL_FLOORS}`;
+    if (floorEl) floorEl.textContent = state.selectedChapter ? `${getChapterLocalFloor()}/${chapterLength}` : `${state.floor}/${TOTAL_FLOORS}`;
     if (boardMovesLeftEl) boardMovesLeftEl.textContent = String(state.movesLeft);
     if (boardTargetScoreEl) boardTargetScoreEl.textContent = String(bossMaxHp);
-    movesLeftEl.textContent = String(state.movesLeft);
-    movesLeftEl.classList.toggle("low-moves-warning", lowMovesWarning);
+    if (movesLeftEl) {
+      movesLeftEl.textContent = String(state.movesLeft);
+      movesLeftEl.classList.toggle("low-moves-warning", lowMovesWarning);
+    }
     boardMovesLeftEl?.classList.toggle("low-moves-warning", lowMovesWarning);
-    floorScoreEl.textContent = String(bossCurrentHp);
+    if (floorScoreEl) floorScoreEl.textContent = String(bossCurrentHp);
     if (boardFloorScoreEl) boardFloorScoreEl.textContent = String(bossCurrentHp);
     if (boardFloorTotalScoreEl) boardFloorTotalScoreEl.textContent = String(bossMaxHp);
     if (boardHpBarFillEl) boardHpBarFillEl.style.width = `${boardHpRatio * 100}%`;
@@ -4946,11 +5206,11 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
     lastBoardBossHp = bossCurrentHp;
     if (scoreEl) scoreEl.textContent = String(state.score);
-    bestFloorEl.textContent = String(meta.bestFloor);
-    bestScoreEl.textContent = String(meta.bestScore);
+    if (bestFloorEl) bestFloorEl.textContent = String(meta.bestFloor);
+    if (bestScoreEl) bestScoreEl.textContent = String(meta.bestScore);
 
-    momentumBarEl.style.width = `${(state.momentum / MOMENTUM_MAX) * 100}%`;
-    feverTurnsEl.textContent = `${t("fever")} ${state.feverTurns}`;
+    if (momentumBarEl) momentumBarEl.style.width = `${(state.momentum / MOMENTUM_MAX) * 100}%`;
+    if (feverTurnsEl) feverTurnsEl.textContent = `${t("fever")} ${state.feverTurns}`;
 
     const displayedCharge = getBossDisplayedCharge();
     const profile = getBossProfile();
@@ -5008,6 +5268,15 @@ const CHAPTER_BOSS_ANIMATIONS = {
         : state.boss.elite
           ? `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} elite / S${state.boss.smallCastCount || 0}/5 / ${charge}/100`
           : `${lt(state.floorTheme.pattern)} / ${lt(profile.element)} / S${state.boss.smallCastCount || 0}/5 / ${charge}/100`;
+    }
+    if (chapterOrderTextEl) chapterOrderTextEl.textContent = t("chapterOrderShort", { value: chapterOrder });
+    if (chapterNameTextEl) chapterNameTextEl.textContent = lt((state.selectedChapter || state.floorTheme)?.title || state.floorTheme?.title || "-");
+    if (chapterMetaTextEl) {
+      chapterMetaTextEl.textContent = t("chapterMetaInline", {
+        floor: getChapterLocalFloor(),
+        total: chapterLength,
+        boss: lt((state.selectedChapter || state.floorTheme)?.bossName || getEncounterName(state.floorTheme)),
+      });
     }
     if (modifierEl) modifierEl.textContent = state.modifier ? `${lt(state.floorTheme.shortLabel)} · ${state.routePlan.title} · ${lt(state.modifier.name)} · ${state.activeGemColors.length}C` : `${lt(state.floorTheme.shortLabel)} · ${state.routePlan.title} · ${state.activeGemColors.length}C`;
     if (bossMeterEl) {
@@ -5099,6 +5368,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function renderItems() {
+    syncSkillGuideDiscoveries();
     renderItemsView({
       itemWrapEl,
       getCarriedItems,

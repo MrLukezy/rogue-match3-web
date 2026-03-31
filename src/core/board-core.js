@@ -64,6 +64,76 @@ export function swap(state, a, b) {
   state.board[b] = t;
 }
 
+export function hasPossibleMatchSwap(board, boardSize, isGem, isObstacle = null) {
+  const canPlayerSwapCell = (cell) => {
+    if (!isGem(cell)) return false;
+    if (isObstacle && isObstacle(cell)) return false;
+    if (cell.lockedTurns > 0 || cell.frozen) return false;
+    return true;
+  };
+
+  const hasLineMatchAt = (index) => {
+    const cell = board[index];
+    if (!isGem(cell) || cell.special === "rainbow") return false;
+
+    const color = cell.color;
+    const row = rowOf(boardSize, index);
+    const col = colOf(boardSize, index);
+
+    let horizontal = 1;
+    for (let c = col - 1; c >= 0; c -= 1) {
+      const next = board[row * boardSize + c];
+      if (!isGem(next) || next.special === "rainbow" || next.color !== color) break;
+      horizontal += 1;
+    }
+    for (let c = col + 1; c < boardSize; c += 1) {
+      const next = board[row * boardSize + c];
+      if (!isGem(next) || next.special === "rainbow" || next.color !== color) break;
+      horizontal += 1;
+    }
+    if (horizontal >= 3) return true;
+
+    let vertical = 1;
+    for (let r = row - 1; r >= 0; r -= 1) {
+      const next = board[r * boardSize + col];
+      if (!isGem(next) || next.special === "rainbow" || next.color !== color) break;
+      vertical += 1;
+    }
+    for (let r = row + 1; r < boardSize; r += 1) {
+      const next = board[r * boardSize + col];
+      if (!isGem(next) || next.special === "rainbow" || next.color !== color) break;
+      vertical += 1;
+    }
+    return vertical >= 3;
+  };
+
+  for (let r = 0; r < boardSize; r += 1) {
+    for (let c = 0; c < boardSize; c += 1) {
+      const index = r * boardSize + c;
+      const cell = board[index];
+      if (!canPlayerSwapCell(cell)) continue;
+
+      const neighbors = [];
+      if (c + 1 < boardSize) neighbors.push(index + 1);
+      if (r + 1 < boardSize) neighbors.push(index + boardSize);
+
+      for (const nextIndex of neighbors) {
+        const next = board[nextIndex];
+        if (!canPlayerSwapCell(next)) continue;
+        if (cell.special && next.special) return true;
+
+        [board[index], board[nextIndex]] = [board[nextIndex], board[index]];
+        const matched = hasLineMatchAt(index) || hasLineMatchAt(nextIndex);
+        [board[index], board[nextIndex]] = [board[nextIndex], board[index]];
+
+        if (matched) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 export const randColor = (COLORS) => Math.floor(Math.random() * COLORS);
 export const randomPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 

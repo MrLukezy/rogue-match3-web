@@ -17,6 +17,17 @@ These prompts are staged for future image generation. Current runtime can alread
 - Rendering: clean silhouette, readable at 64px, polished mobile-game icon look
 - Exclude: no text, no watermark, no UI frame, no hands, no background scene
 
+## Character Cutout Add-on Rules
+
+- When generating full-body characters that will be auto-cut out later, do **not** rely on the model to return real transparency.
+- Prefer: plain solid studio background with strong contrast against the subject.
+- Require: single isolated character, centered composition, full body fully visible, clean readable silhouette.
+- Exclude: floor, cast shadow plate, scene props, fog, smoke, busy particles, decorative frame.
+- If the character has bright flame / white glow / pale VFX, prefer a darker neutral background.
+- If the character is mostly dark or saturated warm colors, prefer a light neutral background.
+- Add this clause to prompts when needed:
+  - `single isolated character, full body fully visible, centered composition, plain solid studio background with strong contrast against the character, edge clarity prioritized for clean cutout extraction, no scenery, no floor, no cast shadow plate, no frame, no text, no watermark`
+
 ## Gem Icons
 
 ### gem_fire.png

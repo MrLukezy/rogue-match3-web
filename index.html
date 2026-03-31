@@ -28,43 +28,39 @@
         </div>
         <p class="sub">Roguelite relic drafting meets fast match-3 tower climbing.</p>
 
-        <section class="stats">
-          <div class="hero-stat">
-            <span>Moves Left</span>
-            <strong id="movesLeft">0</strong>
+        <section class="chapter-panel">
+          <div class="section-head compact">
+            <h2 class="chapter-panel-title">Current Chapter</h2>
           </div>
-          <div class="row"><span>Floor</span><strong id="floor">1/7</strong></div>
-          <div class="row"><span>Modifier</span><strong id="modifier">-</strong></div>
-          <div class="row"><span>Current HP</span><strong id="floorScore">0</strong></div>
-          <div class="row"><span>Best Floor</span><strong id="bestFloor">0</strong></div>
-          <div class="row"><span>Best Score</span><strong id="bestScore">0</strong></div>
-          <div class="momentum">
+          <div class="chapter-card-mini">
+            <div class="chapter-card-head">
+              <span id="chapterOrderText" class="chapter-order-text">Chapter 1</span>
+              <strong id="chapterNameText" class="chapter-name-text">Ember Hollows</strong>
+            </div>
+            <div id="chapterMetaText" class="chapter-meta-text">Floor 1/3 · Boss: Warden</div>
+          </div>
+        </section>
+
+        <section class="left-summary-panel">
+          <div class="section-head compact">
+            <h2 class="left-summary-title">Current Goal</h2>
+          </div>
+          <div id="modeText" class="summary-goal">Mode: Standard swap</div>
+        </section>
+
+        <section class="stats compact-stats compact-momentum-panel">
+          <div class="momentum left-status-panel">
             <span>Momentum</span>
             <div class="bar"><i id="momentumBar"></i></div>
             <strong id="feverTurns">Fever 0</strong>
           </div>
         </section>
 
-        <section class="glossary-panel">
-          <div class="section-head">
-            <h2>Tile Guide</h2>
-            <button id="guideBtn" class="mini-btn" type="button">Open Guide</button>
-          </div>
-        </section>
-
-        <section class="build-panel">
-          <div class="section-head">
-            <h2>Rogue Skills</h2>
-            <span class="panel-note">Common / Rare / Epic / Legendary</span>
-          </div>
-          <div id="perkWrap" class="perk-list"></div>
-        </section>
-
         <div class="actions-row">
+          <button id="guideBtn" class="btn">Open Guide</button>
           <button id="restartBtn" class="btn danger">Restart Run</button>
           <button id="codexBtn" class="btn">Codex</button>
         </div>
-        <div id="modeText" class="mode">Mode: Standard swap</div>
         <div id="message" class="message">Swap neighboring gems, create matches, and outpace the encounter.</div>
       </aside>
 
@@ -73,6 +69,9 @@
           <div class="board-chip move-chip">
             <span>Moves Left</span>
             <strong id="boardMovesLeft">0</strong>
+          </div>
+          <div class="board-chip test-pass-chip">
+            <button id="testPassBtn" class="mini-btn test-pass-btn" type="button">测试过关</button>
           </div>
           <div class="board-chip accent hp-chip enemy-hp-chip">
             <div class="hp-chip-head">
@@ -144,10 +143,14 @@
     </div>
 
     <div id="guideModal" class="overlay hidden" role="dialog" aria-modal="true">
-      <div class="modal guide-modal">
+      <div class="modal guide-modal guide-scale-modal">
         <button id="guideSettingsBtn" class="settings-fab modal-corner-btn" type="button" aria-label="Open settings">⚙</button>
         <h3 id="guideModalTitle">Tile Guide</h3>
         <p id="guideModalDesc">Every tile type and board condition is listed here.</p>
+        <div id="guideTabRow" class="guide-tab-row" role="tablist" aria-label="Guide categories">
+          <button id="guideTabGems" class="guide-tab active" type="button" data-guide-tab="gems" role="tab" aria-selected="true">Gems</button>
+          <button id="guideTabSkills" class="guide-tab" type="button" data-guide-tab="skills" role="tab" aria-selected="false">Skills</button>
+        </div>
         <div id="guideModalContent" class="guide-modal-content"></div>
         <div class="actions-row" style="margin-top:10px;">
           <button id="guideCloseBtn" class="btn">Close</button>
