@@ -216,6 +216,46 @@ body[data-theme="void_rift"] {
     linear-gradient(180deg, #090b16 0%, var(--bg) 100%);
 }
 
+body[data-theme="ember_hollows"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_ember_hollows.png");
+}
+
+body[data-theme="frost_spire"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_frost_spire.png");
+}
+
+body[data-theme="stone_grove"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_stone_grove.png");
+}
+
+body[data-theme="storm_peaks"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_storm_peaks.png");
+}
+
+body[data-theme="venom_bloom"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_venom_bloom.png");
+}
+
+body[data-theme="tidal_depths"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_tidal_depths.png");
+}
+
+body[data-theme="mirror_circus"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_mirror_circus.png");
+}
+
+body[data-theme="iron_forge"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_iron_forge.png");
+}
+
+body[data-theme="eclipse_sanctum"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_eclipse_sanctum.png");
+}
+
+body[data-theme="void_throne"] {
+  --bg-main-image: url("./assets/generated/ui/bg_main_void_throne.png");
+}
+
 .app {
   width: 1920px;
   height: 1080px;
@@ -265,10 +305,11 @@ body[data-theme="void_rift"] {
 .boss-panel {
   background:
     linear-gradient(180deg, rgba(43, 20, 31, 0.74), rgba(20, 14, 22, 0.9)),
+    linear-gradient(180deg, rgba(255, 120, 150, 0.08), rgba(255, 120, 150, 0.02)),
     var(--bg-panel-boss-image) center / cover no-repeat;
   justify-content: flex-start;
   overflow: hidden;
-  background-blend-mode: normal, screen;
+  background-blend-mode: normal, screen, screen;
 }
 
 .boss-panel .boss-card {
@@ -276,8 +317,10 @@ body[data-theme="void_rift"] {
 }
 
 body[data-theme="ember_hollows"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_ember_hollows.png");
   background:
     linear-gradient(180deg, rgba(92, 26, 20, 0.84), rgba(38, 14, 16, 0.94)),
+    linear-gradient(180deg, rgba(255, 132, 72, 0.22), rgba(255, 92, 52, 0.06)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -286,8 +329,10 @@ body[data-theme="ember_hollows"] .boss-card {
 }
 
 body[data-theme="frost_spire"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_frost_spire.png");
   background:
     linear-gradient(180deg, rgba(228, 244, 255, 0.16), rgba(18, 34, 52, 0.94)),
+    linear-gradient(180deg, rgba(218, 246, 255, 0.22), rgba(128, 196, 236, 0.05)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -296,8 +341,10 @@ body[data-theme="frost_spire"] .boss-card {
 }
 
 body[data-theme="stone_grove"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_stone_grove.png");
   background:
     linear-gradient(180deg, rgba(94, 70, 48, 0.82), rgba(30, 24, 18, 0.94)),
+    linear-gradient(180deg, rgba(212, 182, 132, 0.16), rgba(126, 92, 64, 0.05)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -306,8 +353,10 @@ body[data-theme="stone_grove"] .boss-card {
 }
 
 body[data-theme="storm_peaks"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_storm_peaks.png");
   background:
     linear-gradient(180deg, rgba(48, 54, 106, 0.82), rgba(18, 20, 44, 0.94)),
+    linear-gradient(180deg, rgba(176, 194, 255, 0.2), rgba(112, 126, 255, 0.05)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -316,8 +365,10 @@ body[data-theme="storm_peaks"] .boss-card {
 }
 
 body[data-theme="venom_bloom"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_venom_bloom.png");
   background:
     linear-gradient(180deg, rgba(34, 70, 32, 0.84), rgba(12, 26, 16, 0.94)),
+    linear-gradient(180deg, rgba(164, 226, 112, 0.2), rgba(96, 168, 82, 0.05)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -326,8 +377,10 @@ body[data-theme="venom_bloom"] .boss-card {
 }
 
 body[data-theme="tidal_depths"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_tidal_depths.png");
   background:
     linear-gradient(180deg, rgba(24, 72, 104, 0.82), rgba(10, 22, 38, 0.94)),
+    linear-gradient(180deg, rgba(142, 232, 255, 0.2), rgba(92, 172, 236, 0.05)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -336,8 +389,10 @@ body[data-theme="tidal_depths"] .boss-card {
 }
 
 body[data-theme="mirror_circus"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_mirror_circus.png");
   background:
     linear-gradient(180deg, rgba(86, 34, 96, 0.82), rgba(26, 16, 40, 0.94)),
+    linear-gradient(180deg, rgba(236, 188, 255, 0.2), rgba(166, 126, 255, 0.05)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -346,8 +401,10 @@ body[data-theme="mirror_circus"] .boss-card {
 }
 
 body[data-theme="iron_forge"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_iron_forge.png");
   background:
     linear-gradient(180deg, rgba(94, 48, 30, 0.84), rgba(26, 18, 16, 0.94)),
+    linear-gradient(180deg, rgba(255, 182, 118, 0.2), rgba(194, 112, 72, 0.06)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -356,8 +413,10 @@ body[data-theme="iron_forge"] .boss-card {
 }
 
 body[data-theme="eclipse_sanctum"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_eclipse_sanctum.png");
   background:
     linear-gradient(180deg, rgba(78, 48, 92, 0.82), rgba(24, 16, 34, 0.94)),
+    linear-gradient(180deg, rgba(255, 236, 174, 0.18), rgba(190, 144, 255, 0.05)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -366,8 +425,10 @@ body[data-theme="eclipse_sanctum"] .boss-card {
 }
 
 body[data-theme="void_throne"] .boss-panel {
+  --bg-panel-boss-image: url("./assets/generated/ui/bg_panel_boss_void_throne.png");
   background:
     linear-gradient(180deg, rgba(48, 24, 82, 0.84), rgba(10, 8, 22, 0.96)),
+    linear-gradient(180deg, rgba(206, 154, 255, 0.18), rgba(112, 86, 196, 0.05)),
     var(--bg-panel-boss-image) center / cover no-repeat;
 }
 
@@ -1213,6 +1274,14 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   text-shadow: 0 0 26px rgba(255, 126, 146, 0.18);
 }
 
+.enemy-hp-chip {
+  padding: 10px 12px 8px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(58, 22, 30, 0.38), rgba(18, 12, 18, 0.2));
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+
 .board-hp-bar {
   position: relative;
   margin-top: 2px;
@@ -1910,10 +1979,19 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 
 .cell-effect {
   position: absolute;
-  inset: -5px;
-  border-radius: 16px;
+  inset: 2px;
+  border-radius: 14px;
   pointer-events: none;
   z-index: 2;
+  overflow: hidden;
+  isolation: isolate;
+  --effect-fill:
+    linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03));
+  --effect-detail:
+    radial-gradient(circle at 50% 20%, rgba(255,255,255,0.22), rgba(255,255,255,0) 58%);
+  --effect-border: rgba(255,255,255,0.38);
+  --effect-shadow: inset 0 0 16px rgba(255,255,255,0.12), 0 0 12px rgba(255,255,255,0.08);
+  --effect-blend: screen;
 }
 
 .cell-effect::before,
@@ -1925,108 +2003,267 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   pointer-events: none;
 }
 
+.cell-effect::before {
+  background: var(--effect-fill);
+  box-shadow: var(--effect-shadow);
+  mix-blend-mode: var(--effect-blend);
+  opacity: 0.96;
+  animation: statusVeilFloat 2.6s linear infinite;
+}
+
+.cell-effect::after {
+  inset: 1px;
+  background: var(--effect-detail);
+  border: 1px solid var(--effect-border);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  opacity: 0.92;
+  animation: statusEdgePulse 1.35s ease-in-out infinite alternate;
+}
+
+.cell-effect.effect-burning {
+  /* 环形火焰已由子 span.effect-burning-ring 实现，关闭父层背景 */
+  --effect-fill: transparent;
+  --effect-detail: transparent;
+  --effect-border: transparent;
+  --effect-shadow: none;
+}
+
 .cell-effect.effect-burning::before {
-  background:
-    radial-gradient(circle at 50% 100%, rgba(255, 122, 64, 0.42) 0%, rgba(255, 140, 72, 0.24) 28%, rgba(255, 140, 72, 0.08) 52%, rgba(255, 140, 72, 0) 74%),
-    linear-gradient(180deg, rgba(68, 20, 16, 0.28), rgba(38, 12, 16, 0.1));
-  box-shadow: inset 0 0 18px rgba(255, 176, 106, 0.28), 0 0 18px rgba(255, 98, 44, 0.22);
+  background: transparent !important;
+  animation-duration: 1.05s;
+  filter: saturate(1.2) blur(0.4px);
 }
 
 .cell-effect.effect-burning::after {
-  inset: 2px;
-  border-radius: 14px;
-  border: 2px solid rgba(255, 186, 118, 0.72);
-  box-shadow: 0 0 10px rgba(255, 132, 60, 0.42), inset 0 0 10px rgba(255, 216, 156, 0.18);
+  background: transparent !important;
+  animation-duration: 0.7s;
 }
 
-.cell-effect.effect-frozen::before {
+.effect-burning-haze,
+.effect-burning-embers {
+  position: absolute;
+  pointer-events: none;
+}
+
+.effect-burning-haze {
+  inset: 14% 8% 8% 8%;
+  border-radius: 40% 40% 30% 30%;
   background:
-    linear-gradient(135deg, rgba(228, 248, 255, 0.26), rgba(116, 182, 236, 0.16)),
-    repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 6px, rgba(178, 226, 255, 0.06) 6px 12px),
-    radial-gradient(circle at 50% 0%, rgba(212, 246, 255, 0.42), rgba(170, 226, 255, 0.14) 38%, rgba(170, 226, 255, 0) 68%);
-  box-shadow: inset 0 0 18px rgba(214, 244, 255, 0.24), 0 0 18px rgba(150, 220, 255, 0.24);
+    radial-gradient(circle at 50% 90%, rgba(255, 126, 62, 0.38), rgba(255, 126, 62, 0.12) 42%, rgba(255, 126, 62, 0) 72%),
+    linear-gradient(180deg, rgba(255, 210, 148, 0.08), rgba(255, 82, 42, 0.18) 56%, rgba(60, 10, 8, 0.04));
+  mix-blend-mode: overlay;
+  filter: blur(6px);
+  opacity: 0.35;
+  animation: flameHazeFlicker 760ms ease-in-out infinite alternate;
 }
 
-.cell-effect.effect-frozen::after {
-  inset: 1px;
-  border-radius: 14px;
-  border: 2px solid rgba(210, 244, 255, 0.94);
-}
-
-.cell-effect.effect-poisoned::before {
-  background:
-    radial-gradient(circle at 50% 100%, rgba(114, 224, 116, 0.3), rgba(78, 188, 104, 0.14) 34%, rgba(78, 188, 104, 0) 68%),
-    linear-gradient(180deg, rgba(24, 54, 28, 0.24), rgba(10, 28, 14, 0.08));
-  box-shadow: inset 0 0 16px rgba(128, 226, 132, 0.18), 0 0 14px rgba(86, 188, 110, 0.18);
-}
-
-.cell-effect.effect-poisoned::after {
-  inset: 2px;
-  border-radius: 14px;
-  border: 2px solid rgba(130, 222, 132, 0.68);
-}
-
-.cell-effect.effect-glass::before {
-  background:
-    linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.08)),
-    linear-gradient(0deg, rgba(148, 210, 255, 0.08), rgba(255,255,255,0));
-  box-shadow: inset 0 0 14px rgba(214, 242, 255, 0.2), 0 0 12px rgba(186, 230, 255, 0.18);
-}
-
-.cell-effect.effect-glass::after {
+.effect-burning-embers {
   inset: 0;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.7);
-}
-
-.cell-effect.effect-locked::before {
-  background: linear-gradient(180deg, rgba(114, 196, 255, 0.08), rgba(26, 72, 110, 0.08));
-  box-shadow: inset 0 0 0 2px rgba(36, 92, 128, 0.3), 0 0 12px rgba(150, 220, 255, 0.18);
-}
-
-.cell-effect.effect-locked::after {
-  inset: 3px;
-  border-radius: 12px;
-  border: 2px dashed rgba(178, 232, 255, 0.96);
-}
-
-.cell-effect.effect-holy-marked::before {
   background:
-    radial-gradient(circle at 50% 18%, rgba(255, 250, 223, 0.4), rgba(255, 241, 187, 0.12) 34%, rgba(255,255,255,0) 64%),
-    linear-gradient(135deg, rgba(255, 248, 220, 0.2), rgba(255, 217, 120, 0.06));
-  box-shadow: inset 0 0 12px rgba(255, 244, 210, 0.14), 0 0 14px rgba(255, 223, 138, 0.22);
+    radial-gradient(circle at 22% 72%, rgba(255, 236, 168, 0.78) 0 2px, rgba(255, 236, 168, 0) 3px),
+    radial-gradient(circle at 42% 54%, rgba(255, 210, 138, 0.72) 0 1.6px, rgba(255, 210, 138, 0) 3px),
+    radial-gradient(circle at 68% 64%, rgba(255, 236, 168, 0.72) 0 1.8px, rgba(255, 236, 168, 0) 3px),
+    radial-gradient(circle at 82% 46%, rgba(255, 168, 98, 0.68) 0 1.6px, rgba(255, 168, 98, 0) 3px);
+  opacity: 0.3;
+  animation: emberDrift 1.1s linear infinite;
 }
 
-.cell-effect.effect-holy-marked::after {
-  inset: 1px;
-  border-radius: 14px;
-  border: 2px solid rgba(255, 244, 190, 0.9);
+/* ── 贴图版火焰：宽矮透明PNG八帧动画 ── */
+.effect-burning-img {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform-origin: bottom center;
+  transform: translateX(-50%) scaleX(1.15) scaleY(0.72);
+  width: 95%;
+  height: 95%;
+  object-fit: contain;
+  pointer-events: none;
 }
 
-.cell-effect.effect-void-marked::before {
-  background:
-    radial-gradient(circle at 50% 50%, rgba(188, 122, 255, 0.24), rgba(118, 54, 180, 0.12) 42%, rgba(0,0,0,0) 72%),
-    linear-gradient(180deg, rgba(42, 18, 66, 0.18), rgba(18, 8, 32, 0.08));
-  box-shadow: inset 0 0 14px rgba(150, 88, 255, 0.16), 0 0 16px rgba(170, 98, 255, 0.2);
+.flame-img-1 { animation: flameAnim 1.6s ease-in-out infinite; animation-delay: 0s; }
+.flame-img-2 { animation: flameAnim 1.6s ease-in-out infinite; animation-delay: 0.2s; }
+.flame-img-3 { animation: flameAnim 1.6s ease-in-out infinite; animation-delay: 0.4s; }
+.flame-img-4 { animation: flameAnim 1.6s ease-in-out infinite; animation-delay: 0.6s; }
+.flame-img-5 { animation: flameAnim 1.6s ease-in-out infinite; animation-delay: 0.8s; }
+.flame-img-6 { animation: flameAnim 1.6s ease-in-out infinite; animation-delay: 1.0s; }
+.flame-img-7 { animation: flameAnim 1.6s ease-in-out infinite; animation-delay: 1.2s; }
+.flame-img-8 { animation: flameAnim 1.6s ease-in-out infinite; animation-delay: 1.4s; }
+
+@keyframes flameAnim {
+  0%, 100% { opacity: 0.65; filter: brightness(0.85); }
+  50%       { opacity: 0.9; filter: brightness(1.0); }
 }
 
-.cell-effect.effect-void-marked::after {
-  inset: 2px;
-  border-radius: 14px;
-  border: 1px solid rgba(192, 122, 255, 0.82);
+/* ── 贴图版冰晶：透明PNG，图片自带alpha通道 ── */
+.effect-frozen-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  animation: icePulse 2s ease-in-out infinite alternate;
 }
 
-.cell-effect.effect-slippery::before {
-  background:
-    linear-gradient(180deg, rgba(132, 232, 255, 0.16), rgba(88, 188, 255, 0.08)),
-    radial-gradient(circle at 50% 12%, rgba(214, 248, 255, 0.22), rgba(214, 248, 255, 0) 48%);
-  box-shadow: inset 0 0 12px rgba(118, 232, 255, 0.14), 0 0 12px rgba(102, 208, 255, 0.16);
+@keyframes icePulse {
+  0%   { opacity: 0.5; filter: brightness(0.95); }
+  100% { opacity: 0.8; filter: brightness(1.05); }
 }
 
-.cell-effect.effect-slippery::after {
-  inset: 2px;
-  border-radius: 14px;
-  border: 1px solid rgba(128, 224, 255, 0.72);
+.cell-effect.effect-frozen {
+  /* 环形冰冻已由子 span.effect-frozen-ring 实现，关闭父层背景 */
+  --effect-fill: transparent;
+  --effect-detail: transparent;
+  --effect-border: transparent;
+  --effect-shadow: none;
+}
+
+.cell-effect.effect-poisoned {
+  --effect-fill: transparent;
+  --effect-detail: transparent;
+  --effect-border: transparent;
+  --effect-shadow: none;
+}
+
+.cell-effect.effect-glass {
+  --effect-fill: transparent;
+  --effect-detail: transparent;
+  --effect-border: transparent;
+  --effect-shadow: none;
+}
+
+.cell-effect.effect-locked {
+  --effect-fill: transparent;
+  --effect-detail: transparent;
+  --effect-border: transparent;
+  --effect-shadow: none;
+}
+
+.cell-effect.effect-holy-marked {
+  --effect-fill: transparent;
+  --effect-detail: transparent;
+  --effect-border: transparent;
+  --effect-shadow: none;
+}
+
+.cell-effect.effect-void-marked {
+  --effect-fill: transparent;
+  --effect-detail: transparent;
+  --effect-border: transparent;
+  --effect-shadow: none;
+}
+
+.cell-effect.effect-slippery {
+  --effect-fill: transparent;
+  --effect-detail: transparent;
+  --effect-border: transparent;
+  --effect-shadow: none;
+}
+
+/* ── 透明PNG基础样式（所有效果通用） ── */
+.effect-frozen-img,
+.effect-poisoned-img,
+.effect-locked-img,
+.effect-holy-img,
+.effect-void-img,
+.effect-slippery-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* ── 冰晶帧动画 ── */
+.ice-img-1 { animation: animIce 1.6s ease-in-out infinite; animation-delay: 0s; }
+.ice-img-2 { animation: animIce 1.6s ease-in-out infinite; animation-delay: 0.2s; }
+.ice-img-3 { animation: animIce 1.6s ease-in-out infinite; animation-delay: 0.4s; }
+.ice-img-4 { animation: animIce 1.6s ease-in-out infinite; animation-delay: 0.6s; }
+.ice-img-5 { animation: animIce 1.6s ease-in-out infinite; animation-delay: 0.8s; }
+.ice-img-6 { animation: animIce 1.6s ease-in-out infinite; animation-delay: 1.0s; }
+.ice-img-7 { animation: animIce 1.6s ease-in-out infinite; animation-delay: 1.2s; }
+.ice-img-8 { animation: animIce 1.6s ease-in-out infinite; animation-delay: 1.4s; }
+
+@keyframes animIce {
+  0%, 100% { opacity: 0.65; filter: brightness(0.9); }
+  50%       { opacity: 0.9;  filter: brightness(1.05); }
+}
+
+/* ── 中毒帧动画 ── */
+.poison-img-1 { animation: animPoison 1.6s ease-in-out infinite; animation-delay: 0s; }
+.poison-img-2 { animation: animPoison 1.6s ease-in-out infinite; animation-delay: 0.2s; }
+.poison-img-3 { animation: animPoison 1.6s ease-in-out infinite; animation-delay: 0.4s; }
+.poison-img-4 { animation: animPoison 1.6s ease-in-out infinite; animation-delay: 0.6s; }
+.poison-img-5 { animation: animPoison 1.6s ease-in-out infinite; animation-delay: 0.8s; }
+.poison-img-6 { animation: animPoison 1.6s ease-in-out infinite; animation-delay: 1.0s; }
+.poison-img-7 { animation: animPoison 1.6s ease-in-out infinite; animation-delay: 1.2s; }
+.poison-img-8 { animation: animPoison 1.6s ease-in-out infinite; animation-delay: 1.4s; }
+
+@keyframes animPoison {
+  0%, 100% { opacity: 0.6; filter: brightness(0.9); }
+  50%       { opacity: 0.85; filter: brightness(1.05); }
+}
+
+/* ── 锁链帧动画 ── */
+.lock-img-1 { animation: animLock 2.0s ease-in-out infinite; animation-delay: 0s; }
+.lock-img-2 { animation: animLock 2.0s ease-in-out infinite; animation-delay: 0.25s; }
+.lock-img-3 { animation: animLock 2.0s ease-in-out infinite; animation-delay: 0.5s; }
+.lock-img-4 { animation: animLock 2.0s ease-in-out infinite; animation-delay: 0.75s; }
+.lock-img-5 { animation: animLock 2.0s ease-in-out infinite; animation-delay: 1.0s; }
+.lock-img-6 { animation: animLock 2.0s ease-in-out infinite; animation-delay: 1.25s; }
+.lock-img-7 { animation: animLock 2.0s ease-in-out infinite; animation-delay: 1.5s; }
+.lock-img-8 { animation: animLock 2.0s ease-in-out infinite; animation-delay: 1.75s; }
+
+@keyframes animLock {
+  0%, 100% { opacity: 0.7; filter: brightness(0.9); }
+  50%       { opacity: 1;   filter: brightness(1.1); }
+}
+
+/* ── 神圣标记帧动画 ── */
+.holy-img-1 { animation: animHoly 1.8s ease-in-out infinite; animation-delay: 0s; }
+.holy-img-2 { animation: animHoly 1.8s ease-in-out infinite; animation-delay: 0.22s; }
+.holy-img-3 { animation: animHoly 1.8s ease-in-out infinite; animation-delay: 0.45s; }
+.holy-img-4 { animation: animHoly 1.8s ease-in-out infinite; animation-delay: 0.67s; }
+.holy-img-5 { animation: animHoly 1.8s ease-in-out infinite; animation-delay: 0.9s; }
+.holy-img-6 { animation: animHoly 1.8s ease-in-out infinite; animation-delay: 1.12s; }
+.holy-img-7 { animation: animHoly 1.8s ease-in-out infinite; animation-delay: 1.35s; }
+.holy-img-8 { animation: animHoly 1.8s ease-in-out infinite; animation-delay: 1.57s; }
+
+@keyframes animHoly {
+  0%, 100% { opacity: 0.6; filter: brightness(0.95) hue-rotate(0deg); }
+  50%       { opacity: 0.9; filter: brightness(1.1) hue-rotate(5deg); }
+}
+
+/* ── 虚空标记帧动画 ── */
+.void-img-1 { animation: animVoid 1.8s ease-in-out infinite; animation-delay: 0s; }
+.void-img-2 { animation: animVoid 1.8s ease-in-out infinite; animation-delay: 0.22s; }
+.void-img-3 { animation: animVoid 1.8s ease-in-out infinite; animation-delay: 0.45s; }
+.void-img-4 { animation: animVoid 1.8s ease-in-out infinite; animation-delay: 0.67s; }
+.void-img-5 { animation: animVoid 1.8s ease-in-out infinite; animation-delay: 0.9s; }
+.void-img-6 { animation: animVoid 1.8s ease-in-out infinite; animation-delay: 1.12s; }
+.void-img-7 { animation: animVoid 1.8s ease-in-out infinite; animation-delay: 1.35s; }
+.void-img-8 { animation: animVoid 1.8s ease-in-out infinite; animation-delay: 1.57s; }
+
+@keyframes animVoid {
+  0%, 100% { opacity: 0.6; filter: brightness(0.9); }
+  50%       { opacity: 0.9; filter: brightness(1.1); }
+}
+
+/* ── 滑溜帧动画 ── */
+.slip-img-1 { animation: animSlip 1.6s ease-in-out infinite; animation-delay: 0s; }
+.slip-img-2 { animation: animSlip 1.6s ease-in-out infinite; animation-delay: 0.2s; }
+.slip-img-3 { animation: animSlip 1.6s ease-in-out infinite; animation-delay: 0.4s; }
+.slip-img-4 { animation: animSlip 1.6s ease-in-out infinite; animation-delay: 0.6s; }
+.slip-img-5 { animation: animSlip 1.6s ease-in-out infinite; animation-delay: 0.8s; }
+.slip-img-6 { animation: animSlip 1.6s ease-in-out infinite; animation-delay: 1.0s; }
+.slip-img-7 { animation: animSlip 1.6s ease-in-out infinite; animation-delay: 1.2s; }
+.slip-img-8 { animation: animSlip 1.6s ease-in-out infinite; animation-delay: 1.4s; }
+
+@keyframes animSlip {
+  0%, 100% { opacity: 0.55; filter: brightness(0.9); }
+  50%       { opacity: 0.85; filter: brightness(1.05); }
 }
 
 .cell.cell-tide-row {
@@ -2073,28 +2310,216 @@ h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
   filter: none;
 }
 
-body[data-theme="frozen_archive"] .cell-effect.effect-glass::before {
+body[data-theme="frost_spire"] .cell-effect.effect-glass::before {
   background:
     linear-gradient(135deg, rgba(228, 248, 255, 0.52), rgba(178, 224, 255, 0.12)),
     linear-gradient(0deg, rgba(120, 182, 255, 0.08), rgba(255, 255, 255, 0));
   box-shadow: 0 0 14px rgba(174, 229, 255, 0.42), inset 0 0 14px rgba(226, 247, 255, 0.18);
 }
 
-body[data-theme="frozen_archive"] .cell-effect.effect-glass::after {
+body[data-theme="frost_spire"] .cell-effect.effect-glass::after {
   border-color: rgba(204, 242, 255, 0.9);
 }
 
-body[data-theme="frozen_archive"] .cell-effect.effect-locked::before,
-body[data-theme="frozen_archive"] .cell-effect.effect-frozen::before {
+body[data-theme="frost_spire"] .cell-effect.effect-locked::before,
+body[data-theme="frost_spire"] .cell-effect.effect-frozen::before {
   background:
     repeating-linear-gradient(135deg, rgba(210, 244, 255, 0.18) 0 4px, rgba(140, 210, 255, 0.08) 4px 8px),
     linear-gradient(180deg, rgba(210, 244, 255, 0.08), rgba(84, 154, 210, 0.08));
   box-shadow: 0 0 0 2px rgba(73, 134, 189, 0.34) inset, 0 0 16px rgba(168, 227, 255, 0.48), inset 0 0 18px rgba(221, 247, 255, 0.18);
 }
 
-body[data-theme="frozen_archive"] .cell-effect.effect-locked::after,
-body[data-theme="frozen_archive"] .cell-effect.effect-frozen::after {
+body[data-theme="frost_spire"] .cell-effect.effect-locked::after,
+body[data-theme="frost_spire"] .cell-effect.effect-frozen::after {
   border-color: rgba(188, 236, 255, 0.96);
+}
+
+/* 强制关闭所有效果的父层背景，确保透明PNG透出宝石 */
+.cell-effect.effect-burning::before,
+.cell-effect.effect-burning::after,
+.cell-effect.effect-frozen::before,
+.cell-effect.effect-frozen::after,
+.cell-effect.effect-poisoned::before,
+.cell-effect.effect-poisoned::after,
+.cell-effect.effect-glass::before,
+.cell-effect.effect-glass::after,
+.cell-effect.effect-locked::before,
+.cell-effect.effect-locked::after,
+.cell-effect.effect-holy-marked::before,
+.cell-effect.effect-holy-marked::after,
+.cell-effect.effect-void-marked::before,
+.cell-effect.effect-void-marked::after,
+.cell-effect.effect-slippery::before,
+.cell-effect.effect-slippery::after {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+body[data-theme="ember_hollows"] .cell-effect.effect-burning::before,
+body[data-theme="iron_forge"] .cell-effect.effect-burning::before {
+  animation-duration: 1.65s;
+}
+
+body[data-theme="storm_peaks"] .cell-effect.effect-locked {
+  --effect-fill:
+    linear-gradient(180deg, rgba(84, 118, 255, 0.2), rgba(20, 28, 74, 0.08)),
+    repeating-linear-gradient(120deg, rgba(220, 228, 255, 0.18) 0 4px, rgba(124, 142, 255, 0) 4px 11px);
+  --effect-detail:
+    linear-gradient(90deg, rgba(226, 232, 255, 0.2), rgba(226,232,255,0) 24%, rgba(226,232,255,0.2) 48%, rgba(226,232,255,0) 70%),
+    radial-gradient(circle at 50% 50%, rgba(176, 194, 255, 0.18), rgba(176,194,255,0) 36%);
+  --effect-border: rgba(208, 220, 255, 0.92);
+  --effect-shadow: inset 0 0 16px rgba(136, 152, 255, 0.16), 0 0 14px rgba(116, 136, 255, 0.22);
+}
+
+body[data-theme="venom_bloom"] .cell-effect.effect-poisoned {
+  --effect-fill:
+    linear-gradient(180deg, rgba(14, 48, 18, 0.42), rgba(8, 22, 10, 0.14)),
+    radial-gradient(circle at 50% 108%, rgba(118, 240, 122, 0.48) 0%, rgba(88, 194, 104, 0.2) 30%, rgba(88,194,104,0) 70%),
+    repeating-radial-gradient(circle at 34% 68%, rgba(214, 255, 190, 0.1) 0 3px, rgba(214,255,190,0) 3px 10px);
+}
+
+body[data-theme="tidal_depths"] .cell-effect.effect-slippery::before {
+  animation-duration: 1.8s;
+}
+
+body[data-theme="mirror_circus"] .cell-effect.effect-glass,
+body[data-theme="mirror_circus"] .cell-effect.effect-holy-marked {
+  --effect-fill:
+    linear-gradient(135deg, rgba(255,255,255,0.34), rgba(196, 172, 255, 0.12) 42%, rgba(118, 224, 255, 0.08) 72%, rgba(255,255,255,0.04)),
+    linear-gradient(0deg, rgba(156, 220, 255, 0.08), rgba(255,255,255,0));
+  --effect-detail:
+    conic-gradient(from 0deg, rgba(255,255,255,0.12), rgba(196, 148, 255, 0.14), rgba(126, 214, 255, 0.14), rgba(255,255,255,0.12));
+}
+
+body[data-theme="iron_forge"] .cell-effect.effect-glass,
+body[data-theme="iron_forge"] .cell-effect.effect-locked {
+  --effect-fill:
+    linear-gradient(180deg, rgba(82, 44, 18, 0.34), rgba(22, 12, 8, 0.12)),
+    repeating-linear-gradient(135deg, rgba(255, 190, 132, 0.14) 0 6px, rgba(255, 124, 82, 0.04) 6px 12px);
+  --effect-border: rgba(255, 206, 162, 0.78);
+  --effect-shadow: inset 0 0 18px rgba(255, 184, 118, 0.14), 0 0 12px rgba(255, 132, 82, 0.14);
+}
+
+body[data-theme="eclipse_sanctum"] .cell-effect.effect-holy-marked {
+  --effect-fill:
+    radial-gradient(circle at 50% 14%, rgba(255, 242, 188, 0.34), rgba(190, 126, 255, 0.14) 34%, rgba(255,255,255,0) 64%),
+    linear-gradient(135deg, rgba(255, 246, 220, 0.18), rgba(148, 90, 224, 0.12));
+  --effect-border: rgba(244, 222, 178, 0.88);
+}
+
+body[data-theme="void_throne"] .cell-effect.effect-void-marked::before {
+  animation-duration: 1.55s;
+}
+
+@keyframes statusVeilFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.82;
+  }
+  50% {
+    transform: translate3d(0, -2px, 0) scale(1.02);
+    opacity: 0.98;
+  }
+  100% {
+    transform: translate3d(0, 1px, 0) scale(0.995);
+    opacity: 0.86;
+  }
+}
+
+@keyframes statusEdgePulse {
+  0% {
+    transform: scale(0.985);
+    opacity: 0.66;
+  }
+  100% {
+    transform: scale(1.02);
+    opacity: 0.98;
+  }
+}
+
+@keyframes flameRiseMain {
+  0% {
+    transform: translateY(2px) scaleX(0.96) scaleY(0.92) rotate(-1deg);
+    opacity: 0.84;
+  }
+  50% {
+    transform: translateY(-6px) scaleX(1.04) scaleY(1.08) rotate(1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px) scaleX(0.94) scaleY(1.16) rotate(-2deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes flameRiseLeft {
+  0% {
+    transform: translateY(3px) scale(0.94) rotate(-8deg);
+    opacity: 0.78;
+  }
+  100% {
+    transform: translateY(-7px) scale(1.06, 1.12) rotate(4deg);
+    opacity: 0.94;
+  }
+}
+
+@keyframes flameRiseRight {
+  0% {
+    transform: translateY(2px) scale(0.96) rotate(8deg);
+    opacity: 0.74;
+  }
+  100% {
+    transform: translateY(-8px) scale(1.04, 1.08) rotate(-4deg);
+    opacity: 0.92;
+  }
+}
+
+@keyframes flameHazeFlicker {
+  0% {
+    transform: translateY(1px) scaleY(0.96);
+    opacity: 0.68;
+  }
+  100% {
+    transform: translateY(-3px) scaleY(1.08);
+    opacity: 0.98;
+  }
+}
+
+@keyframes emberDrift {
+  0% {
+    transform: translateY(4px);
+    opacity: 0.34;
+  }
+  30% {
+    opacity: 0.88;
+  }
+  100% {
+    transform: translateY(-10px);
+    opacity: 0.12;
+  }
+}
+
+@keyframes iceShardPulse {
+  0% {
+    opacity: 0.32;
+    filter: drop-shadow(0 0 6px rgba(212, 244, 255, 0.22));
+  }
+  100% {
+    opacity: 0.62;
+    filter: drop-shadow(0 0 10px rgba(212, 244, 255, 0.34));
+  }
+}
+
+@keyframes frostBreath {
+  0% {
+    transform: translateY(2px);
+    opacity: 0.54;
+  }
+  100% {
+    transform: translateY(-2px);
+    opacity: 0.84;
+  }
 }
 
 @keyframes iceRunePulse {
@@ -2314,6 +2739,31 @@ body[data-theme="frozen_archive"] .cell-effect.effect-frozen::after {
   animation: bossSigilAura 720ms ease-in-out infinite alternate;
 }
 
+body[data-theme="ember_hollows"] .boss-sigil::after {
+  background: radial-gradient(circle, rgba(255, 132, 84, 0.26) 0%, rgba(255, 98, 62, 0.14) 42%, rgba(255, 98, 62, 0) 74%);
+}
+body[data-theme="frost_spire"] .boss-sigil::after {
+  background: radial-gradient(circle, rgba(216, 244, 255, 0.24) 0%, rgba(148, 214, 255, 0.14) 42%, rgba(148, 214, 255, 0) 74%);
+}
+body[data-theme="stone_grove"] .boss-sigil::after,
+body[data-theme="iron_forge"] .boss-sigil::after {
+  background: radial-gradient(circle, rgba(228, 194, 144, 0.22) 0%, rgba(190, 132, 86, 0.12) 42%, rgba(190, 132, 86, 0) 74%);
+}
+body[data-theme="storm_peaks"] .boss-sigil::after {
+  background: radial-gradient(circle, rgba(196, 208, 255, 0.24) 0%, rgba(124, 142, 255, 0.14) 42%, rgba(124, 142, 255, 0) 74%);
+}
+body[data-theme="venom_bloom"] .boss-sigil::after {
+  background: radial-gradient(circle, rgba(188, 236, 138, 0.24) 0%, rgba(122, 204, 98, 0.14) 42%, rgba(122, 204, 98, 0) 74%);
+}
+body[data-theme="tidal_depths"] .boss-sigil::after {
+  background: radial-gradient(circle, rgba(190, 244, 255, 0.24) 0%, rgba(108, 202, 255, 0.14) 42%, rgba(108, 202, 255, 0) 74%);
+}
+body[data-theme="mirror_circus"] .boss-sigil::after,
+body[data-theme="eclipse_sanctum"] .boss-sigil::after,
+body[data-theme="void_throne"] .boss-sigil::after {
+  background: radial-gradient(circle, rgba(226, 190, 255, 0.24) 0%, rgba(166, 112, 255, 0.14) 42%, rgba(166, 112, 255, 0) 74%);
+}
+
 .boss-portrait-wrap {
   margin: 4px 0 10px;
   min-height: 360px;
@@ -2408,6 +2858,44 @@ body[data-theme="frozen_archive"] .cell-effect.effect-frozen::after {
   box-shadow: 0 10px 26px rgba(6, 10, 18, 0.24);
   backdrop-filter: blur(6px);
   min-width: min(78%, 260px);
+}
+
+body[data-theme="ember_hollows"] .portrait-meter strong {
+  background: linear-gradient(180deg, rgba(84, 30, 20, 0.82), rgba(34, 16, 16, 0.52));
+  border-color: rgba(255, 144, 104, 0.18);
+}
+
+body[data-theme="frost_spire"] .portrait-meter strong {
+  background: linear-gradient(180deg, rgba(40, 72, 102, 0.76), rgba(18, 32, 46, 0.46));
+  border-color: rgba(194, 232, 255, 0.2);
+}
+
+body[data-theme="stone_grove"] .portrait-meter strong,
+body[data-theme="iron_forge"] .portrait-meter strong {
+  background: linear-gradient(180deg, rgba(78, 54, 38, 0.82), rgba(28, 22, 18, 0.5));
+  border-color: rgba(216, 182, 132, 0.18);
+}
+
+body[data-theme="storm_peaks"] .portrait-meter strong {
+  background: linear-gradient(180deg, rgba(42, 48, 98, 0.8), rgba(20, 20, 42, 0.5));
+  border-color: rgba(172, 186, 255, 0.2);
+}
+
+body[data-theme="venom_bloom"] .portrait-meter strong {
+  background: linear-gradient(180deg, rgba(36, 70, 30, 0.8), rgba(16, 28, 18, 0.5));
+  border-color: rgba(170, 228, 132, 0.18);
+}
+
+body[data-theme="tidal_depths"] .portrait-meter strong {
+  background: linear-gradient(180deg, rgba(24, 74, 96, 0.8), rgba(14, 24, 36, 0.5));
+  border-color: rgba(150, 226, 255, 0.18);
+}
+
+body[data-theme="mirror_circus"] .portrait-meter strong,
+body[data-theme="eclipse_sanctum"] .portrait-meter strong,
+body[data-theme="void_throne"] .portrait-meter strong {
+  background: linear-gradient(180deg, rgba(64, 34, 88, 0.8), rgba(18, 14, 30, 0.5));
+  border-color: rgba(210, 178, 255, 0.18);
 }
 
 .boss-portrait-shell::after {
@@ -3262,7 +3750,50 @@ body[data-theme="void_throne"] .boss-portrait-wrap::after {
 .boss-skillbook h3 {
   margin: 0 0 8px;
   font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
+
+body[data-theme="ember_hollows"] .boss-skillbook {
+  border-top-color: rgba(255, 144, 104, 0.16);
+}
+body[data-theme="ember_hollows"] .boss-skillbook h3 { color: #ffd2b2; }
+
+body[data-theme="frost_spire"] .boss-skillbook {
+  border-top-color: rgba(198, 232, 255, 0.18);
+}
+body[data-theme="frost_spire"] .boss-skillbook h3 { color: #e6f5ff; }
+
+body[data-theme="stone_grove"] .boss-skillbook,
+body[data-theme="iron_forge"] .boss-skillbook {
+  border-top-color: rgba(214, 180, 136, 0.16);
+}
+body[data-theme="stone_grove"] .boss-skillbook h3,
+body[data-theme="iron_forge"] .boss-skillbook h3 { color: #f0d1ab; }
+
+body[data-theme="storm_peaks"] .boss-skillbook {
+  border-top-color: rgba(174, 188, 255, 0.18);
+}
+body[data-theme="storm_peaks"] .boss-skillbook h3 { color: #e0e8ff; }
+
+body[data-theme="venom_bloom"] .boss-skillbook {
+  border-top-color: rgba(170, 228, 132, 0.16);
+}
+body[data-theme="venom_bloom"] .boss-skillbook h3 { color: #e0f7c8; }
+
+body[data-theme="tidal_depths"] .boss-skillbook {
+  border-top-color: rgba(156, 228, 255, 0.18);
+}
+body[data-theme="tidal_depths"] .boss-skillbook h3 { color: #dff8ff; }
+
+body[data-theme="mirror_circus"] .boss-skillbook,
+body[data-theme="eclipse_sanctum"] .boss-skillbook,
+body[data-theme="void_throne"] .boss-skillbook {
+  border-top-color: rgba(210, 178, 255, 0.16);
+}
+body[data-theme="mirror_circus"] .boss-skillbook h3,
+body[data-theme="eclipse_sanctum"] .boss-skillbook h3,
+body[data-theme="void_throne"] .boss-skillbook h3 { color: #eedfff; }
 
 .boss-skill-entry {
   display: grid;
@@ -3316,6 +3847,327 @@ body[data-theme="void_throne"] .boss-portrait-wrap::after {
   box-shadow: 0 0 16px rgba(120, 198, 255, 0.36);
 }
 
+body[data-theme="ember_hollows"] .boss-sigil {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 176, 128, 0.38), transparent 45%),
+    linear-gradient(180deg, rgba(112, 36, 22, 0.98), rgba(48, 18, 16, 1));
+}
+
+body[data-theme="ember_hollows"] .boss-sigil-image {
+  filter: drop-shadow(0 0 10px rgba(255, 214, 156, 0.48)) drop-shadow(0 0 18px rgba(255, 98, 62, 0.44));
+}
+
+body[data-theme="ember_hollows"] .boss-skill-entry {
+  background: linear-gradient(180deg, rgba(92, 34, 24, 0.72), rgba(44, 18, 18, 0.84));
+  border-color: rgba(255, 138, 102, 0.14);
+}
+
+body[data-theme="ember_hollows"] .boss-skill-meter {
+  background: linear-gradient(180deg, rgba(36, 16, 12, 0.98), rgba(72, 26, 18, 0.86));
+  border-color: rgba(255, 146, 104, 0.18);
+}
+
+body[data-theme="ember_hollows"] .boss-skill-meter-fill,
+body[data-theme="ember_hollows"] .board-hp-bar i {
+  background: linear-gradient(180deg, rgba(255, 214, 136, 0.98), rgba(255, 112, 72, 0.94));
+  box-shadow: 0 0 16px rgba(255, 124, 78, 0.3);
+}
+
+body[data-theme="frost_spire"] .boss-sigil {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(220, 244, 255, 0.4), transparent 45%),
+    linear-gradient(180deg, rgba(74, 108, 142, 0.98), rgba(28, 42, 60, 1));
+}
+
+body[data-theme="frost_spire"] .boss-sigil-image {
+  filter: drop-shadow(0 0 10px rgba(232, 248, 255, 0.52)) drop-shadow(0 0 18px rgba(128, 202, 255, 0.4));
+}
+
+body[data-theme="frost_spire"] .boss-skill-entry {
+  background: linear-gradient(180deg, rgba(48, 76, 102, 0.72), rgba(22, 34, 50, 0.86));
+  border-color: rgba(186, 226, 255, 0.16);
+}
+
+body[data-theme="frost_spire"] .boss-skill-meter {
+  background: linear-gradient(180deg, rgba(18, 34, 48, 0.98), rgba(40, 64, 88, 0.86));
+  border-color: rgba(182, 228, 255, 0.18);
+}
+
+body[data-theme="frost_spire"] .boss-skill-meter-fill,
+body[data-theme="frost_spire"] .board-hp-bar i {
+  background: linear-gradient(180deg, rgba(244, 250, 255, 0.98), rgba(138, 204, 255, 0.94));
+  box-shadow: 0 0 16px rgba(168, 222, 255, 0.32);
+}
+
+body[data-theme="stone_grove"] .boss-sigil,
+body[data-theme="iron_forge"] .boss-sigil {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(224, 194, 144, 0.32), transparent 45%),
+    linear-gradient(180deg, rgba(96, 62, 40, 0.98), rgba(40, 28, 22, 1));
+}
+
+body[data-theme="stone_grove"] .boss-skill-entry,
+body[data-theme="iron_forge"] .boss-skill-entry {
+  background: linear-gradient(180deg, rgba(82, 54, 38, 0.74), rgba(34, 24, 18, 0.86));
+  border-color: rgba(214, 178, 132, 0.14);
+}
+
+body[data-theme="stone_grove"] .boss-skill-meter,
+body[data-theme="iron_forge"] .boss-skill-meter {
+  background: linear-gradient(180deg, rgba(34, 22, 16, 0.98), rgba(66, 46, 34, 0.86));
+  border-color: rgba(204, 162, 112, 0.18);
+}
+
+body[data-theme="stone_grove"] .boss-skill-meter-fill,
+body[data-theme="stone_grove"] .board-hp-bar i,
+body[data-theme="iron_forge"] .boss-skill-meter-fill,
+body[data-theme="iron_forge"] .board-hp-bar i {
+  background: linear-gradient(180deg, rgba(236, 204, 148, 0.98), rgba(178, 116, 72, 0.94));
+  box-shadow: 0 0 16px rgba(210, 146, 92, 0.3);
+}
+
+body[data-theme="storm_peaks"] .boss-sigil {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(216, 226, 255, 0.36), transparent 45%),
+    linear-gradient(180deg, rgba(66, 72, 142, 0.98), rgba(26, 28, 60, 1));
+}
+
+body[data-theme="storm_peaks"] .boss-skill-entry {
+  background: linear-gradient(180deg, rgba(44, 50, 96, 0.72), rgba(20, 22, 52, 0.86));
+  border-color: rgba(154, 170, 255, 0.16);
+}
+
+body[data-theme="storm_peaks"] .boss-skill-meter {
+  background: linear-gradient(180deg, rgba(16, 18, 42, 0.98), rgba(34, 38, 84, 0.86));
+  border-color: rgba(150, 176, 255, 0.2);
+}
+
+body[data-theme="storm_peaks"] .boss-skill-meter-fill,
+body[data-theme="storm_peaks"] .board-hp-bar i {
+  background: linear-gradient(180deg, rgba(222, 232, 255, 0.98), rgba(108, 132, 255, 0.94));
+  box-shadow: 0 0 18px rgba(116, 138, 255, 0.34);
+}
+
+body[data-theme="venom_bloom"] .boss-sigil {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(190, 236, 138, 0.34), transparent 45%),
+    linear-gradient(180deg, rgba(42, 88, 34, 0.98), rgba(18, 34, 20, 1));
+}
+
+body[data-theme="venom_bloom"] .boss-skill-entry {
+  background: linear-gradient(180deg, rgba(34, 72, 34, 0.72), rgba(18, 30, 18, 0.86));
+  border-color: rgba(150, 220, 126, 0.16);
+}
+
+body[data-theme="venom_bloom"] .boss-skill-meter {
+  background: linear-gradient(180deg, rgba(16, 30, 16, 0.98), rgba(30, 58, 26, 0.86));
+  border-color: rgba(150, 218, 128, 0.2);
+}
+
+body[data-theme="venom_bloom"] .boss-skill-meter-fill,
+body[data-theme="venom_bloom"] .board-hp-bar i {
+  background: linear-gradient(180deg, rgba(212, 246, 148, 0.98), rgba(108, 194, 94, 0.94));
+  box-shadow: 0 0 16px rgba(126, 214, 110, 0.32);
+}
+
+body[data-theme="tidal_depths"] .boss-sigil {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(184, 240, 255, 0.36), transparent 45%),
+    linear-gradient(180deg, rgba(34, 92, 128, 0.98), rgba(16, 28, 42, 1));
+}
+
+body[data-theme="tidal_depths"] .boss-skill-entry {
+  background: linear-gradient(180deg, rgba(24, 76, 98, 0.72), rgba(14, 28, 40, 0.86));
+  border-color: rgba(136, 222, 255, 0.16);
+}
+
+body[data-theme="tidal_depths"] .boss-skill-meter {
+  background: linear-gradient(180deg, rgba(12, 24, 36, 0.98), rgba(22, 58, 84, 0.86));
+  border-color: rgba(142, 224, 255, 0.18);
+}
+
+body[data-theme="tidal_depths"] .boss-skill-meter-fill,
+body[data-theme="tidal_depths"] .board-hp-bar i {
+  background: linear-gradient(180deg, rgba(202, 244, 255, 0.98), rgba(88, 186, 255, 0.94));
+  box-shadow: 0 0 16px rgba(96, 198, 255, 0.32);
+}
+
+body[data-theme="mirror_circus"] .boss-sigil,
+body[data-theme="eclipse_sanctum"] .boss-sigil,
+body[data-theme="void_throne"] .boss-sigil {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(228, 194, 255, 0.34), transparent 45%),
+    linear-gradient(180deg, rgba(82, 42, 112, 0.98), rgba(24, 18, 42, 1));
+}
+
+body[data-theme="mirror_circus"] .boss-skill-entry,
+body[data-theme="eclipse_sanctum"] .boss-skill-entry,
+body[data-theme="void_throne"] .boss-skill-entry {
+  background: linear-gradient(180deg, rgba(66, 34, 86, 0.72), rgba(22, 16, 36, 0.86));
+  border-color: rgba(210, 166, 255, 0.16);
+}
+
+body[data-theme="mirror_circus"] .boss-skill-meter,
+body[data-theme="eclipse_sanctum"] .boss-skill-meter,
+body[data-theme="void_throne"] .boss-skill-meter {
+  background: linear-gradient(180deg, rgba(18, 12, 30, 0.98), rgba(44, 24, 66, 0.86));
+  border-color: rgba(204, 162, 255, 0.18);
+}
+
+body[data-theme="mirror_circus"] .boss-skill-meter-fill,
+body[data-theme="mirror_circus"] .board-hp-bar i,
+body[data-theme="eclipse_sanctum"] .boss-skill-meter-fill,
+body[data-theme="eclipse_sanctum"] .board-hp-bar i,
+body[data-theme="void_throne"] .boss-skill-meter-fill,
+body[data-theme="void_throne"] .board-hp-bar i {
+  background: linear-gradient(180deg, rgba(246, 220, 255, 0.98), rgba(154, 102, 255, 0.94));
+  box-shadow: 0 0 18px rgba(168, 112, 255, 0.34);
+}
+
+body[data-theme="ember_hollows"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="ember_hollows"] .boss-crest .eyebrow { color: #ffc1ae; }
+body[data-theme="ember_hollows"] .enemy-hp-chip {
+  background: linear-gradient(180deg, rgba(92, 30, 22, 0.42), rgba(28, 14, 16, 0.22));
+  border-color: rgba(255, 146, 108, 0.14);
+}
+body[data-theme="ember_hollows"] .enemy-hp-chip::before {
+  color: rgba(255, 172, 124, 0.94);
+  text-shadow: 0 0 12px rgba(255, 144, 102, 0.26);
+}
+body[data-theme="ember_hollows"] .enemy-hp-chip .hp-chip-head strong {
+  color: #fff0e5;
+  text-shadow: 0 0 26px rgba(255, 140, 96, 0.22);
+}
+body[data-theme="ember_hollows"] .enemy-hp-chip .hp-chip-head strong small {
+  color: rgba(255, 214, 188, 0.74);
+}
+
+body[data-theme="frost_spire"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="frost_spire"] .boss-crest .eyebrow { color: #d9efff; }
+body[data-theme="frost_spire"] .enemy-hp-chip {
+  background: linear-gradient(180deg, rgba(42, 72, 98, 0.38), rgba(16, 22, 34, 0.2));
+  border-color: rgba(194, 232, 255, 0.14);
+}
+body[data-theme="frost_spire"] .enemy-hp-chip::before {
+  color: rgba(210, 240, 255, 0.96);
+  text-shadow: 0 0 12px rgba(172, 224, 255, 0.3);
+}
+body[data-theme="frost_spire"] .enemy-hp-chip .hp-chip-head strong {
+  color: #f4fbff;
+  text-shadow: 0 0 26px rgba(172, 224, 255, 0.22);
+}
+body[data-theme="frost_spire"] .enemy-hp-chip .hp-chip-head strong small {
+  color: rgba(214, 238, 255, 0.74);
+}
+
+body[data-theme="stone_grove"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="stone_grove"] .boss-crest .eyebrow,
+body[data-theme="iron_forge"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="iron_forge"] .boss-crest .eyebrow { color: #f1d0ab; }
+body[data-theme="stone_grove"] .enemy-hp-chip,
+body[data-theme="iron_forge"] .enemy-hp-chip {
+  background: linear-gradient(180deg, rgba(76, 52, 38, 0.4), rgba(22, 16, 14, 0.22));
+  border-color: rgba(214, 182, 134, 0.14);
+}
+body[data-theme="stone_grove"] .enemy-hp-chip::before,
+body[data-theme="iron_forge"] .enemy-hp-chip::before {
+  color: rgba(232, 196, 146, 0.94);
+  text-shadow: 0 0 12px rgba(200, 150, 98, 0.24);
+}
+body[data-theme="stone_grove"] .enemy-hp-chip .hp-chip-head strong,
+body[data-theme="iron_forge"] .enemy-hp-chip .hp-chip-head strong {
+  color: #fff2e3;
+  text-shadow: 0 0 24px rgba(210, 158, 104, 0.2);
+}
+body[data-theme="stone_grove"] .enemy-hp-chip .hp-chip-head strong small,
+body[data-theme="iron_forge"] .enemy-hp-chip .hp-chip-head strong small {
+  color: rgba(240, 214, 186, 0.72);
+}
+
+body[data-theme="storm_peaks"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="storm_peaks"] .boss-crest .eyebrow { color: #d9e3ff; }
+body[data-theme="storm_peaks"] .enemy-hp-chip {
+  background: linear-gradient(180deg, rgba(40, 46, 92, 0.42), rgba(14, 16, 34, 0.22));
+  border-color: rgba(168, 182, 255, 0.14);
+}
+body[data-theme="storm_peaks"] .enemy-hp-chip::before {
+  color: rgba(196, 206, 255, 0.96);
+  text-shadow: 0 0 12px rgba(130, 146, 255, 0.28);
+}
+body[data-theme="storm_peaks"] .enemy-hp-chip .hp-chip-head strong {
+  color: #f3f5ff;
+  text-shadow: 0 0 26px rgba(136, 150, 255, 0.22);
+}
+body[data-theme="storm_peaks"] .enemy-hp-chip .hp-chip-head strong small {
+  color: rgba(214, 220, 255, 0.72);
+}
+
+body[data-theme="venom_bloom"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="venom_bloom"] .boss-crest .eyebrow { color: #d9f5be; }
+body[data-theme="venom_bloom"] .enemy-hp-chip {
+  background: linear-gradient(180deg, rgba(36, 74, 30, 0.42), rgba(14, 22, 16, 0.22));
+  border-color: rgba(166, 228, 132, 0.14);
+}
+body[data-theme="venom_bloom"] .enemy-hp-chip::before {
+  color: rgba(196, 240, 148, 0.94);
+  text-shadow: 0 0 12px rgba(128, 208, 102, 0.28);
+}
+body[data-theme="venom_bloom"] .enemy-hp-chip .hp-chip-head strong {
+  color: #f4ffe8;
+  text-shadow: 0 0 24px rgba(132, 214, 104, 0.22);
+}
+body[data-theme="venom_bloom"] .enemy-hp-chip .hp-chip-head strong small {
+  color: rgba(220, 246, 194, 0.72);
+}
+
+body[data-theme="tidal_depths"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="tidal_depths"] .boss-crest .eyebrow { color: #d8f6ff; }
+body[data-theme="tidal_depths"] .enemy-hp-chip {
+  background: linear-gradient(180deg, rgba(22, 70, 92, 0.42), rgba(12, 18, 30, 0.22));
+  border-color: rgba(152, 226, 255, 0.14);
+}
+body[data-theme="tidal_depths"] .enemy-hp-chip::before {
+  color: rgba(198, 244, 255, 0.96);
+  text-shadow: 0 0 12px rgba(112, 210, 255, 0.28);
+}
+body[data-theme="tidal_depths"] .enemy-hp-chip .hp-chip-head strong {
+  color: #eefcff;
+  text-shadow: 0 0 26px rgba(116, 210, 255, 0.22);
+}
+body[data-theme="tidal_depths"] .enemy-hp-chip .hp-chip-head strong small {
+  color: rgba(210, 244, 255, 0.72);
+}
+
+body[data-theme="mirror_circus"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="mirror_circus"] .boss-crest .eyebrow,
+body[data-theme="eclipse_sanctum"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="eclipse_sanctum"] .boss-crest .eyebrow,
+body[data-theme="void_throne"] .enemy-hp-chip .hp-chip-head span,
+body[data-theme="void_throne"] .boss-crest .eyebrow { color: #efd7ff; }
+body[data-theme="mirror_circus"] .enemy-hp-chip,
+body[data-theme="eclipse_sanctum"] .enemy-hp-chip,
+body[data-theme="void_throne"] .enemy-hp-chip {
+  background: linear-gradient(180deg, rgba(62, 34, 84, 0.42), rgba(16, 12, 26, 0.24));
+  border-color: rgba(210, 178, 255, 0.14);
+}
+body[data-theme="mirror_circus"] .enemy-hp-chip::before,
+body[data-theme="eclipse_sanctum"] .enemy-hp-chip::before,
+body[data-theme="void_throne"] .enemy-hp-chip::before {
+  color: rgba(230, 204, 255, 0.96);
+  text-shadow: 0 0 12px rgba(174, 118, 255, 0.28);
+}
+body[data-theme="mirror_circus"] .enemy-hp-chip .hp-chip-head strong,
+body[data-theme="eclipse_sanctum"] .enemy-hp-chip .hp-chip-head strong,
+body[data-theme="void_throne"] .enemy-hp-chip .hp-chip-head strong {
+  color: #fbf2ff;
+  text-shadow: 0 0 26px rgba(182, 124, 255, 0.22);
+}
+body[data-theme="mirror_circus"] .enemy-hp-chip .hp-chip-head strong small,
+body[data-theme="eclipse_sanctum"] .enemy-hp-chip .hp-chip-head strong small,
+body[data-theme="void_throne"] .enemy-hp-chip .hp-chip-head strong small {
+  color: rgba(234, 214, 255, 0.72);
+}
+
 .boss-skill-entry strong,
 .boss-skill-entry small,
 .boss-skill-threshold {
@@ -3336,6 +4188,63 @@ body[data-theme="void_throne"] .boss-portrait-wrap::after {
   text-transform: uppercase;
 }
 
+body[data-theme="ember_hollows"] .boss-skill-entry small,
+body[data-theme="ember_hollows"] #bossState,
+body[data-theme="ember_hollows"] #bossThreat,
+body[data-theme="ember_hollows"] #bossPattern,
+body[data-theme="ember_hollows"] .boss-skill-threshold { color: #ffd3bc; }
+
+body[data-theme="frost_spire"] .boss-skill-entry small,
+body[data-theme="frost_spire"] #bossState,
+body[data-theme="frost_spire"] #bossThreat,
+body[data-theme="frost_spire"] #bossPattern,
+body[data-theme="frost_spire"] .boss-skill-threshold { color: #dcf3ff; }
+
+body[data-theme="stone_grove"] .boss-skill-entry small,
+body[data-theme="stone_grove"] #bossState,
+body[data-theme="stone_grove"] #bossThreat,
+body[data-theme="stone_grove"] #bossPattern,
+body[data-theme="stone_grove"] .boss-skill-threshold,
+body[data-theme="iron_forge"] .boss-skill-entry small,
+body[data-theme="iron_forge"] #bossState,
+body[data-theme="iron_forge"] #bossThreat,
+body[data-theme="iron_forge"] #bossPattern,
+body[data-theme="iron_forge"] .boss-skill-threshold { color: #f0d5b8; }
+
+body[data-theme="storm_peaks"] .boss-skill-entry small,
+body[data-theme="storm_peaks"] #bossState,
+body[data-theme="storm_peaks"] #bossThreat,
+body[data-theme="storm_peaks"] #bossPattern,
+body[data-theme="storm_peaks"] .boss-skill-threshold { color: #dde6ff; }
+
+body[data-theme="venom_bloom"] .boss-skill-entry small,
+body[data-theme="venom_bloom"] #bossState,
+body[data-theme="venom_bloom"] #bossThreat,
+body[data-theme="venom_bloom"] #bossPattern,
+body[data-theme="venom_bloom"] .boss-skill-threshold { color: #e2f8ca; }
+
+body[data-theme="tidal_depths"] .boss-skill-entry small,
+body[data-theme="tidal_depths"] #bossState,
+body[data-theme="tidal_depths"] #bossThreat,
+body[data-theme="tidal_depths"] #bossPattern,
+body[data-theme="tidal_depths"] .boss-skill-threshold { color: #dcf7ff; }
+
+body[data-theme="mirror_circus"] .boss-skill-entry small,
+body[data-theme="mirror_circus"] #bossState,
+body[data-theme="mirror_circus"] #bossThreat,
+body[data-theme="mirror_circus"] #bossPattern,
+body[data-theme="mirror_circus"] .boss-skill-threshold,
+body[data-theme="eclipse_sanctum"] .boss-skill-entry small,
+body[data-theme="eclipse_sanctum"] #bossState,
+body[data-theme="eclipse_sanctum"] #bossThreat,
+body[data-theme="eclipse_sanctum"] #bossPattern,
+body[data-theme="eclipse_sanctum"] .boss-skill-threshold,
+body[data-theme="void_throne"] .boss-skill-entry small,
+body[data-theme="void_throne"] #bossState,
+body[data-theme="void_throne"] #bossThreat,
+body[data-theme="void_throne"] #bossPattern,
+body[data-theme="void_throne"] .boss-skill-threshold { color: #f0e0ff; }
+
 .boss-card h2 {
   margin: 6px 0 14px;
   font-size: 24px;
@@ -3346,6 +4255,88 @@ body[data-theme="void_throne"] .boss-portrait-wrap::after {
   color: var(--muted);
   line-height: 1.55;
 }
+
+body[data-theme="ember_hollows"] .boss-panel::after {
+  background: radial-gradient(circle at 50% 16%, rgba(255, 112, 72, 0.18), transparent 34%), radial-gradient(circle at 50% 44%, rgba(255, 168, 92, 0.12), transparent 26%);
+}
+body[data-theme="ember_hollows"] .boss-skill-entry.ready {
+  background: linear-gradient(180deg, rgba(118, 48, 24, 0.95), rgba(62, 24, 18, 0.98));
+  border-color: rgba(255, 186, 118, 0.34);
+}
+body[data-theme="ember_hollows"] .boss-card h2 { color: #fff0e2; }
+body[data-theme="ember_hollows"] .boss-copy { color: rgba(255, 220, 196, 0.72); }
+
+body[data-theme="frost_spire"] .boss-panel::after {
+  background: radial-gradient(circle at 50% 16%, rgba(212, 242, 255, 0.18), transparent 34%), radial-gradient(circle at 50% 44%, rgba(156, 214, 255, 0.12), transparent 26%);
+}
+body[data-theme="frost_spire"] .boss-skill-entry.ready {
+  background: linear-gradient(180deg, rgba(72, 108, 144, 0.94), rgba(28, 46, 68, 0.98));
+  border-color: rgba(202, 236, 255, 0.36);
+}
+body[data-theme="frost_spire"] .boss-card h2 { color: #f4fbff; }
+body[data-theme="frost_spire"] .boss-copy { color: rgba(220, 240, 255, 0.72); }
+
+body[data-theme="stone_grove"] .boss-panel::after,
+body[data-theme="iron_forge"] .boss-panel::after {
+  background: radial-gradient(circle at 50% 16%, rgba(214, 182, 136, 0.16), transparent 34%), radial-gradient(circle at 50% 44%, rgba(172, 116, 72, 0.1), transparent 26%);
+}
+body[data-theme="stone_grove"] .boss-skill-entry.ready,
+body[data-theme="iron_forge"] .boss-skill-entry.ready {
+  background: linear-gradient(180deg, rgba(108, 74, 42, 0.94), rgba(48, 30, 24, 0.98));
+  border-color: rgba(228, 194, 144, 0.3);
+}
+body[data-theme="stone_grove"] .boss-card h2,
+body[data-theme="iron_forge"] .boss-card h2 { color: #fff0df; }
+body[data-theme="stone_grove"] .boss-copy,
+body[data-theme="iron_forge"] .boss-copy { color: rgba(240, 218, 194, 0.7); }
+
+body[data-theme="storm_peaks"] .boss-panel::after {
+  background: radial-gradient(circle at 50% 16%, rgba(182, 196, 255, 0.18), transparent 34%), radial-gradient(circle at 50% 44%, rgba(120, 140, 255, 0.12), transparent 26%);
+}
+body[data-theme="storm_peaks"] .boss-skill-entry.ready {
+  background: linear-gradient(180deg, rgba(66, 78, 154, 0.95), rgba(28, 34, 76, 0.98));
+  border-color: rgba(176, 188, 255, 0.34);
+}
+body[data-theme="storm_peaks"] .boss-card h2 { color: #f2f5ff; }
+body[data-theme="storm_peaks"] .boss-copy { color: rgba(220, 226, 255, 0.72); }
+
+body[data-theme="venom_bloom"] .boss-panel::after {
+  background: radial-gradient(circle at 50% 16%, rgba(164, 224, 120, 0.18), transparent 34%), radial-gradient(circle at 50% 44%, rgba(112, 188, 94, 0.12), transparent 26%);
+}
+body[data-theme="venom_bloom"] .boss-skill-entry.ready {
+  background: linear-gradient(180deg, rgba(58, 110, 42, 0.95), rgba(24, 42, 20, 0.98));
+  border-color: rgba(174, 232, 132, 0.34);
+}
+body[data-theme="venom_bloom"] .boss-card h2 { color: #f4ffe8; }
+body[data-theme="venom_bloom"] .boss-copy { color: rgba(220, 245, 194, 0.72); }
+
+body[data-theme="tidal_depths"] .boss-panel::after {
+  background: radial-gradient(circle at 50% 16%, rgba(156, 232, 255, 0.18), transparent 34%), radial-gradient(circle at 50% 44%, rgba(108, 182, 236, 0.12), transparent 26%);
+}
+body[data-theme="tidal_depths"] .boss-skill-entry.ready {
+  background: linear-gradient(180deg, rgba(42, 108, 142, 0.95), rgba(18, 38, 58, 0.98));
+  border-color: rgba(162, 232, 255, 0.34);
+}
+body[data-theme="tidal_depths"] .boss-card h2 { color: #eefcff; }
+body[data-theme="tidal_depths"] .boss-copy { color: rgba(212, 244, 255, 0.72); }
+
+body[data-theme="mirror_circus"] .boss-panel::after,
+body[data-theme="eclipse_sanctum"] .boss-panel::after,
+body[data-theme="void_throne"] .boss-panel::after {
+  background: radial-gradient(circle at 50% 16%, rgba(220, 176, 255, 0.18), transparent 34%), radial-gradient(circle at 50% 44%, rgba(154, 106, 255, 0.12), transparent 26%);
+}
+body[data-theme="mirror_circus"] .boss-skill-entry.ready,
+body[data-theme="eclipse_sanctum"] .boss-skill-entry.ready,
+body[data-theme="void_throne"] .boss-skill-entry.ready {
+  background: linear-gradient(180deg, rgba(92, 48, 132, 0.95), rgba(28, 18, 54, 0.98));
+  border-color: rgba(212, 182, 255, 0.34);
+}
+body[data-theme="mirror_circus"] .boss-card h2,
+body[data-theme="eclipse_sanctum"] .boss-card h2,
+body[data-theme="void_throne"] .boss-card h2 { color: #fbf2ff; }
+body[data-theme="mirror_circus"] .boss-copy,
+body[data-theme="eclipse_sanctum"] .boss-copy,
+body[data-theme="void_throne"] .boss-copy { color: rgba(234, 214, 255, 0.72); }
 
 @media (max-width: 980px) {
   body { overflow: auto; }

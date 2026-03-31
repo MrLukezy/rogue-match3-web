@@ -11,6 +11,103 @@ export function renderBoardView({
   boardEl.innerHTML = "";
   const targeting = state.mode.type === "target_item";
 
+  function appendOverlayDecor(overlay, overlayType) {
+    if (overlayType === "burning") {
+      // 热浪背景层
+      const haze = document.createElement("span");
+      haze.className = "effect-burning-haze";
+      overlay.appendChild(haze);
+
+      // 火星粒子层
+      const emberLayer = document.createElement("span");
+      emberLayer.className = "effect-burning-embers";
+      overlay.appendChild(emberLayer);
+
+      // 火焰八帧动画
+      const flameBase = "assets/images/effects/flame4_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-burning-img flame-img-${n + 1}`;
+        img.src = `${flameBase}${n + 1}.png`;
+        img.alt = "flame";
+        overlay.appendChild(img);
+      }
+      return;
+    }
+
+    if (overlayType === "frozen") {
+      // 冰晶八帧动画
+      const iceBase = "assets/images/effects/frz_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-frozen-img ice-img-${n + 1}`;
+        img.src = `${iceBase}${n + 1}.png`;
+        img.alt = "ice";
+        overlay.appendChild(img);
+      }
+      return;
+    }
+
+    if (overlayType === "poisoned") {
+      const base = "assets/images/effects/poison_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-poisoned-img poison-img-${n + 1}`;
+        img.src = `${base}${n + 1}.png`;
+        img.alt = "poison";
+        overlay.appendChild(img);
+      }
+      return;
+    }
+
+    if (overlayType === "locked") {
+      const base = "assets/images/effects/lock_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-locked-img lock-img-${n + 1}`;
+        img.src = `${base}${n + 1}.png`;
+        img.alt = "lock";
+        overlay.appendChild(img);
+      }
+      return;
+    }
+
+    if (overlayType === "holy-marked") {
+      const base = "assets/images/effects/holy_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-holy-img holy-img-${n + 1}`;
+        img.src = `${base}${n + 1}.png`;
+        img.alt = "holy";
+        overlay.appendChild(img);
+      }
+      return;
+    }
+
+    if (overlayType === "void-marked") {
+      const base = "assets/images/effects/void_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-void-img void-img-${n + 1}`;
+        img.src = `${base}${n + 1}.png`;
+        img.alt = "void";
+        overlay.appendChild(img);
+      }
+      return;
+    }
+
+    if (overlayType === "slippery") {
+      const base = "assets/images/effects/slip_frame";
+      for (let n = 0; n < 8; n += 1) {
+        const img = document.createElement("img");
+        img.className = `effect-slippery-img slip-img-${n + 1}`;
+        img.src = `${base}${n + 1}.png`;
+        img.alt = "slippery";
+        overlay.appendChild(img);
+      }
+    }
+  }
+
   for (let i = 0; i < state.board.length; i += 1) {
     const cell = document.createElement("button");
     cell.type = "button";
@@ -55,6 +152,7 @@ export function renderBoardView({
       for (const overlayType of overlayDefs) {
         const overlay = document.createElement("span");
         overlay.className = `cell-effect effect-${overlayType}`;
+        appendOverlayDecor(overlay, overlayType);
         cell.appendChild(overlay);
       }
 
