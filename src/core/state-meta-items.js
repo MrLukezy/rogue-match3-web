@@ -1,4 +1,4 @@
-export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
+export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER, BLESSING_ORDER }) {
   return {
     floor: 1,
     score: 0,
@@ -13,6 +13,19 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
     items: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
     itemLevels: Object.fromEntries(ITEM_ORDER.map((id) => [id, 0])),
     itemSlots: [],
+    // 祝福系统 - 最多装备3个祝福
+    blessingSlots: [],
+    blessingLevels: Object.fromEntries(BLESSING_ORDER.map((id) => [id, 0])),
+    // 祝福状态追踪
+    blessingState: {
+      kineticEnergy: 0,        // 动能累积当前能量
+      comboStreak: 0,         // 当前连击数
+      lastMomentumPeak: 0,    // 上次动量峰值
+      absorbedEnergy: 0,      // 已吸收的能量
+      skillCooldowns: {},     // 技能冷却追踪
+      critActive: false,      // 暴击是否激活
+      desperateMode: false,   // 绝境模式
+    },
     modifier: null,
     modGlass: 0,
     modLocks: 0,
@@ -45,7 +58,6 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER }) {
       sovereign_circuit: false,
       dragon_hoard: false,
     },
-    conditionalPassive: null,
     boss: { charge: 0, max: 100, hp: 0, maxHp: 0, hint: "Idle", elite: false, phase: "charging", casting: false, lastActionEndedAt: 0, pendingIdleMs: 0, lastChargeTickAt: 0, nextDecisionAt: 0, smallCastCount: 0, warningStage: 0 },
     eventCurseFloors: 0,
     nextFloorMovePenalty: 0,
@@ -291,4 +303,217 @@ export function saveMeta(storage, META_KEY, meta) {
 export function recordCodex(meta, group, key, delta = 1) {
   if (!meta.codex[group]) return;
   if (typeof meta.codex[group] === "object") meta.codex[group][key] = Number(meta.codex[group][key] || 0) + delta;
+}
+
+// ============================================================
+// 祝福系统辅助函数
+// ============================================================
+
+export const MAX_BLESSING_SLOTS = 3;
+
+export const getBlessingLevel = (state, id) => Number(state.blessingLevels[id] || 0);
+
+export const hasBlessingEquipped = (state, id) => state.blessingSlots.includes(id);
+
+export const getEquippedBlessings = (state) => state.blessingSlots.filter(Boolean);
+
+export const blessingSlotAvailable = (state) => state.blessingSlots.length < MAX_BLESSING_SLOTS;
+
+export function equipBlessing(state, id, level = 1) {
+  if (hasBlessingEquipped(state, id)) return false;
+  if (!blessingSlotAvailable(state)) return false;
+  state.blessingSlots.push(id);
+  state.blessingLevels[id] = Math.max(1, getBlessingLevel(state, id));
+  return true;
+}
+
+export function unequipBlessing(state, id) {
+  const idx = state.blessingSlots.indexOf(id);
+  if (idx === -1) return false;
+  state.blessingSlots.splice(idx, 1);
+  return true;
+}
+
+export function upgradeBlessing(state, id, levels = 1) {
+  if (!hasBlessingEquipped(state, id)) return false;
+  state.blessingLevels[id] = Math.max(1, getBlessingLevel(state, id) + levels);
+  return true;
+}
+
+// 祝福协同效果检测
+export function checkBlessingSynergy(state, synergyKey, BLESSING_SYERGIES) {
+  const synergy = BLESSING_SYERGIES[synergyKey];
+  if (!synergy) return false;
+  return synergy.blessings.every((id) => hasBlessingEquipped(state, id));
+}
+
+// 动能累积效果
+export function addKineticEnergy(state, amount, MOMENTUM_MAX) {
+  const level = getBlessingLevel(state, "kineticAccumulation");
+  if (level <= 0) return amount;
+  
+  const cap = level === 1 ? 50 : level === 2 ? 75 : level === 3 ? 100 : level === 4 ? 150 : 200;
+  const prev = state.blessingState.kineticEnergy;
+  state.blessingState.kineticEnergy = Math.min(cap, prev + amount);
+  
+  // 返回实际消耗的能量作为动量
+  const consumed = state.blessingState.kineticEnergy - prev;
+  return amount - consumed;
+}
+
+// 连击狂热检测
+export function checkComboMania(state, comboCount) {
+  const level = getBlessingLevel(state, "comboMania");
+  if (level <= 0) return false;
+  
+  const threshold = level >= 3 ? 2 : 3;
+  if (comboCount < threshold) return false;
+  
+  const triggerProb = (15 + 15 * level) / 100;
+  return Math.random() < triggerProb;
+}
+
+// 幸运光环 - 提高技能触发概率
+export function getLuckyAuraBonus(state) {
+  const level = getBlessingLevel(state, "luckyAura");
+  if (level <= 0) return 0;
+  return (3 * level + 2) / 100;
+}
+
+// 暴击祝福 - 获取暴击概率
+export function getCriticalChance(state) {
+  const level = getBlessingLevel(state, "criticalBlessing");
+  if (level <= 0) return 0;
+  return (8 + 6 * level) / 100;
+}
+
+// 暴击效果倍率
+export function getCriticalEffect(state) {
+  const level = getBlessingLevel(state, "criticalBlessing");
+  if (level <= 0) return 1.0;
+  return 1.3 + 0.4 * level;
+}
+
+// 蓄能削弱效果
+export function getChargeWeakenRate(state) {
+  const level = getBlessingLevel(state, "chargeWeaken");
+  if (level <= 0) return 0;
+  return (8 * level + 2) / 100;
+}
+
+// 技能冷却缩减
+export function getCooldownReduction(state) {
+  const level = getBlessingLevel(state, "cooldownReduction");
+  if (level <= 0) return 0;
+  return (8 * level + 2) / 100;
+}
+
+// 资源回收 - 检查是否返还技能冷却
+export function checkResourceRecovery(state) {
+  const level = getBlessingLevel(state, "resourceRecovery");
+  if (level <= 0) return false;
+  const refundProb = (3 + 5 * level) / 100;
+  return Math.random() < refundProb;
+}
+
+// 绝境逢生 - 检查低血量增益
+export function checkDesperateMode(state, hp, maxHp) {
+  const level = getBlessingLevel(state, "desperateSurvival");
+  if (level <= 0) return false;
+  
+  const threshold = 20 + 5 * level;
+  const hpPercent = (hp / maxHp) * 100;
+  state.blessingState.desperateMode = hpPercent <= threshold;
+  return state.blessingState.desperateMode;
+}
+
+// 完美主义加成
+export function getPerfectionistBonus(state, matchCount) {
+  const level = getBlessingLevel(state, "perfectionist");
+  if (level <= 0) return 1.0;
+  
+  if (matchCount >= 5) return 1.4 + 0.2 * level;
+  if (matchCount >= 4) return 1.15 + 0.1 * level;
+  return 1.0;
+}
+
+// 连锁觉醒检测
+export function checkChainAwakening(state, chainCount) {
+  const level = getBlessingLevel(state, "chainAwakening");
+  if (level <= 0) return false;
+  if (chainCount < 3) return false;
+  
+  const mult = 0.8 + 0.4 * level;
+  const bonus = 8 + 3 * level;
+  const triggerProb = (0.1 + (chainCount - 3) * bonus / 100) * mult;
+  return Math.random() < triggerProb;
+}
+
+// 技能连发检测
+export function checkSkillBarrage(state) {
+  const level = getBlessingLevel(state, "skillBarrage");
+  if (level <= 0) return false;
+  
+  const triggerProb = (5 + 7 * level) / 100;
+  return Math.random() < triggerProb;
+}
+
+export function getSkillBarrageMax(state) {
+  const level = getBlessingLevel(state, "skillBarrage");
+  if (level <= 1) return 1;
+  if (level === 2) return 2;
+  if (level === 3) return 3;
+  if (level === 4) return 4;
+  return Infinity;
+}
+
+// 战场统治 - 重排检测
+export function checkBattlefieldControl(state) {
+  const level = getBlessingLevel(state, "battlefieldControl");
+  if (level <= 0) return false;
+  
+  const reshuffleProb = (3 + 4 * level) / 100;
+  return Math.random() < reshuffleProb;
+}
+
+// 动能转化 - 获取转化率
+export function getKineticConversionRate(state) {
+  const level = getBlessingLevel(state, "kineticConversion");
+  if (level <= 0) return 0;
+  return (5 + 10 * level) / 100;
+}
+
+// 充能反击 - 获取反击伤害倍率
+export function getChargedCounterDamage(state) {
+  const level = getBlessingLevel(state, "chargedCounter");
+  if (level <= 0) return 0;
+  return 0.5 * Math.pow(2, level - 1);
+}
+
+// 充能反击触发概率
+export function getChargedCounterTrigger(state) {
+  const level = getBlessingLevel(state, "chargedCounter");
+  if (level <= 0) return 0;
+  return (15 + 15 * level) / 100;
+}
+
+// 能量吸收率
+export function getEnergyAbsorbRate(state) {
+  const level = getBlessingLevel(state, "energyAbsorb");
+  if (level <= 0) return 0;
+  return (3 + 7 * level) / 100;
+}
+
+// 蓄能感知阈值
+export function getChargeSenseThreshold(state) {
+  const level = getBlessingLevel(state, "chargeSense");
+  if (level <= 0) return 1.0;
+  return (60 - 10 * level) / 100;
+}
+
+// 能量吸收上限
+export function getEnergyAbsorbCap(state) {
+  const level = getBlessingLevel(state, "energyAbsorb");
+  if (level <= 0) return 0;
+  return 50 * Math.pow(2, level - 1);
 }

@@ -16,6 +16,7 @@ import {
 import {
   MAX_ITEM_TYPES,
   ITEM_DEFS,
+  ITEM_TRIGGERS,
   ITEM_ANIM_FRAMES,
   ITEM_ORDER,
   ITEM_BASE_COUNTS,
@@ -24,7 +25,10 @@ import {
 } from "./src/config/items-config.js";
 import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES, GEM_POOL_BY_FLOOR, GEM_COLOR_NAMES } from "./src/config/gems-config.js";
 import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_PROFILES } from "./src/config/boss-ui-config.js";
-import { CONDITIONAL_PASSIVE_DEFS } from "./src/config/blessings-config.js";
+import {
+  BLESSING_DEFS,
+  BLESSING_ORDER,
+} from "./src/config/blessings-config.js";
 import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
 import { renderBoardView } from "./src/render/board-render.js";
 import {
@@ -45,6 +49,28 @@ import {
   spendItemCharge as spendStateItemCharge,
   boostAllItemLevels,
   grantDragonHoardBonus as applyDragonHoardBonus,
+  getBlessingLevel as readBlessingLevel,
+  getEquippedBlessings as listEquippedBlessings,
+  hasBlessingEquipped as checkHasBlessingEquipped,
+  blessingSlotAvailable as checkBlessingSlotAvailable,
+  equipBlessing as equipStateBlessing,
+  upgradeBlessing as upgradeStateBlessing,
+  addKineticEnergy as applyKineticEnergy,
+  checkComboMania as rollComboMania,
+  getLuckyAuraBonus as readLuckyAuraBonus,
+  getCriticalChance as readCriticalChance,
+  getCriticalEffect as readCriticalEffect,
+  getChargeWeakenRate as readChargeWeakenRate,
+  checkDesperateMode as updateDesperateMode,
+  getPerfectionistBonus as readPerfectionistBonus,
+  checkChainAwakening as rollChainAwakening,
+  checkBattlefieldControl as rollBattlefieldControl,
+  getKineticConversionRate as readKineticConversionRate,
+  getChargedCounterDamage as readChargedCounterDamage,
+  getChargedCounterTrigger as readChargedCounterTrigger,
+  getEnergyAbsorbRate as readEnergyAbsorbRate,
+  getChargeSenseThreshold as readChargeSenseThreshold,
+  getEnergyAbsorbCap as readEnergyAbsorbCap,
   defaultCodex,
   loadMeta as loadMetaState,
   saveMeta as persistMeta,
@@ -187,6 +213,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
     fxLayerEl,
     itemTooltipEl,
     messageEl,
+    messagePanelEl,
+    messageHistoryEl,
+    logToggleBtn,
     audioToggleBtn,
     restartBtn,
     codexBtn,
@@ -240,6 +269,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
   let guideQueue = [];
   let guideActive = false;
   let activeGuideTab = "gems";
+  let enemyCastFx = [];
+  let messageHistory = [];
+  let pauseOverlayDepth = 0;
   let itemAnimFrameIndex = 0;
   let itemAnimTimer = null;
   let bossHudTimer = null;
@@ -254,7 +286,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   startRun();
 
   function createInitialState() {
-    const initial = buildInitialState({ MIN_BOARD_SIZE, ITEM_ORDER });
+    const initial = buildInitialState({ MIN_BOARD_SIZE, ITEM_ORDER, BLESSING_ORDER });
     seedStartingItems(initial, { ITEM_BASE_LEVEL, ITEM_BASE_COUNTS });
     return initial;
   }
@@ -406,6 +438,94 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return checkItemSlotAvailable(state, ITEM_DEFS, MAX_ITEM_TYPES);
   }
 
+  function getBlessingLevel(id) {
+    return readBlessingLevel(state, id);
+  }
+
+  function getEquippedBlessings() {
+    return listEquippedBlessings(state);
+  }
+
+  function hasBlessingEquipped(id) {
+    return checkHasBlessingEquipped(state, id);
+  }
+
+  function blessingSlotAvailable() {
+    return checkBlessingSlotAvailable(state);
+  }
+
+  function equipBlessing(id, level = 1) {
+    return equipStateBlessing(state, id, level);
+  }
+
+  function upgradeBlessing(id, levels = 1) {
+    return upgradeStateBlessing(state, id, levels);
+  }
+
+  function getLuckyAuraBonus() {
+    return readLuckyAuraBonus(state);
+  }
+
+  function getCriticalChance() {
+    return readCriticalChance(state);
+  }
+
+  function getCriticalEffect() {
+    return readCriticalEffect(state);
+  }
+
+  function getChargeWeakenRate() {
+    return readChargeWeakenRate(state);
+  }
+
+  function getPerfectionistBonus(matchCount) {
+    return readPerfectionistBonus(state, matchCount);
+  }
+
+  function checkBattlefieldControl() {
+    return rollBattlefieldControl(state);
+  }
+
+  function checkDesperateMode() {
+    return updateDesperateMode(state, Number(state.boss.hp || 0), Math.max(1, Number(state.boss.maxHp || 1)));
+  }
+
+  function getKineticConversionRate() {
+    return readKineticConversionRate(state);
+  }
+
+  function getChargedCounterDamage() {
+    return readChargedCounterDamage(state);
+  }
+
+  function getChargedCounterTrigger() {
+    return readChargedCounterTrigger(state);
+  }
+
+  function getEnergyAbsorbRate() {
+    return readEnergyAbsorbRate(state);
+  }
+
+  function getChargeSenseThreshold() {
+    return readChargeSenseThreshold(state);
+  }
+
+  function getEnergyAbsorbCap() {
+    return readEnergyAbsorbCap(state);
+  }
+
+  function addKineticEnergy(amount) {
+    return applyKineticEnergy(state, amount, MOMENTUM_MAX);
+  }
+
+  function checkComboMania(chainCount) {
+    return rollComboMania(state, chainCount);
+  }
+
+  function checkChainAwakening(chainCount) {
+    return rollChainAwakening(state, chainCount);
+  }
+
   function ensureItemType(id) {
     return ensureStateItemType(state, id, { ITEM_BASE_LEVEL, ITEM_DEFS, MAX_ITEM_TYPES });
   }
@@ -538,6 +658,13 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (testPassBtn) {
       testPassBtn.addEventListener("click", triggerTestPassCurrentFloor);
     }
+    if (logToggleBtn) {
+      logToggleBtn.addEventListener("click", () => {
+        const isHidden = messagePanelEl?.classList.contains("hidden");
+        if (messagePanelEl) messagePanelEl.classList.toggle("hidden", !isHidden);
+        logToggleBtn.setAttribute("aria-expanded", isHidden ? "true" : "false");
+      });
+    }
     if (guideTabGemsEl) guideTabGemsEl.addEventListener("click", () => setGuideTab("gems"));
     if (guideTabSkillsEl) guideTabSkillsEl.addEventListener("click", () => setGuideTab("skills"));
 
@@ -586,12 +713,38 @@ const CHAPTER_BOSS_ANIMATIONS = {
   function openSettings() {
     audio.play("uiClick", { volume: 0.34 });
     syncSettingsControls();
+    pauseGameForOverlay();
     settingsModalEl?.classList.remove("hidden");
   }
 
   function closeSettings() {
     audio.play("uiClick", { volume: 0.24 });
     settingsModalEl?.classList.add("hidden");
+    resumeGameFromOverlay();
+  }
+
+  function isGameplayPaused() {
+    return pauseOverlayDepth > 0;
+  }
+
+  function pauseGameForOverlay() {
+    pauseOverlayDepth += 1;
+    const now = Date.now();
+    if (state?.boss) state.boss.lastChargeTickAt = now;
+    if (state) {
+      state.momentumLastDecayAt = now;
+      state.boss.lastActionEndedAt = now;
+    }
+  }
+
+  function resumeGameFromOverlay() {
+    pauseOverlayDepth = Math.max(0, pauseOverlayDepth - 1);
+    const now = Date.now();
+    if (state?.boss) state.boss.lastChargeTickAt = now;
+    if (state) {
+      state.momentumLastDecayAt = now;
+      state.boss.lastActionEndedAt = now;
+    }
   }
 
   function syncSettingsControls() {
@@ -623,6 +776,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
     setTextBySelector(".momentum > span", t("momentum"));
     setTextBySelector(".left-summary-title", t("currentGoal"));
     setTextBySelector(".chapter-panel-title", t("currentChapter"));
+    setTextBySelector(".build-panel-title", t("rogueSkills"));
+    setTextBySelector(".build-panel .panel-note", t("raritySummary"));
+    if (logToggleBtn) logToggleBtn.textContent = t("logToggle");
     if (guideBtn) guideBtn.textContent = t("openGuide");
     if (restartBtn) restartBtn.textContent = t("restartRun");
     if (codexBtn) codexBtn.textContent = t("codex");
@@ -678,6 +834,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   function openCodex() {
     renderCodex();
     audio.play("uiClick");
+    pauseGameForOverlay();
     codexModalEl.classList.remove("hidden");
   }
 
@@ -710,12 +867,14 @@ const CHAPTER_BOSS_ANIMATIONS = {
   function openGuidePanel(entryId = null, tab = "gems") {
     setGuideTab(tab, entryId);
     audio.play("uiClick");
+    pauseGameForOverlay();
     guideModalEl.classList.remove("hidden");
   }
 
   function closeGuideModal() {
     audio.play("uiClick", { volume: 0.3 });
     guideModalEl.classList.add("hidden");
+    resumeGameFromOverlay();
     guideActive = false;
     maybeShowNextGuide();
   }
@@ -1042,10 +1201,14 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function startRun() {
     state = createInitialState();
+    pauseOverlayDepth = 0;
     selected = null;
     inputLocked = false;
     clearAnim = new Set();
     fallAnim = new Set();
+    clearEnemyCastFx();
+    clearBossTelegraph();
+    messageHistory = [];
     guideQueue = [];
     guideActive = false;
     activeGuideTab = "gems";
@@ -1174,6 +1337,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function startFloor(floor) {
     state.floor = floor;
+    clearEnemyCastFx();
+    clearBossTelegraph();
     state.gameOver = false;
     state.victory = false;
     inputLocked = false;
@@ -1517,8 +1682,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (!item || !hasItemType(item)) return;
     audio.play("uiClick", { volume: 0.34 });
     notify(i18n.getLanguage() === "zh-CN"
-      ? `${lt(ITEM_DEFS[item].name)}为被动进攻技能，当前等级 ${getItemLevel(item)}。`
-      : `${lt(ITEM_DEFS[item].name)} is a passive offensive skill at Lv.${getItemLevel(item)}.`, "ok");
+      ? `${lt(ITEM_DEFS[item].name)}为自动作战技能，满足条件会自动触发。当前等级 ${getItemLevel(item)}。`
+      : `${lt(ITEM_DEFS[item].name)} is an auto combat skill and triggers when conditions are met. Current Lv.${getItemLevel(item)}.`, "ok");
   }
 
   function onItemHover(event) {
@@ -1552,15 +1717,27 @@ const CHAPTER_BOSS_ANIMATIONS = {
       return notify(i18n.getLanguage() === "zh-CN" ? "此格不可操作。" : "This tile cannot be operated.", "warn");
     }
 
+    if (isGem(value) && value.frozen) {
+      audio.play("uiError");
+      spawnFloatText(i18n.getLanguage() === "zh-CN" ? "不可移动" : "Frozen", idx);
+      return notify(t("frozenBlockedSwap"), "warn");
+    }
+
+    if (isGem(value) && value.lockedTurns > 0) {
+      audio.play("uiError");
+      spawnFloatText(i18n.getLanguage() === "zh-CN" ? "不可移动" : "Locked", idx);
+      return notify(i18n.getLanguage() === "zh-CN" ? "被锁定的宝石无法移动。" : "Locked gems cannot be moved.", "warn");
+    }
+
     if (state.mode.type === "target_item") return useTargetItem(state.mode.item, idx);
 
     if (selected === null) {
-      audio.play("gemTap", { volume: 0.9, rate: 1.02 });
+      audio.play("gemClear4", { volume: 0.22, rate: 1.02 });
       selected = idx;
       return renderBoard();
     }
     if (selected === idx) {
-      audio.play("gemTap", { volume: 0.9, rate: 0.94 });
+      audio.play("gemClear4", { volume: 0.18, rate: 0.94 });
       selected = null;
       return renderBoard();
     }
@@ -1570,7 +1747,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     selected = null;
 
     if (!isAdjacent(a, b)) {
-      audio.play("gemTap", { volume: 0.9, rate: 0.98 });
+      audio.play("gemClear4", { volume: 0.2, rate: 0.98 });
       selected = b;
       return renderBoard();
     }
@@ -1583,7 +1760,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (!isGem(ca) || !isGem(cb)) {
       return notify(i18n.getLanguage() === "zh-CN" ? "障碍格无法交换。" : "Obstacle tiles cannot be swapped.", "warn");
     }
-    if (ca.lockedTurns > 0 || cb.lockedTurns > 0 || ca.frozen || cb.frozen) {
+    if (ca.frozen || cb.frozen) {
+      return notify(t("frozenBlockedSwap"), "warn");
+    }
+    if (ca.lockedTurns > 0 || cb.lockedTurns > 0) {
       return notify(i18n.getLanguage() === "zh-CN" ? "被锁定的宝石无法交换。" : "A locked gem cannot be swapped.", "warn");
     }
 
@@ -1622,7 +1802,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
   async function useTargetItem(item, idx) {
     if (getItemCount(item) <= 0) return;
     const targets = getItemTargets(item, idx);
-    if (targets.length === 0) {
+    const skillType = getSkillType(item);
+
+    // 颜色改变和强化技能不需要目标验证
+    if (skillType !== "colorChange" && skillType !== "enhancement" && targets.length === 0) {
       audio.play("uiError");
       return notify(i18n.getLanguage() === "zh-CN" ? "该道具不能用于这个位置。" : "That item cannot be used there.", "warn");
     }
@@ -1635,48 +1818,634 @@ const CHAPTER_BOSS_ANIMATIONS = {
     recordCodex("itemUse", item);
 
     await playItemCastAnimation(item, idx);
-    await resolveAction(targets, item);
+
+    // 根据技能类型应用效果
+    if (skillType === "destruction" || skillType === "trigger") {
+      // 销毁类和触发类技能需要resolveAction
+      await resolveAction(targets, item);
+    } else {
+      // 颜色改变和强化类技能使用新的处理函数
+      const destructionTargets = await applySkillEffect(item, idx, targets);
+      if (destructionTargets.length > 0) {
+        await resolveAction(destructionTargets, item);
+      } else if (skillType === "colorChange" || skillType === "enhancement") {
+        // 颜色改变和强化后刷新棋盘
+        await sleep(300);
+        resolveAutoBoard();
+      }
+    }
+
     await consumePostAction();
     inputLocked = false;
   }
 
+  // ============================================================
+  // 新技能系统 - 24个宝石技能的目标计算
+  // ============================================================
+
   function getItemTargets(item, idx) {
     const r = rowOf(idx);
     const c = colOf(idx);
+    const level = itemPower(item);
 
-    if (item === "hammer") {
-      const power = itemPower(item);
-      if (power <= 1) return [idx];
-      const arr = [idx];
-      for (let rr = r - 1; rr <= r + 1; rr += 1) for (let cc = c - 1; cc <= c + 1; cc += 1) if (inside(rr, cc)) arr.push(rr * boardSize + cc);
-      return [...new Set(arr)];
-    }
-    if (item === "row") {
-      const rows = [r];
-      if (itemPower(item) >= 2 && inside(r - 1, c)) rows.push(r - 1);
-      if (itemPower(item) >= 3 && inside(r + 1, c)) rows.push(r + 1);
-      return [...new Set(rows.flatMap((row) => indicesInRow(row)))];
-    }
-    if (item === "cross") {
-      const arr = [...indicesInRow(r), ...indicesInCol(c)];
-      if (itemPower(item) >= 3) {
-        if (inside(r - 1, c)) arr.push(...indicesInRow(r - 1));
-        if (inside(r + 1, c)) arr.push(...indicesInRow(r + 1));
+    // ==================== 直接销毁类 ====================
+    if (item === "blast") {
+      // 爆破 - 以目标为圆心消除周围宝石
+      // Lv1: 2颗(1邻), Lv2: 5颗(3x3), Lv3: 9颗(5x5), Lv4: 14颗(7x7), Lv5: 21颗(9x9)
+      const radius = level * 2 - 1;
+      const arr = [];
+      for (let rr = r - radius; rr <= r + radius; rr += 1) {
+        for (let cc = c - radius; cc <= c + radius; cc += 1) {
+          if (inside(rr, cc) && Math.abs(rr - r) + Math.abs(cc - c) <= radius) {
+            arr.push(rr * boardSize + cc);
+          }
+        }
       }
       return [...new Set(arr)];
     }
-    if (item === "color") {
+
+    if (item === "chainLightning") {
+      // 连锁闪电 - 跳跃消灭同色宝石
+      // Lv1: 3颗(1跳), Lv2: 6颗(2跳), Lv3: 10颗(3跳), Lv4: 15颗(4跳), Lv5: 21颗(5跳)
+      const maxHops = level + 1;
+      const visited = new Set([idx]);
       const cell = state.board[idx];
-      if (!isGem(cell)) return [];
-      if (cell.lockedTurns > 0 || cell.frozen) return [];
-      const targets = collectIndices((x) => isGem(x) && x.color === cell.color);
-      if (itemPower(item) >= 3) {
-        const bonusColor = nextGemColor(cell.color);
-        targets.push(...collectIndices((x) => isGem(x) && x.color === bonusColor));
+      if (!isGem(cell)) return [idx];
+      
+      let current = [idx];
+      for (let hop = 0; hop < maxHops - 1; hop += 1) {
+        const next = [];
+        for (const pos of current) {
+          const pr = rowOf(pos);
+          const pc = colOf(pos);
+          const neighbors = [
+            [pr - 1, pc], [pr + 1, pc], [pr, pc - 1], [pr, pc + 1]
+          ];
+          for (const [nr, nc] of neighbors) {
+            if (!inside(nr, nc)) continue;
+            const nIdx = nr * boardSize + nc;
+            if (visited.has(nIdx)) continue;
+            const nCell = state.board[nIdx];
+            if (isGem(nCell) && nCell.color === cell.color) {
+              visited.add(nIdx);
+              next.push(nIdx);
+            }
+          }
+        }
+        current = next;
+        if (current.length === 0) break;
       }
-      return [...new Set(targets)];
+      return [...visited];
     }
+
+    if (item === "crossStrike") {
+      // 十字斩 - 消除一整行和一整列
+      // Lv1: 9颗(3x3十字), Lv2: 15颗(5x5十字), Lv3: 25颗(7x7十字), Lv4: 35颗(9x9十字), Lv5: 49颗(11x11十字)
+      const halfWidth = level;
+      const arr = [];
+      // 行
+      for (let cc = Math.max(0, c - halfWidth); cc <= Math.min(boardSize - 1, c + halfWidth); cc += 1) {
+        arr.push(r * boardSize + cc);
+      }
+      // 列
+      for (let rr = Math.max(0, r - halfWidth); rr <= Math.min(boardSize - 1, r + halfWidth); rr += 1) {
+        arr.push(rr * boardSize + c);
+      }
+      return [...new Set(arr)];
+    }
+
+    if (item === "meteor") {
+      // 宝石雨 - 随机掉落 (无目标，返回空，由系统处理随机位置)
+      return [];
+    }
+
+    if (item === "splatter") {
+      // 溅射 - 30%-80%概率触发额外伤害 (无目标)
+      return [];
+    }
+
+    if (item === "shatter") {
+      // 粉碎 - 60%-100%概率粉碎周围同色
+      const cell = state.board[idx];
+      if (!isGem(cell)) return [idx];
+      const radius = level + 1;
+      const arr = [idx];
+      for (let rr = r - radius; rr <= r + radius; rr += 1) {
+        for (let cc = c - radius; cc <= c + radius; cc += 1) {
+          if (!inside(rr, cc)) continue;
+          const nIdx = rr * boardSize + cc;
+          if (nIdx === idx) continue;
+          const nCell = state.board[nIdx];
+          if (isGem(nCell) && nCell.color === cell.color) {
+            arr.push(nIdx);
+          }
+        }
+      }
+      return [...new Set(arr)];
+    }
+
+    // ==================== 颜色改变类 ====================
+    if (item === "colorAssimilation") {
+      // 色彩同化 - 将周围宝石变为主目标颜色
+      // 返回目标周围需要变色的宝石索引（用于变色，不直接销毁）
+      const radius = 1 + Math.floor(level / 2);
+      const arr = [idx];
+      for (let rr = r - radius; rr <= r + radius; rr += 1) {
+        for (let cc = c - radius; cc <= c + radius; cc += 1) {
+          if (!inside(rr, cc)) continue;
+          const nIdx = rr * boardSize + cc;
+          if (nIdx === idx) continue;
+          const nCell = state.board[nIdx];
+          if (isGem(nCell)) {
+            arr.push(nIdx);
+          }
+        }
+      }
+      return [...new Set(arr)];
+    }
+
+    if (item === "paintTarget") {
+      // 染色目标 - 直接改变目标颜色
+      return [idx];
+    }
+
+    if (item === "rainbowBridge") {
+      // 彩虹桥 - 两点之间路径变色
+      // Lv1: 4颗, Lv2: 6颗, Lv3: 8颗, Lv4: 11颗, Lv5: 15颗
+      const pathLen = 2 * level + 2;
+      const arr = [idx];
+      let currentR = r, currentC = c;
+      const maxR = boardSize - 1, maxC = boardSize - 1;
+      
+      for (let i = 0; i < pathLen; i += 1) {
+        const dirs = [];
+        if (currentR > 0) dirs.push([-1, 0]);
+        if (currentR < maxR) dirs.push([1, 0]);
+        if (currentC > 0) dirs.push([0, -1]);
+        if (currentC < maxC) dirs.push([0, 1]);
+        const [dr, dc] = dirs[Math.floor(Math.random() * dirs.length)];
+        currentR += dr;
+        currentC += dc;
+        const nextIdx = currentR * boardSize + currentC;
+        if (isGem(state.board[nextIdx])) {
+          arr.push(nextIdx);
+        }
+      }
+      return [...new Set(arr)];
+    }
+
+    if (item === "colorCycle") {
+      // 色相轮回 - 循环变色
+      const cycleSize = 2 * level + 1;
+      const arr = [];
+      const candidates = collectIndices((x) => isGem(x)).slice(0, cycleSize);
+      return candidates;
+    }
+
+    if (item === "neighborMimic") {
+      // 邻近模仿 - 变为最常见邻居颜色
+      // 返回所有满足条件的宝石（周围有邻居的）
+      const arr = [];
+      for (let rr = 0; rr < boardSize; rr += 1) {
+        for (let cc = 0; cc < boardSize; cc += 1) {
+          const nIdx = rr * boardSize + cc;
+          const cell = state.board[nIdx];
+          if (!isGem(cell)) continue;
+          // 检查上下左右邻居
+          const neighbors = [];
+          if (rr > 0 && isGem(state.board[(rr - 1) * boardSize + cc])) neighbors.push(state.board[(rr - 1) * boardSize + cc].color);
+          if (rr < boardSize - 1 && isGem(state.board[(rr + 1) * boardSize + cc])) neighbors.push(state.board[(rr + 1) * boardSize + cc].color);
+          if (cc > 0 && isGem(state.board[rr * boardSize + (cc - 1)])) neighbors.push(state.board[rr * boardSize + (cc - 1)].color);
+          if (cc < boardSize - 1 && isGem(state.board[rr * boardSize + (cc + 1)])) neighbors.push(state.board[rr * boardSize + (cc + 1)].color);
+          if (neighbors.length > 0) {
+            arr.push(nIdx);
+          }
+        }
+      }
+      return arr;
+    }
+
+    if (item === "mirrorCopy") {
+      // 镜像复制 - 复制区域到另一区域
+      const copySize = 2 + level;
+      const arr = [];
+      // 复制源区域
+      for (let rr = 0; rr < copySize && rr < boardSize; rr += 1) {
+        for (let cc = 0; cc < copySize && cc < boardSize; cc += 1) {
+          const nIdx = rr * boardSize + cc;
+          if (isGem(state.board[nIdx])) {
+            arr.push(nIdx);
+          }
+        }
+      }
+      return arr;
+    }
+
+    // ==================== 宝石强化类 ====================
+    if (item === "explosiveEnchant") {
+      // 爆炸强化 - 添加爆炸属性
+      return [idx];
+    }
+
+    if (item === "lineEnchant") {
+      // 横竖强化 - 添加行列属性
+      return [idx];
+    }
+
+    if (item === "comboEnchant") {
+      // 连击强化 - 添加连击属性
+      return [idx];
+    }
+
+    // ==================== 宝石触发类 ====================
+    if (item === "instantTrigger") {
+      // 即时引爆 - 触发所有强化宝石
+      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
+      return enchanted;
+    }
+
+    if (item === "chainTrigger") {
+      // 连锁引爆 - 连锁触发强化宝石
+      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
+      return enchanted.slice(0, 2 * level + 1);
+    }
+
+    if (item === "timedDetonate") {
+      // 定时爆破 - 延迟引爆
+      return collectIndices((x) => isGem(x));
+    }
+
+    if (item === "conditionalTrigger") {
+      // 条件爆破 - 条件触发
+      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
+      return enchanted.slice(0, 2 * level - 1);
+    }
+
+    if (item === "resonanceTrigger") {
+      // 共鸣引爆 - 同色共鸣
+      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
+      return enchanted;
+    }
+
+    if (item === "priorityTrigger") {
+      // 强化优先 - 优先触发高等级
+      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
+      return enchanted.slice(0, level * 2);
+    }
+
     return [];
+  }
+
+  // ============================================================
+  // 新技能系统 - 技能效果应用
+  // ============================================================
+
+  // 获取技能类型
+  function getSkillType(item) {
+    const def = ITEM_DEFS[item];
+    return def ? def.type : null;
+  }
+
+  // 颜色改变技能处理
+  async function applyColorChangeSkill(item, idx, targets) {
+    const level = itemPower(item);
+    const cell = state.board[idx];
+    if (!isGem(cell)) return;
+
+    const targetColor = cell.color;
+
+    if (item === "colorAssimilation") {
+      // 色彩同化 - 将周围宝石变为主目标颜色
+      for (const tIdx of targets) {
+        if (tIdx === idx) continue;
+        const tCell = state.board[tIdx];
+        if (isGem(tCell)) {
+          state.board[tIdx] = { ...tCell, color: targetColor };
+        }
+      }
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: ${targets.length - 1}颗宝石变为颜色${targetColor}`
+        : `${lt(ITEM_DEFS[item].name)}: ${targets.length - 1} gems changed to color ${targetColor}`, "info");
+    }
+
+    if (item === "paintTarget") {
+      // 染色目标 - 随机选择一个不同颜色
+      const colors = [0, 1, 2, 3, 4, 5].filter((c) => c !== targetColor);
+      const newColor = colors[Math.floor(Math.random() * colors.length)];
+      state.board[idx] = { ...cell, color: newColor };
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: 宝石变为颜色${newColor}`
+        : `${lt(ITEM_DEFS[item].name)}: Gem changed to color ${newColor}`, "info");
+    }
+
+    if (item === "rainbowBridge") {
+      // 彩虹桥 - 路径上宝石变为主目标颜色
+      for (const tIdx of targets) {
+        const tCell = state.board[tIdx];
+        if (isGem(tCell)) {
+          state.board[tIdx] = { ...tCell, color: targetColor };
+        }
+      }
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: ${targets.length - 1}颗宝石变为颜色${targetColor}`
+        : `${lt(ITEM_DEFS[item].name)}: ${targets.length - 1} gems changed to color ${targetColor}`, "info");
+    }
+
+    if (item === "colorCycle") {
+      // 色相轮回 - 循环变色
+      const cycleSize = targets.length;
+      if (cycleSize < 2) return;
+      const colors = targets.map((tIdx) => state.board[tIdx]?.color).filter((c) => c !== undefined);
+      if (colors.length < 2) return;
+      const lastColor = colors[colors.length - 1];
+      for (let i = 0; i < targets.length - 1; i++) {
+        const tCell = state.board[targets[i]];
+        if (isGem(tCell)) {
+          state.board[targets[i]] = { ...tCell, color: colors[i + 1] };
+        }
+      }
+      const firstCell = state.board[targets[targets.length - 1]];
+      if (isGem(firstCell)) {
+        state.board[targets[targets.length - 1]] = { ...firstCell, color: lastColor };
+      }
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: ${cycleSize}颗宝石循环变色`
+        : `${lt(ITEM_DEFS[item].name)}: ${cycleSize} gems color-cycled`, "info");
+    }
+
+    if (item === "neighborMimic") {
+      // 邻近模仿 - 变为最常见邻居颜色
+      for (const tIdx of targets) {
+        const cell = state.board[tIdx];
+        if (!isGem(cell)) continue;
+        const pr = rowOf(tIdx);
+        const pc = colOf(tIdx);
+        const neighborCounts = {};
+        const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        for (const [dr, dc] of dirs) {
+          const nr = pr + dr, nc = pc + dc;
+          if (!inside(nr, nc)) continue;
+          const nCell = state.board[nr * boardSize + nc];
+          if (isGem(nCell)) {
+            neighborCounts[nCell.color] = (neighborCounts[nCell.color] || 0) + 1;
+          }
+        }
+        if (Object.keys(neighborCounts).length > 0) {
+          const mostCommon = Object.entries(neighborCounts).sort((a, b) => b[1] - a[1])[0][0];
+          state.board[tIdx] = { ...cell, color: Number(mostCommon) };
+        }
+      }
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: ${targets.length}颗宝石变为邻居颜色`
+        : `${lt(ITEM_DEFS[item].name)}: ${targets.length} gems changed to neighbor colors`, "info");
+    }
+
+    if (item === "mirrorCopy") {
+      // 镜像复制 - 复制源区域到目标区域
+      const copySize = 2 + level;
+      const destStartIdx = (boardSize - copySize) * boardSize + (boardSize - copySize);
+      for (let rr = 0; rr < copySize; rr++) {
+        for (let cc = 0; cc < copySize; cc++) {
+          const srcIdx = rr * boardSize + cc;
+          const destIdx = destStartIdx + rr * boardSize + cc;
+          const srcCell = state.board[srcIdx];
+          const destCell = state.board[destIdx];
+          if (isGem(srcCell) && isGem(destCell)) {
+            state.board[destIdx] = { ...destCell, color: srcCell.color };
+          }
+        }
+      }
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: 镜像复制${copySize}x${copySize}区域`
+        : `${lt(ITEM_DEFS[item].name)}: Mirror copied ${copySize}x${copySize} area`, "info");
+    }
+
+    renderAll();
+    await sleep(200);
+  }
+
+  // 宝石强化技能处理
+  async function applyEnhancementSkill(item, idx, targets) {
+    const level = itemPower(item);
+
+    if (item === "explosiveEnchant") {
+      // 爆炸强化
+      state.board[idx] = { ...state.board[idx], explosive: level };
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)} Lv.${level}: 宝石获得爆炸属性`
+        : `${lt(ITEM_DEFS[item].name)} Lv.${level}: Gem gained explosive property`, "info");
+    }
+
+    if (item === "lineEnchant") {
+      // 横竖强化
+      state.board[idx] = { ...state.board[idx], lineH: level, lineV: level };
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)} Lv.${level}: 宝石获得横竖属性`
+        : `${lt(ITEM_DEFS[item].name)} Lv.${level}: Gem gained line properties`, "info");
+    }
+
+    if (item === "comboEnchant") {
+      // 连击强化
+      state.board[idx] = { ...state.board[idx], combo: level };
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)} Lv.${level}: 宝石获得连击属性`
+        : `${lt(ITEM_DEFS[item].name)} Lv.${level}: Gem gained combo property`, "info");
+    }
+
+    renderAll();
+    await sleep(200);
+  }
+
+  // 宝石触发技能处理
+  async function applyTriggerSkill(item, targets) {
+    const level = itemPower(item);
+
+    if (item === "instantTrigger") {
+      // 即时引爆 - 触发所有强化宝石的被动效果
+      const enchantedTargets = targets.filter((idx) => {
+        const cell = state.board[idx];
+        return isGem(cell) && (cell.explosive || cell.lineH || cell.lineV || cell.combo);
+      });
+      
+      const explosiveTargets = [];
+      const lineTargets = [];
+      
+      for (const idx of enchantedTargets) {
+        const cell = state.board[idx];
+        if (cell.explosive) {
+          explosiveTargets.push(idx);
+        }
+        if (cell.lineH || cell.lineV) {
+          lineTargets.push(idx);
+        }
+        // 清除强化属性
+        state.board[idx] = { ...cell, explosive: 0, lineH: 0, lineV: 0, combo: 0 };
+      }
+
+      // 触发爆炸效果
+      const allExplosive = new Set(explosiveTargets);
+      for (const idx of explosiveTargets) {
+        const r = rowOf(idx), c = colOf(idx);
+        const radius = (state.board[idx]?.explosive || level) * 2 - 1;
+        for (let rr = r - radius; rr <= r + radius; rr++) {
+          for (let cc = c - radius; cc <= c + radius; cc++) {
+            if (inside(rr, cc)) {
+              allExplosive.add(rr * boardSize + cc);
+            }
+          }
+        }
+      }
+
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: 触发${enchantedTargets.length}个强化宝石`
+        : `${lt(ITEM_DEFS[item].name)}: Triggered ${enchantedTargets.length} enchanted gems`, "info");
+
+      return [...allExplosive];
+    }
+
+    if (item === "chainTrigger") {
+      // 连锁引爆
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: 连锁触发强化宝石`
+        : `${lt(ITEM_DEFS[item].name)}: Chain triggered enchanted gems`, "info");
+      return targets.slice(0, 2 * level + 1);
+    }
+
+    if (item === "timedDetonate") {
+      // 定时爆破 - 标记延迟引爆
+      for (const idx of targets) {
+        const cell = state.board[idx];
+        if (isGem(cell)) {
+          state.board[idx] = { ...cell, timedDetonate: level, detonateDelay: 3 - Math.min(level, 2) };
+        }
+      }
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: ${targets.length}颗宝石设置延迟引爆`
+        : `${lt(ITEM_DEFS[item].name)}: ${targets.length} gems set for timed detonation`, "info");
+      return [];
+    }
+
+    if (item === "conditionalTrigger") {
+      // 条件爆破
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: 设置条件触发`
+        : `${lt(ITEM_DEFS[item].name)}: Set conditional trigger`, "info");
+      return [];
+    }
+
+    if (item === "resonanceTrigger") {
+      // 共鸣引爆 - 同色强化宝石集体触发
+      const colorGroups = {};
+      for (const idx of targets) {
+        const cell = state.board[idx];
+        if (isGem(cell)) {
+          if (!colorGroups[cell.color]) colorGroups[cell.color] = [];
+          colorGroups[cell.color].push(idx);
+        }
+      }
+
+      const triggeredCount = targets.filter((idx) => {
+        const cell = state.board[idx];
+        return isGem(cell) && (cell.explosive || cell.lineH || cell.lineV);
+      }).length;
+
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: 共鸣触发${triggeredCount}颗宝石`
+        : `${lt(ITEM_DEFS[item].name)}: Resonance triggered ${triggeredCount} gems`, "info");
+      return targets;
+    }
+
+    if (item === "priorityTrigger") {
+      // 强化优先
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: 优先触发高等级强化`
+        : `${lt(ITEM_DEFS[item].name)}: Priority trigger high-level enchantments`, "info");
+      return targets;
+    }
+
+    return [];
+  }
+
+  // 直接销毁技能处理
+  async function applyDestructionSkill(item, idx, targets) {
+    const level = itemPower(item);
+
+    if (item === "meteor") {
+      // 宝石雨 - 随机掉落
+      const meteorCount = level + 1;
+      const emptySpots = collectIndices((x) => state.board[x] === null);
+      const validSpots = emptySpots.length > 0 ? emptySpots : collectIndices(isGem);
+      shuffle(validSpots);
+      const chosenSpots = validSpots.slice(0, Math.min(meteorCount, validSpots.length));
+
+      for (const spot of chosenSpots) {
+        // 每颗流星造成3x3范围伤害
+        const r = rowOf(spot), c = colOf(spot);
+        const blastRadius = 1 + Math.floor(level / 2);
+        for (let rr = r - blastRadius; rr <= r + blastRadius; rr++) {
+          for (let cc = c - blastRadius; cc <= c + blastRadius; cc++) {
+            if (inside(rr, cc)) {
+              if (!chosenSpots.includes(rr * boardSize + cc)) {
+                chosenSpots.push(rr * boardSize + cc);
+              }
+            }
+          }
+        }
+      }
+
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: ${meteorCount}颗宝石雨来袭`
+        : `${lt(ITEM_DEFS[item].name)}: ${meteorCount} meteors falling`, "info");
+      return [...new Set(chosenSpots)];
+    }
+
+    if (item === "splatter") {
+      // 溅射 - 概率触发额外伤害
+      const triggerProb = (30 + 10 * (level - 1)) / 100;
+      if (Math.random() < triggerProb) {
+        const splashCount = 2 * level + 1;
+        const neighbors = [];
+        const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+        for (const [dr, dc] of dirs) {
+          const nr = rowOf(idx) + dr, nc = colOf(idx) + dc;
+          if (inside(nr, nc)) {
+            neighbors.push(nr * boardSize + nc);
+          }
+        }
+        notify(i18n.getLanguage() === "zh-CN"
+          ? `${lt(ITEM_DEFS[item].name)}: 溅射触发！${splashCount}颗额外伤害`
+          : `${lt(ITEM_DEFS[item].name)}: Splatter triggered! ${splashCount} extra damage`, "info");
+        return [...neighbors];
+      }
+      return [idx];
+    }
+
+    // 其他销毁技能直接返回目标
+    return targets;
+  }
+
+  // 统一技能处理入口
+  async function applySkillEffect(item, idx, targets) {
+    const skillType = getSkillType(item);
+
+    switch (skillType) {
+      case "colorChange":
+        await applyColorChangeSkill(item, idx, targets);
+        return []; // 颜色改变不直接销毁
+
+      case "enhancement":
+        await applyEnhancementSkill(item, idx, targets);
+        return []; // 强化不直接销毁
+
+      case "trigger":
+        return await applyTriggerSkill(item, targets);
+
+      case "destruction":
+        return await applyDestructionSkill(item, idx, targets);
+
+      default:
+        return targets;
+    }
   }
 
   async function useShuffle() {
@@ -1717,14 +2486,22 @@ const CHAPTER_BOSS_ANIMATIONS = {
   function drainEncounterCharge(gemCount, chainCount = 1, source = "normal") {
     if (gemCount <= 0) return 0;
     const sourceBonus = source === "legend" ? 2 : source === "combo" ? 1 : 0;
-    const reduction = Math.min(12, Math.max(1, Math.floor(gemCount / 4) + Math.max(0, chainCount - 1) + sourceBonus));
+    let reduction = Math.min(12, Math.max(1, Math.floor(gemCount / 4) + Math.max(0, chainCount - 1) + sourceBonus));
+    const weaken = getChargeWeakenRate();
+    if (weaken > 0) reduction += Math.max(1, Math.floor(reduction * weaken));
     state.boss.charge = Math.max(0, Number(state.boss.charge || 0) - reduction);
     return reduction;
   }
 
   function damageEncounter(amount, source = "attack") {
-    const damage = Math.max(0, Math.floor(amount || 0));
+    let damage = Math.max(0, Math.floor(amount || 0));
     if (damage <= 0 || Number(state.boss.hp || 0) <= 0) return 0;
+    if (checkDesperateMode()) damage = Math.floor(damage * (1 + 0.1 * Math.pow(2, Math.max(0, getBlessingLevel("desperateSurvival") - 1))));
+    const critChance = getCriticalChance();
+    if (critChance > 0 && Math.random() < critChance) {
+      damage = Math.floor(damage * getCriticalEffect());
+      spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? "祝福暴击" : "Blessing Crit", getEncounterPortraitCenter() || getViewportCenter(), "fx-text fx-text-damage");
+    }
     const applied = Math.min(Number(state.boss.hp || 0), damage);
     state.boss.hp = Math.max(0, Number(state.boss.hp || 0) - applied);
     if (source === "attack") {
@@ -2053,15 +2830,15 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function applyHolyMark(indices) {
-    let count = 0;
+    const actual = [];
     for (const idx of indices) {
       const cell = state.board[idx];
       if (!isGem(cell)) continue;
       cell.holyMarked = true;
       cell.glass = true;
-      count += 1;
+      actual.push(idx);
     }
-    return count;
+    return actual;
   }
 
   function choosePriorityGemIndices(limit, { preferSpecial = false, preferFrozen = false, preferHolyMarked = false, excludeBurning = false } = {}) {
@@ -2116,7 +2893,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
             state.board[target].burning = true;
             state.board[target].glass = false;
           }
-          return spreadTargets.length;
+          return [...spreadTargets];
         }
       }
     }
@@ -2125,7 +2902,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       state.board[target].burning = true;
       state.board[target].glass = false;
     }
-    return spreadTargets.length;
+    return [...spreadTargets];
   }
 
   function recolorNearPotentialMatches(limit) {
@@ -2146,7 +2923,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       if (to === cell.color) to = nextGemColor(cell.color);
       cell.color = to;
     }
-    return picked.length;
+    return picked;
   }
 
   function markTideRows(count) {
@@ -2243,28 +3020,38 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function applyLocalizedVoidZone(area, { obstacleCount = 2, lockCount = 2, markCount = 3 } = {}) {
     if (!area || area.length === 0) return { obstacles: 0, locks: 0, marks: 0 };
-    let obstacles = 0;
-    let locks = 0;
-    let marks = 0;
+    const detailed = applyLocalizedVoidZoneDetailed(area, { obstacleCount, lockCount, markCount });
+    return {
+      obstacles: detailed.obstacleIndices.length,
+      locks: detailed.lockIndices.length,
+      marks: detailed.markIndices.length,
+    };
+  }
+
+  function applyLocalizedVoidZoneDetailed(area, { obstacleCount = 2, lockCount = 2, markCount = 3 } = {}) {
+    if (!area || area.length === 0) return { obstacleIndices: [], lockIndices: [], markIndices: [] };
+    const obstacleIndices = [];
+    const lockIndices = [];
+    const markIndices = [];
     for (const idx of area) {
       const cell = state.board[idx];
       if (!isGem(cell)) continue;
-      if (obstacles < obstacleCount) {
+      if (obstacleIndices.length < obstacleCount) {
         state.board[idx] = { kind: "obstacle" };
-        obstacles += 1;
+        obstacleIndices.push(idx);
         continue;
       }
-      if (locks < lockCount) {
+      if (lockIndices.length < lockCount) {
         cell.lockedTurns = Math.max(cell.lockedTurns, 2);
-        locks += 1;
+        lockIndices.push(idx);
         continue;
       }
-      if (marks < markCount) {
+      if (markIndices.length < markCount) {
         cell.glass = true;
-        marks += 1;
+        markIndices.push(idx);
       }
     }
-    return { obstacles, locks, marks };
+    return { obstacleIndices, lockIndices, markIndices };
   }
 
   function setBossTelegraph(data) {
@@ -2289,7 +3076,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   async function tickBoss() {
-    if (state.gameOver || state.victory || state.boss.casting) return;
+    if (state.gameOver || state.victory || state.boss.casting || isGameplayPaused()) return;
     const now = Date.now();
     const lastTickAt = Number(state.boss.lastChargeTickAt || now);
     const elapsedMs = Math.max(0, now - lastTickAt);
@@ -2301,7 +3088,18 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const castThreshold = getEncounterCastThreshold(profile);
     const gain = getBossIdleChargeGain(elapsedMs);
     state.boss.lastChargeTickAt = now;
-    state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
+    const absorbRate = getEnergyAbsorbRate();
+    const absorbCap = getEnergyAbsorbCap();
+    const absorbed = absorbRate > 0 ? Math.min(absorbCap - Number(state.blessingState.absorbedEnergy || 0), Math.floor(gain * absorbRate)) : 0;
+    if (absorbed > 0) {
+      state.blessingState.absorbedEnergy = Math.max(0, Number(state.blessingState.absorbedEnergy || 0) + absorbed);
+      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + absorbed);
+    }
+    state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain - Math.max(0, absorbed));
+    const senseThreshold = getChargeSenseThreshold();
+    if (senseThreshold < 1 && state.boss.charge / Math.max(1, state.boss.max) >= senseThreshold) {
+      state.chainBonus = Math.max(state.chainBonus, 0.05 * Math.max(1, getBlessingLevel("chargeSense")));
+    }
     if (state.momentum > 0 && idleSinceAction >= 1200) {
       const decaySteps = Math.floor((now - lastDecayAt) / 900);
       if (decaySteps > 0) {
@@ -2326,6 +3124,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
     state.boss.phase = state.boss.charge >= castThreshold ? "ready" : "charging";
     if (state.boss.charge < castThreshold) {
+      if (checkBattlefieldControl() && !inputLocked) {
+        resolveAutoBoard();
+        renderAll();
+      }
       const rate = getBossChargeRatePerSecond();
       const enragedCharge = !profile.isMinion && bossCurrentHp / Math.max(1, bossMaxHp) <= 0.2;
       state.boss.hint = i18n.getLanguage() === "zh-CN"
@@ -2387,6 +3189,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (bossPortraitEl) bossPortraitEl.classList.add("casting");
     spawnScreenPulse("boss", 520);
     await resolveBossSkill(skill);
+    ensureBoardHasValidSwap(i18n.getLanguage() === "zh-CN" ? "敌方技能后棋盘已校正，确保仍可交换消除。" : "Board corrected after enemy skill to keep a valid swap.");
     state.boss.charge = 0;
     renderAll();
     checkFloorState();
@@ -2433,14 +3236,42 @@ const CHAPTER_BOSS_ANIMATIONS = {
     shuffle(gems);
     shuffle(unlockedGems);
 
+    const pickActualGemTargets = (indices, limit = indices?.length ?? 0, filterFn = null) => {
+      const result = [];
+      for (const idx of indices || []) {
+        if (!Number.isInteger(idx) || idx < 0 || idx >= boardSize * boardSize) continue;
+        if (result.includes(idx)) continue;
+        const cell = state.board[idx];
+        if (!isGem(cell)) continue;
+        if (filterFn && !filterFn(cell, idx)) continue;
+        result.push(idx);
+        if (result.length >= limit) break;
+      }
+      return result;
+    };
+
+    const pickRandomGemTargets = (count, filterFn = null) => {
+      const pool = collectIndices((cell, idx) => isGem(cell) && (!filterFn || filterFn(cell, idx)));
+      shuffle(pool);
+      return pickActualGemTargets(pool, Math.min(count, pool.length), filterFn);
+    };
+
+    const uniqueIndices = (...groups) => [...new Set(groups.flat().filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < boardSize * boardSize))];
+
+    const castChanged = async (indices) => {
+      const actual = pickActualGemTargets(indices, indices?.length ?? 0);
+      await castAt(actual);
+      return actual;
+    };
+
     const markGlass = (count) => {
-      const targets = gems.slice(0, Math.min(count, gems.length));
+      const targets = pickRandomGemTargets(count);
       for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].glass = true;
       return targets;
     };
 
     const markBurning = (count) => {
-      const targets = gems.slice(0, Math.min(count, gems.length));
+      const targets = pickRandomGemTargets(count);
       for (const idx of targets) {
         if (!isGem(state.board[idx])) continue;
         state.board[idx].burning = true;
@@ -2450,7 +3281,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     };
 
     const markLocks = (count, turns = 2) => {
-      const targets = unlockedGems.slice(0, Math.min(count, unlockedGems.length));
+      const targets = pickRandomGemTargets(count, (cell) => cell.lockedTurns <= 0 && !cell.frozen);
       for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].lockedTurns = Math.max(state.board[idx].lockedTurns, turns);
       return targets;
     };
@@ -2504,15 +3335,15 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
     switch (skill.id) {
       case "emberling_flare": {
-        const targets = gems.slice(0, 1);
+        const targets = markBurning(1);
         await castAt(targets);
-        const count = markBurning(1).length;
+        const count = targets.length;
         setBossCastHint(lt(skill.name), `轻点燃 ${count} 枚宝石`, `lightly ignited ${count} gem`);
         notifyBossCast(lt(skill.name), "只是留下了一点可控火苗。", "It only leaves a tiny, manageable flame.");
         break;
       }
       case "frostling_burst": {
-        const targets = choosePriorityGemIndices(2, { preferSpecial: true });
+        const targets = pickActualGemTargets(choosePriorityGemIndices(2, { preferSpecial: true }), 2);
         await castAt(targets);
         let frozen = 0;
         let frosted = 0;
@@ -2533,23 +3364,23 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "burrowling_toss": {
-        const planned = collectIndices((x) => isGem(x)).slice(0, 1);
-        await castAt(planned);
-        const obstacles = addObstacles(1).length;
+        const targets = addObstacles(1);
+        await castAt(targets);
+        const obstacles = targets.length;
         setBossCastHint(lt(skill.name), `顶起 ${obstacles} 个障碍`, `raised ${obstacles} blocker`);
         notifyBossCast(lt(skill.name), "地面只轻轻隆起了一格。", "The ground only rises by a single tile.");
         break;
       }
       case "stormling_jolt": {
-        const targets = unlockedGems.slice(0, 1);
+        const targets = markLocks(1, 1);
         await castAt(targets);
-        const locks = markLocks(1, 1).length;
+        const locks = targets.length;
         setBossCastHint(lt(skill.name), `麻痹 ${locks} 枚宝石`, `pinned ${locks} gem`);
         notifyBossCast(lt(skill.name), "只是一记短促电击。", "It is just a brief electric jab.");
         break;
       }
       case "sporeling_puff": {
-        const targets = choosePriorityGemIndices(2);
+        const targets = pickActualGemTargets(choosePriorityGemIndices(2), 2);
         await castAt(targets);
         let infected = 0;
         for (const idx of targets) {
@@ -2572,42 +3403,47 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "mirrorling_glimmer": {
-        await castAt(choosePriorityGemIndices(2, { preferSpecial: true }));
-        let count = recolorNearPotentialMatches(2);
-        if (count <= 0) count = recolor(1);
+        let changedTargets = pickActualGemTargets(choosePriorityGemIndices(2, { preferSpecial: true }), 2);
+        if (changedTargets.length === 0) changedTargets = recolor(1);
+        else {
+          let recolored = recolorNearPotentialMatches(changedTargets.length);
+          if (recolored <= 0) changedTargets = recolor(changedTargets.length);
+        }
+        await castAt(changedTargets);
+        const count = changedTargets.length;
         setBossCastHint(lt(skill.name), `伪装 ${count} 枚宝石`, `disguised ${count} gems`);
         notifyBossCast(lt(skill.name), "只是轻微扰乱你的第一眼判断。", "It only slightly disrupts your first read.");
         break;
       }
       case "slagling_drop": {
-        const planned = collectIndices((x) => isGem(x)).slice(0, 1);
-        await castAt(planned);
-        const obstacles = addObstacles(1).length;
+        const targets = addObstacles(1);
+        await castAt(targets);
+        const obstacles = targets.length;
         setBossCastHint(lt(skill.name), `锻出 ${obstacles} 个熔渣障碍`, `forged ${obstacles} slag blocker`);
         notifyBossCast(lt(skill.name), "炉渣只压下了一小格。", "The slag only locks down a small patch.");
         break;
       }
       case "eclipseling_sign": {
-        const targets = choosePriorityGemIndices(1, { preferSpecial: true });
+        const targets = pickActualGemTargets(choosePriorityGemIndices(1, { preferSpecial: true }), 1);
         await castAt(targets);
         const marked = applyHolyMark(targets);
-        setBossCastHint(lt(skill.name), `标记 ${marked} 枚宝石`, `marked ${marked} gem`);
+        setBossCastHint(lt(skill.name), `标记 ${marked.length} 枚宝石`, `marked ${marked.length} gem`);
         notifyBossCast(lt(skill.name), "只是提前落下一枚审判前兆。", "It only leaves behind a single omen of judgment.");
         break;
       }
       case "voidling_ripple": {
         const selection = pickLocalizedVoidArea();
-        await castAt(selection.area);
+        const zone = applyLocalizedVoidZoneDetailed(selection.area, { obstacleCount: 1, lockCount: 0, markCount: 1 });
+        await castAt(uniqueIndices(zone.obstacleIndices, zone.lockIndices, zone.markIndices));
         if (selection.center != null) await showBossTelegraph({ indices: selection.area, center: selection.center }, 280);
-        const zone = applyLocalizedVoidZone(selection.area, { obstacleCount: 1, lockCount: 0, markCount: 1 });
-        setBossCastHint(lt(skill.name), `局部生成 ${zone.obstacles} 裂口，烙印 ${zone.marks} 枚`, `${zone.obstacles} rift and ${zone.marks} mark in a local zone`);
+        setBossCastHint(lt(skill.name), `局部生成 ${zone.obstacleIndices.length} 裂口，烙印 ${zone.markIndices.length} 枚`, `${zone.obstacleIndices.length} rift and ${zone.markIndices.length} mark in a local zone`);
         notifyBossCast(lt(skill.name), "只是一次局部虚空试探。", "It is only a localized void probe.");
         break;
       }
       case "ember_spark": {
-        const targets = gems.slice(0, Math.min(state.boss.elite ? 4 : 2, gems.length));
+        const targets = markBurning(state.boss.elite ? 4 : 2);
         await castAt(targets);
-        const count = markBurning(state.boss.elite ? 4 : 2).length;
+        const count = targets.length;
         state.boss.hint = i18n.getLanguage() === "zh-CN" ? `余烬火花：${count} 枚宝石进入灼伤态，需先熄火再消除` : `Ember Spark: ${count} gems are burning and need an extra clear`;
         notify(i18n.getLanguage() === "zh-CN" ? "Boss 施放了余烬火花！" : "Boss casts Ember Spark!", "warn");
         applyBossPressure(skill.id);
@@ -2629,15 +3465,17 @@ const CHAPTER_BOSS_ANIMATIONS = {
       }
       case "cinder_spread": {
         const burningNow = collectIndices((cell) => isGem(cell) && cell.burning);
-        await castAt(burningNow.length > 0 ? burningNow : gems.slice(0, Math.min(state.boss.elite ? 5 : 3, gems.length)));
+        let affected = [];
         const existingBurning = collectIndices((cell) => isGem(cell) && cell.burning).length;
-        const count = existingBurning > 0
+        affected = existingBurning > 0
           ? spreadExistingBurning(state.boss.elite ? 6 : 4)
           : (() => {
               const ignited = markBurning(state.boss.elite ? 5 : 3);
-              return ignited + spreadExistingBurning(2);
+              const spread = spreadExistingBurning(2);
+              return uniqueIndices(ignited, spread);
             })();
-        state.boss.hint = i18n.getLanguage() === "zh-CN" ? `灰烬扩散：${count} 枚宝石被复燃或引燃` : `Cinder Spread: ${count} gems reignited or ignited`;
+        await castAt(affected.length > 0 ? affected : (burningNow.length > 0 ? burningNow : pickRandomGemTargets(Math.min(state.boss.elite ? 5 : 3, gems.length))));
+        state.boss.hint = i18n.getLanguage() === "zh-CN" ? `灰烬扩散：${affected.length} 枚宝石被复燃或引燃` : `Cinder Spread: ${affected.length} gems reignited or ignited`;
         notify(i18n.getLanguage() === "zh-CN" ? "灰烬在棋盘上蔓延！" : "Cinders spread across the board!", "warn");
         applyBossPressure(skill.id);
         break;
@@ -2678,18 +3516,18 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "wildfire_pounce": {
-        const targets = gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length));
+        const burningTargets = markBurning(state.boss.elite ? 12 : 8);
+        const lockTargets = markLocks(state.boss.elite ? 4 : 2, 2);
+        const targets = uniqueIndices(burningTargets, lockTargets);
         await castAt(targets);
-        const burning = markBurning(state.boss.elite ? 12 : 8).length;
-        const locks = markLocks(state.boss.elite ? 4 : 2, 2).length;
-        state.boss.hint = i18n.getLanguage() === "zh-CN" ? `野火扑袭：${burning} 枚宝石进入灼伤态，${locks} 枚被锁定` : `Wildfire Pounce: ${burning} burning gems, ${locks} pinned`;
+        state.boss.hint = i18n.getLanguage() === "zh-CN" ? `野火扑袭：${burningTargets.length} 枚宝石进入灼伤态，${lockTargets.length} 枚被锁定` : `Wildfire Pounce: ${burningTargets.length} burning gems, ${lockTargets.length} pinned`;
         notify(i18n.getLanguage() === "zh-CN" ? "野火扑袭吞没了棋盘！" : "Wildfire Pounce engulfs the board!", "warn");
         pulseBoard(8, 1.55);
         applyBossPressure(skill.id);
         break;
       }
       case "chill_script": {
-        const targets = choosePriorityGemIndices(state.boss.elite ? 4 : 2, { preferSpecial: true, preferFrozen: true });
+        const targets = pickActualGemTargets(choosePriorityGemIndices(state.boss.elite ? 4 : 2, { preferSpecial: true, preferFrozen: true }), state.boss.elite ? 4 : 2);
         await castAt(targets);
         let frozen = 0;
         let frosted = 0;
@@ -2736,7 +3574,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "winter_seal": {
-        const targets = gems.slice(0, Math.min(state.boss.elite ? 10 : 6, gems.length));
+        const targets = pickRandomGemTargets(state.boss.elite ? 10 : 6);
         await castAt(targets);
         let frosted = 0;
         let upgraded = 0;
@@ -2797,18 +3635,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "pebble_drop": {
-        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 3 : 2, gems.length));
+        const targets = addObstacles(state.boss.elite ? 3 : 2);
         await castAt(targets);
-        const count = addObstacles(state.boss.elite ? 3 : 2).length;
-        setBossCastHint(lt(skill.name), `新增 ${count} 个障碍`, `${count} obstacles added`);
+        setBossCastHint(lt(skill.name), `新增 ${targets.length} 个障碍`, `${targets.length} obstacles added`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "bark_armor": {
-        const targets = gems.slice(0, Math.min(state.boss.elite ? 6 : 4, gems.length));
+        const targets = markGlass(state.boss.elite ? 6 : 4);
         await castAt(targets);
-        const count = markGlass(state.boss.elite ? 6 : 4).length;
-        setBossCastHint(lt(skill.name), `${count} 枚宝石获得护甲`, `${count} armored gems`);
+        setBossCastHint(lt(skill.name), `${targets.length} 枚宝石获得护甲`, `${targets.length} armored gems`);
         notifyBossCast(lt(skill.name));
         break;
       }
@@ -2824,33 +3660,33 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "cave_in": {
-        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 6 : 4, gems.length));
+        const obstacleTargets = addObstacles(state.boss.elite ? 6 : 4);
+        const lockTargets = markLocks(state.boss.elite ? 4 : 2, 1);
+        const targets = uniqueIndices(obstacleTargets, lockTargets);
         await castAt(targets);
-        const count = addObstacles(state.boss.elite ? 6 : 4).length;
-        markLocks(state.boss.elite ? 4 : 2, 1);
-        setBossCastHint(lt(skill.name), `${count} 个格子坍塌`, `${count} tiles collapsed`);
+        setBossCastHint(lt(skill.name), `${obstacleTargets.length} 个格子坍塌`, `${obstacleTargets.length} tiles collapsed`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "elder_root_wall": {
-        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 8 : 6, gems.length));
+        const obstacleTargets = addObstacles(state.boss.elite ? 8 : 6);
+        const armoredTargets = markGlass(state.boss.elite ? 6 : 4);
+        const targets = uniqueIndices(obstacleTargets, armoredTargets);
         await castAt(targets);
-        const count = addObstacles(state.boss.elite ? 8 : 6).length;
-        markGlass(state.boss.elite ? 6 : 4);
-        setBossCastHint(lt(skill.name), `生长出 ${count} 个封锁点`, `${count} blockers grown`);
+        setBossCastHint(lt(skill.name), `生长出 ${obstacleTargets.length} 个封锁点`, `${obstacleTargets.length} blockers grown`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
         applyBossPressure(skill.id);
         break;
       }
       case "static_pin": {
-        const targets = choosePriorityGemIndices(state.boss.elite ? 5 : 3, { preferSpecial: true });
+        const lockTargets = markLocks(state.boss.elite ? 3 : 2, 1);
+        const recolorTargets = recolor(state.boss.elite ? 5 : 3);
+        const ashTargets = convertTargetsToAsh(collectIndices((cell) => isGem(cell) && cell.lockedTurns <= 0 && !cell.frozen), state.boss.elite ? 2 : 1);
+        const targets = uniqueIndices(lockTargets, recolorTargets, ashTargets);
         await castAt(targets);
-        const locks = markLocks(state.boss.elite ? 3 : 2, 1).length;
-        const count = recolor(state.boss.elite ? 5 : 3).length;
-        const ash = convertTargetsToAsh(collectIndices((cell) => isGem(cell) && cell.lockedTurns <= 0 && !cell.frozen), state.boss.elite ? 2 : 1);
-        setBossCastHint(lt(skill.name), `${locks} 枚短暂钉锁，${count} 枚宝石过载，${ash} 枚被击成灰`, `${locks} pinned, ${count} overloaded, ${ash} reduced to ash`);
+        setBossCastHint(lt(skill.name), `${lockTargets.length} 枚短暂钉锁，${recolorTargets.length} 枚宝石过载，${ashTargets.length} 枚被击成灰`, `${lockTargets.length} pinned, ${recolorTargets.length} overloaded, ${ashTargets.length} reduced to ash`);
         notifyBossCast(lt(skill.name));
         break;
       }
@@ -2867,11 +3703,11 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "overload_mark": {
-        const targets = choosePriorityGemIndices(state.boss.elite ? 12 : 8, { preferSpecial: true });
+        const recolorTargets = recolor(state.boss.elite ? 12 : 8);
+        const lockTargets = markLocks(state.boss.elite ? 3 : 2, 1);
+        const targets = uniqueIndices(recolorTargets, lockTargets);
         await castAt(targets);
-        const count = recolor(state.boss.elite ? 12 : 8).length;
-        markLocks(state.boss.elite ? 3 : 2, 1);
-        setBossCastHint(lt(skill.name), `${count} 枚宝石被改变`, `${count} gems altered`);
+        setBossCastHint(lt(skill.name), `${recolorTargets.length} 枚宝石被改变`, `${recolorTargets.length} gems altered`);
         notifyBossCast(lt(skill.name));
         break;
       }
@@ -2888,10 +3724,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "duel_of_storms": {
-        await castAt(collectIndices((cell) => isGem(cell)).slice(0, state.boss.elite ? 12 : 8));
         const shifts = state.boss.elite ? 4 : 3;
         for (let i = 0; i < shifts; i += 1) rotateCol();
-        recolor(state.boss.elite ? 14 : 10);
+        const recolorTargets = recolor(state.boss.elite ? 14 : 10);
+        await castAt(recolorTargets);
         setBossCastHint(lt(skill.name), `棋盘发生大规模位移`, `board heavily displaced`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
@@ -2899,7 +3735,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "toxin_dust": {
-        const targets = gems.slice(0, Math.min(state.boss.elite ? 8 : 5, gems.length));
+        const targets = pickRandomGemTargets(state.boss.elite ? 8 : 5);
         await castAt(targets);
         for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
         setBossCastHint(lt(skill.name), `${targets.length} 枚宝石被感染`, `${targets.length} gems infected`);
@@ -2909,13 +3745,15 @@ const CHAPTER_BOSS_ANIMATIONS = {
       }
       case "thorn_bind": {
         const infected = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0);
-        await castAt(infected.length ? infected.slice(0, state.boss.elite ? 5 : 3) : gems.slice(0, state.boss.elite ? 5 : 3));
-        if (infected.length < (state.boss.elite ? 5 : 3)) {
-          for (const idx of gems.slice(0, Math.min((state.boss.elite ? 5 : 3) - infected.length, gems.length))) {
-            if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
-          }
+        const targetCount = state.boss.elite ? 5 : 3;
+        const poisonTargets = infected.length > 0
+          ? pickActualGemTargets(infected, targetCount)
+          : pickRandomGemTargets(targetCount);
+        for (const idx of poisonTargets) {
+          if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
         }
-        const entangleTargets = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0).slice(0, state.boss.elite ? 5 : 3);
+        const entangleTargets = pickActualGemTargets(poisonTargets, targetCount);
+        await castAt(uniqueIndices(poisonTargets, entangleTargets));
         for (const idx of entangleTargets) state.board[idx].lockedTurns = Math.max(state.board[idx].lockedTurns, 2);
         setBossCastHint(lt(skill.name), `${entangleTargets.length} 枚感染宝石被束缚`, `${entangleTargets.length} infected gems bound`);
         notifyBossCast(lt(skill.name));
@@ -2924,20 +3762,20 @@ const CHAPTER_BOSS_ANIMATIONS = {
       }
       case "spore_bloom": {
         const poisonTargets = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0);
-        await castAt(poisonTargets.length ? poisonTargets : gems.slice(0, state.boss.elite ? 12 : 8));
         const hadPoison = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0).length > 0;
-        const count = hadPoison ? spreadPoison() : (() => {
-          const targets = gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length));
+        const affected = hadPoison ? spreadPoison() : (() => {
+          const targets = pickRandomGemTargets(state.boss.elite ? 12 : 8);
           for (const idx of targets) if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
-          return targets.length;
+          return targets;
         })();
-        setBossCastHint(lt(skill.name), `${count} 枚宝石受到孢子扩散`, `${count} gems hit by spore spread`);
+        await castAt(affected.length > 0 ? affected : poisonTargets);
+        setBossCastHint(lt(skill.name), `${affected.length} 枚宝石受到孢子扩散`, `${affected.length} gems hit by spore spread`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "rot_garden": {
-        const infectedTargets = gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length));
+        const infectedTargets = pickRandomGemTargets(state.boss.elite ? 12 : 8);
         await castAt(infectedTargets);
         for (const idx of infectedTargets) if (isGem(state.board[idx])) state.board[idx].poisonedTurns = Math.max(state.board[idx].poisonedTurns || 0, 2);
         const infectedCells = collectIndices((cell) => isGem(cell) && (cell.poisonedTurns || 0) > 0 && !cell.special);
@@ -2950,9 +3788,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "royal_pollution": {
-        await castAt(gems.slice(0, Math.min(state.boss.elite ? 12 : 8, gems.length)));
+        const infectedTargets = pickRandomGemTargets(state.boss.elite ? 12 : 8);
+        await castAt(infectedTargets);
         const colorCounts = new Map();
-        for (const idx of gems) {
+        for (const idx of infectedTargets) {
           const cell = state.board[idx];
           if (!isGem(cell)) continue;
           colorCounts.set(cell.color, (colorCounts.get(cell.color) || 0) + 1);
@@ -2961,8 +3800,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
         const dominantColor = [...colorCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? randColor();
         state.taxColor = dominantColor;
         state.taxColorTurns = 2;
-        const locks = markLocks(state.boss.elite ? 6 : 4, 2).length;
-        setBossCastHint(lt(skill.name), `${gems.length} 感染，颜色税锁定 2 回合`, `${gems.length} infected, color tax for 2 turns`);
+        const lockTargets = markLocks(state.boss.elite ? 6 : 4, 2);
+        await castAt(uniqueIndices(infectedTargets, lockTargets));
+        setBossCastHint(lt(skill.name), `${infectedTargets.length} 感染，颜色税锁定 2 回合`, `${infectedTargets.length} infected, color tax for 2 turns`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
         applyBossPressure(skill.id);
@@ -3036,9 +3876,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "mirror_glint": {
-        await castAt(choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true }));
-        const count = recolorNearPotentialMatches(state.boss.elite ? 8 : 5);
-        setBossCastHint(lt(skill.name), `${count} 枚宝石被伪装`, `${count} gems disguised`);
+        const targets = recolorNearPotentialMatches(state.boss.elite ? 8 : 5);
+        await castAt(targets);
+        setBossCastHint(lt(skill.name), `${targets.length} 枚宝石被伪装`, `${targets.length} gems disguised`);
         notifyBossCast(lt(skill.name));
         break;
       }
@@ -3062,10 +3902,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "prism_shuffle": {
-        await castAt(choosePriorityGemIndices(state.boss.elite ? 12 : 8, { preferSpecial: true }));
-        const count = recolor(state.boss.elite ? 12 : 8).length;
+        const recolorTargets = recolor(state.boss.elite ? 12 : 8);
+        await castAt(recolorTargets);
         rotateRow();
-        setBossCastHint(lt(skill.name), `${count} 枚宝石被棱镜扭转`, `${count} gems refracted`);
+        setBossCastHint(lt(skill.name), `${recolorTargets.length} 枚宝石被棱镜扭转`, `${recolorTargets.length} gems refracted`);
         notifyBossCast(lt(skill.name));
         break;
       }
@@ -3088,8 +3928,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "thousand_masks": {
-        await castAt(collectIndices((cell) => isGem(cell)).slice(0, state.boss.elite ? 18 : 12));
-        recolor(state.boss.elite ? 18 : 12);
+        const recolorTargets = recolor(state.boss.elite ? 18 : 12);
+        await castAt(recolorTargets);
         rotateRow();
         rotateCol();
         setBossCastHint(lt(skill.name), `幻象全面侵袭`, `total illusion assault`);
@@ -3099,55 +3939,52 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "iron_slag": {
-        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 3 : 2, gems.length));
+        const targets = addObstacles(state.boss.elite ? 3 : 2);
         await castAt(targets);
-        const count = addObstacles(state.boss.elite ? 3 : 2).length;
-        setBossCastHint(lt(skill.name), `锻造出 ${count} 个炽热障碍`, `${count} hot blocks forged`);
+        setBossCastHint(lt(skill.name), `锻造出 ${targets.length} 个炽热障碍`, `${targets.length} hot blocks forged`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "anvil_slam": {
-        const targets = unlockedGems.slice(0, Math.min(state.boss.elite ? 5 : 3, unlockedGems.length));
+        const targets = markLocks(state.boss.elite ? 5 : 3, 2);
         await castAt(targets);
-        const count = markLocks(state.boss.elite ? 5 : 3, 2).length;
-        setBossCastHint(lt(skill.name), `${count} 个格子被压制`, `${count} tiles pinned`);
+        setBossCastHint(lt(skill.name), `${targets.length} 个格子被压制`, `${targets.length} tiles pinned`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "furnace_core": {
-        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 5 : 3, gems.length));
+        const obstacleTargets = addObstacles(state.boss.elite ? 5 : 3);
+        const lockTargets = markLocks(state.boss.elite ? 3 : 2, 1);
+        const targets = uniqueIndices(obstacleTargets, lockTargets);
         await castAt(targets);
-        const obstacles = addObstacles(state.boss.elite ? 5 : 3).length;
-        const locks = markLocks(state.boss.elite ? 3 : 2, 1).length;
-        setBossCastHint(lt(skill.name), `${obstacles} 障碍，${locks} 枚被热压定住`, `${obstacles} blocks, ${locks} heat-pinned`);
+        setBossCastHint(lt(skill.name), `${obstacleTargets.length} 障碍，${lockTargets.length} 枚被热压定住`, `${obstacleTargets.length} blocks, ${lockTargets.length} heat-pinned`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "heavy_press": {
-        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 6 : 4, gems.length));
+        const targets = addObstacles(state.boss.elite ? 6 : 4);
         await castAt(targets);
-        const obstacles = addObstacles(state.boss.elite ? 6 : 4).length;
-        setBossCastHint(lt(skill.name), `${obstacles} 处区域被压缩`, `${obstacles} sections compressed`);
+        setBossCastHint(lt(skill.name), `${targets.length} 处区域被压缩`, `${targets.length} sections compressed`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "steelflame_domain": {
-        const targets = collectIndices((x) => isGem(x)).slice(0, Math.min(state.boss.elite ? 8 : 6, gems.length));
+        const obstacleTargets = addObstacles(state.boss.elite ? 8 : 6);
+        const lockTargets = markLocks(state.boss.elite ? 5 : 3, 2);
+        const targets = uniqueIndices(obstacleTargets, lockTargets);
         await castAt(targets);
-        const obstacles = addObstacles(state.boss.elite ? 8 : 6).length;
-        const locks = markLocks(state.boss.elite ? 5 : 3, 2).length;
-        setBossCastHint(lt(skill.name), `${obstacles} 障碍，${locks} 锁定`, `${obstacles} blocks, ${locks} pinned`);
+        setBossCastHint(lt(skill.name), `${obstacleTargets.length} 障碍，${lockTargets.length} 锁定`, `${obstacleTargets.length} blocks, ${lockTargets.length} pinned`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
         applyBossPressure(skill.id);
         break;
       }
       case "radiance_mark": {
-        const targets = choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true });
+        const targets = pickActualGemTargets(choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true }), state.boss.elite ? 8 : 5);
         await castAt(targets);
         const count = applyHolyMark(targets);
-        setBossCastHint(lt(skill.name), `${count} 枚宝石被烙印`, `${count} gems branded`);
+        setBossCastHint(lt(skill.name), `${count.length} 枚宝石被烙印`, `${count.length} gems branded`);
         notifyBossCast(lt(skill.name));
         break;
       }
@@ -3171,9 +4008,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
       case "judgment_wheel": {
         const marked = collectIndices((cell) => isGem(cell) && (cell.holyMarked || cell.lockedTurns > 0));
         shuffle(marked);
-        await castAt(marked.slice(0, state.boss.elite ? 14 : 10));
+        const targets = pickActualGemTargets(marked, state.boss.elite ? 14 : 10);
+        await castAt(targets);
         let count = 0;
-        for (const idx of marked.slice(0, state.boss.elite ? 14 : 10)) {
+        for (const idx of targets) {
           const cell = state.board[idx];
           if (!isGem(cell)) continue;
           let to = randColor();
@@ -3181,28 +4019,28 @@ const CHAPTER_BOSS_ANIMATIONS = {
           cell.color = to;
           count += 1;
         }
-        if (count === 0) count = recolor(state.boss.elite ? 14 : 10);
+        if (count === 0) count = recolor(state.boss.elite ? 14 : 10).length;
         setBossCastHint(lt(skill.name), `${count} 枚宝石被重判`, `${count} gems judged`);
         notifyBossCast(lt(skill.name));
         break;
       }
       case "abyss_gaze": {
         const selection = pickLocalizedVoidArea();
-        await castAt(selection.area);
+        const zone = applyLocalizedVoidZoneDetailed(selection.area, { obstacleCount: state.boss.elite ? 4 : 2, lockCount: state.boss.elite ? 4 : 2, markCount: state.boss.elite ? 3 : 2 });
+        await castAt(uniqueIndices(zone.obstacleIndices, zone.lockIndices, zone.markIndices));
         if (selection.center != null) await showBossTelegraph({ indices: selection.area, center: selection.center }, 360);
-        const zone = applyLocalizedVoidZone(selection.area, { obstacleCount: state.boss.elite ? 4 : 2, lockCount: state.boss.elite ? 4 : 2, markCount: state.boss.elite ? 3 : 2 });
-        setBossCastHint(lt(skill.name), `深渊凝视压暗一区：${zone.obstacles} 裂口，${zone.locks} 封锁`, `${zone.obstacles} rifts and ${zone.locks} seals open in one dark zone`);
+        setBossCastHint(lt(skill.name), `深渊凝视压暗一区：${zone.obstacleIndices.length} 裂口，${zone.lockIndices.length} 封锁`, `${zone.obstacleIndices.length} rifts and ${zone.lockIndices.length} seals open in one dark zone`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
       }
       case "revelation_zero": {
-        const markTargets = choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true });
-        await castAt(markTargets);
+        const markTargets = pickActualGemTargets(choosePriorityGemIndices(state.boss.elite ? 8 : 5, { preferSpecial: true }), state.boss.elite ? 8 : 5);
         const marked = applyHolyMark(markTargets);
-        const locks = markLocks(state.boss.elite ? 6 : 4, 2).length;
-        const recolored = recolor(state.boss.elite ? 16 : 12).length;
-        setBossCastHint(lt(skill.name), `${marked} 烙印，${locks} 封锁，${recolored} 重判`, `${marked} marked, ${locks} sealed, ${recolored} judged`);
+        const locks = markLocks(state.boss.elite ? 6 : 4, 2);
+        const recolored = recolor(state.boss.elite ? 16 : 12);
+        await castAt(uniqueIndices(marked, locks, recolored));
+        setBossCastHint(lt(skill.name), `${marked.length} 烙印，${locks.length} 封锁，${recolored.length} 重判`, `${marked.length} marked, ${locks.length} sealed, ${recolored.length} judged`);
         notifyBossCast(lt(skill.name));
         pulseBoard(8, 1.55);
         applyBossPressure(skill.id);
@@ -3213,10 +4051,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
         const r = rowOf(areaCenter);
         const c = colOf(areaCenter);
         const area = [[r, c], [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].filter(([rr, cc]) => inside(rr, cc)).map(([rr, cc]) => rr * boardSize + cc);
-        await castAt(area);
         const useLockTheme = Math.random() < 0.5;
+        const targets = pickActualGemTargets(area, 3);
         let affected = 0;
-        for (const idx of area.slice(0, 3)) {
+        for (const idx of targets) {
           const cell = state.board[idx];
           if (!isGem(cell)) continue;
           if (useLockTheme) {
@@ -3230,7 +4068,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
           cell.voidMarked = true;
           affected += 1;
         }
-        if (!useLockTheme) addObstacles(1);
+        const obstacleTargets = !useLockTheme ? addObstacles(1) : [];
+        await castAt(uniqueIndices(targets, obstacleTargets));
         state.suppressSpecialNotice = i18n.getLanguage() === "zh-CN" ? "裂界扭曲" : "rift distortion";
         setBossCastHint(lt(skill.name), useLockTheme ? `小范围扭曲并封锁 ${affected} 格` : `小范围裂蚀并升起裂口`, useLockTheme ? `small area warped and pinned` : `small area cracked and armored`);
         notifyBossCast(lt(skill.name));
@@ -3238,19 +4077,21 @@ const CHAPTER_BOSS_ANIMATIONS = {
       }
       case "dragon_breath": {
         const row = Math.floor(Math.random() * boardSize);
-        await castAt(indicesInRow(row));
+        const rowGemTargets = indicesInRow(row).filter((idx) => isGem(state.board[idx]));
+        shuffle(rowGemTargets);
+        const markTargets = rowGemTargets.slice(0, state.boss.elite ? 6 : 4);
+        const lockTargets = rowGemTargets.slice(state.boss.elite ? 6 : 4, state.boss.elite ? 9 : 6);
+        await castAt(uniqueIndices(markTargets, lockTargets));
         await showBossTelegraph({ rows: [row], indices: indicesInRow(row) }, 340);
-        const targets = indicesInRow(row).filter((idx) => isGem(state.board[idx]));
-        shuffle(targets);
         let marked = 0;
         let locked = 0;
-        for (const idx of targets.slice(0, state.boss.elite ? 6 : 4)) {
+        for (const idx of markTargets) {
           if (!isGem(state.board[idx])) continue;
           state.board[idx].glass = true;
           state.board[idx].voidMarked = true;
           marked += 1;
         }
-        for (const idx of targets.slice(state.boss.elite ? 6 : 4, state.boss.elite ? 9 : 6)) {
+        for (const idx of lockTargets) {
           if (!isGem(state.board[idx])) continue;
           state.board[idx].lockedTurns = Math.max(state.board[idx].lockedTurns, 1);
           locked += 1;
@@ -3261,15 +4102,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
         break;
       }
       case "world_crack": {
-        const targets = choosePriorityGemIndices(state.boss.elite ? 8 : 6, { preferSpecial: true });
-        await castAt(targets);
-        const obstacles = addObstacles(state.boss.elite ? 6 : 4).length;
-        const recolored = recolor(state.boss.elite ? 12 : 8).length;
-        for (const idx of choosePriorityGemIndices(state.boss.elite ? 6 : 4, {})) {
+        const obstacleTargets = addObstacles(state.boss.elite ? 6 : 4);
+        const recolorTargets = recolor(state.boss.elite ? 12 : 8);
+        const markTargets = pickActualGemTargets(choosePriorityGemIndices(state.boss.elite ? 6 : 4, {}), state.boss.elite ? 6 : 4);
+        for (const idx of markTargets) {
           if (isGem(state.board[idx])) state.board[idx].voidMarked = true;
         }
+        const targets = uniqueIndices(obstacleTargets, recolorTargets, markTargets);
+        await castAt(targets);
         state.suppressSpecialNotice = i18n.getLanguage() === "zh-CN" ? "裂界区域" : "rift zone";
-        setBossCastHint(lt(skill.name), `${obstacles} 处裂隙，${recolored} 枚扭曲宝石`, `${obstacles} voids, ${recolored} warped gems`);
+        setBossCastHint(lt(skill.name), `${obstacleTargets.length} 处裂隙，${recolorTargets.length} 枚扭曲宝石`, `${obstacleTargets.length} voids, ${recolorTargets.length} warped gems`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
@@ -3277,12 +4119,12 @@ const CHAPTER_BOSS_ANIMATIONS = {
       case "emperor_decree": {
         const pickA = pickLocalizedVoidArea();
         const pickB = pickLocalizedVoidArea();
-        await castAt([...pickA.area, ...pickB.area]);
+        const zoneA = applyLocalizedVoidZoneDetailed(pickA.area, { obstacleCount: state.boss.elite ? 2 : 1, lockCount: state.boss.elite ? 3 : 2, markCount: state.boss.elite ? 4 : 3 });
+        const zoneB = applyLocalizedVoidZoneDetailed(pickB.area, { obstacleCount: state.boss.elite ? 2 : 1, lockCount: state.boss.elite ? 2 : 1, markCount: state.boss.elite ? 4 : 3 });
+        await castAt(uniqueIndices(zoneA.obstacleIndices, zoneA.lockIndices, zoneA.markIndices, zoneB.obstacleIndices, zoneB.lockIndices, zoneB.markIndices));
         if (pickA.center != null) await showBossTelegraph({ indices: pickA.area, center: pickA.center }, 260);
         if (pickB.center != null) await showBossTelegraph({ indices: pickB.area, center: pickB.center }, 260);
-        const zoneA = applyLocalizedVoidZone(pickA.area, { obstacleCount: state.boss.elite ? 2 : 1, lockCount: state.boss.elite ? 3 : 2, markCount: state.boss.elite ? 4 : 3 });
-        const zoneB = applyLocalizedVoidZone(pickB.area, { obstacleCount: state.boss.elite ? 2 : 1, lockCount: state.boss.elite ? 2 : 1, markCount: state.boss.elite ? 4 : 3 });
-        setBossCastHint(lt(skill.name), `帝令压下两处危险区：${zoneA.obstacles + zoneB.obstacles} 裂口，${zoneA.locks + zoneB.locks} 束缚`, `${zoneA.obstacles + zoneB.obstacles} rifts and ${zoneA.locks + zoneB.locks} bindings across two decree zones`);
+        setBossCastHint(lt(skill.name), `帝令压下两处危险区：${zoneA.obstacleIndices.length + zoneB.obstacleIndices.length} 裂口，${zoneA.lockIndices.length + zoneB.lockIndices.length} 束缚`, `${zoneA.obstacleIndices.length + zoneB.obstacleIndices.length} rifts and ${zoneA.lockIndices.length + zoneB.lockIndices.length} bindings across two decree zones`);
         notifyBossCast(lt(skill.name));
         applyBossPressure(skill.id);
         break;
@@ -3290,21 +4132,22 @@ const CHAPTER_BOSS_ANIMATIONS = {
       case "star_abyss_end": {
         const phaseOnePick = pickLocalizedVoidArea();
         const phaseTwoPick = pickLocalizedVoidArea();
-        await castAt([...phaseOnePick.area, ...phaseTwoPick.area]);
-        const recolored = recolor(state.boss.elite ? 20 : 14).length;
+        const recolored = recolor(state.boss.elite ? 20 : 14);
+        const phaseOne = applyLocalizedVoidZoneDetailed(phaseOnePick.area, { obstacleCount: state.boss.elite ? 3 : 2, lockCount: state.boss.elite ? 3 : 2, markCount: state.boss.elite ? 4 : 3 });
+        const phaseTwo = applyLocalizedVoidZoneDetailed(phaseTwoPick.area, { obstacleCount: state.boss.elite ? 4 : 3, lockCount: state.boss.elite ? 4 : 3, markCount: state.boss.elite ? 5 : 4 });
+        await castAt(uniqueIndices(recolored, phaseOne.obstacleIndices, phaseOne.lockIndices, phaseOne.markIndices, phaseTwo.obstacleIndices, phaseTwo.lockIndices, phaseTwo.markIndices));
         if (phaseOnePick.center != null) await showBossTelegraph({ indices: phaseOnePick.area, center: phaseOnePick.center }, 260);
         if (phaseTwoPick.center != null) await showBossTelegraph({ indices: phaseTwoPick.area, center: phaseTwoPick.center }, 260);
-        const phaseOne = applyLocalizedVoidZone(phaseOnePick.area, { obstacleCount: state.boss.elite ? 3 : 2, lockCount: state.boss.elite ? 3 : 2, markCount: state.boss.elite ? 4 : 3 });
-        const phaseTwo = applyLocalizedVoidZone(phaseTwoPick.area, { obstacleCount: state.boss.elite ? 4 : 3, lockCount: state.boss.elite ? 4 : 3, markCount: state.boss.elite ? 5 : 4 });
-        setBossCastHint(lt(skill.name), `${recolored} 扭曲，星渊两段塌缩共撕开 ${phaseOne.obstacles + phaseTwo.obstacles} 处裂口`, `${recolored} warped, two abyss waves tear open ${phaseOne.obstacles + phaseTwo.obstacles} rifts`);
+        setBossCastHint(lt(skill.name), `${recolored.length} 扭曲，星渊两段塌缩共撕开 ${phaseOne.obstacleIndices.length + phaseTwo.obstacleIndices.length} 处裂口`, `${recolored.length} warped, two abyss waves tear open ${phaseOne.obstacleIndices.length + phaseTwo.obstacleIndices.length} rifts`);
         notifyBossCast(lt(skill.name));
         pulseBoard(10, 1.6);
         applyBossPressure(skill.id);
         break;
       }
       default: {
-        const count = recolor(6);
-        setBossCastHint(lt(skill.name), `${count} 枚宝石被改变`, `${count} gems altered`);
+        const targets = recolor(6);
+        await castAt(targets);
+        setBossCastHint(lt(skill.name), `${targets.length} 枚宝石被改变`, `${targets.length} gems altered`);
         notifyBossCast(lt(skill.name));
         break;
       }
@@ -3354,22 +4197,35 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const orderedSkills = getCarriedItems();
     const originalTargets = [...valid];
     let currentSourceTargets = [...valid];
+    const legacySkillIds = new Set(["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker"]);
 
-    const pushEffect = (id, indices) => {
-      const unique = [...new Set((indices || []).filter((idx) => !reserved.has(idx) && idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))];
+    const pushEffect = (id, indices, { allowReserved = false } = {}) => {
+      const unique = [...new Set((indices || []).filter((idx) => (allowReserved || !reserved.has(idx)) && idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))];
       if (unique.length <= 0) return;
       unique.forEach((idx) => reserved.add(idx));
       currentSourceTargets = [...unique];
-      effects.push({ id, name: lt(ITEM_DEFS[id].name), indices: unique });
+      effects.push({ id, name: lt(ITEM_DEFS[id].name), indices: unique, anchor: unique[0], skillType: ITEM_DEFS[id]?.type || null });
     };
 
     for (const id of orderedSkills) {
+      const def = ITEM_DEFS[id];
+      if (!def) continue;
+      const triggerProb = Math.min(1, Number(ITEM_TRIGGERS[id]?.(itemPower(id)) ?? 1) + getLuckyAuraBonus());
+      if (Math.random() > triggerProb) continue;
       const sourceTargets = currentSourceTargets.length > 0 ? currentSourceTargets : originalTargets;
       const currentGemTargets = [...new Set(sourceTargets)].filter((idx) => isGem(state.board[idx]));
       const baseTargets = currentGemTargets.length > 0 ? currentGemTargets : sourceTargets;
       const anchor = baseTargets[0];
       const secondary = baseTargets[baseTargets.length - 1] ?? anchor;
       if (anchor == null) continue;
+
+      if (!legacySkillIds.has(id)) {
+        const indices = getItemTargets(id, anchor);
+        const fallback = indices.length > 0 ? indices : [anchor];
+        pushEffect(id, fallback, { allowReserved: true });
+        continue;
+      }
+
       const dominantColor = getDominantGemColor(baseTargets);
       const hpRatio = Number(state.boss.hp || 0) / Math.max(1, Number(state.boss.maxHp || 1));
 
@@ -3460,46 +4316,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return effects;
   }
 
-  function buildConditionalPassiveEffect(valid, gemTargets, chain, expandedInfo) {
-    const id = state.conditionalPassive;
-    if (!id || valid.length === 0) return null;
-    const anchor = gemTargets[0] ?? valid[0];
-    if (anchor == null) return null;
-
-    switch (id) {
-      case "chain_matrix": {
-        if (expandedInfo.chainCount <= 1 && chain <= 1) return null;
-        const indices = [...new Set([...getIndicesInRow(rowOf(anchor)), ...getIndicesInCol(colOf(anchor))])].filter((idx) => !valid.includes(idx));
-        return indices.length > 0 ? { id, name: lt(CONDITIONAL_PASSIVE_DEFS[id].title), indices, type: "clear" } : null;
-      }
-      case "fever_engine": {
-        if (state.feverTurns <= 0) return null;
-        const indices = gatherAreaIndices(anchor, 1).filter((idx) => !valid.includes(idx));
-        return indices.length > 0 ? { id, name: lt(CONDITIONAL_PASSIVE_DEFS[id].title), indices, type: "clear" } : null;
-      }
-      case "purifier_sigil": {
-        const targets = collectIndices((cell) => isGem(cell) && (cell.glass || cell.frozen || cell.lockedTurns > 0)).filter((idx) => !valid.includes(idx)).slice(0, 3);
-        return targets.length > 0 ? { id, name: lt(CONDITIONAL_PASSIVE_DEFS[id].title), indices: targets, type: "purify" } : null;
-      }
-      case "boss_shunt": {
-        if (Number(state.boss.charge || 0) < 60) return null;
-        const indices = choosePriorityGemIndices(3, { preferSpecial: true }).filter((idx) => !valid.includes(idx));
-        return indices.length > 0 ? { id, name: lt(CONDITIONAL_PASSIVE_DEFS[id].title), indices, type: "clear", chargeDrain: 14 } : null;
-      }
-      default:
-        return null;
-    }
-  }
-
   async function resolveAction(initialTargets, source, spawnMap = null, preferSpawnIndex = null) {
     gemClearPitchStep = 0;
     let chain = 1;
     let current = [...new Set(initialTargets)];
     let localSpawnMap = spawnMap;
     let passiveSkillTriggered = false;
-    let conditionalSkillTriggered = false;
 
     while (current.length > 0) {
+      clearEnemyCastFx();
+      clearBossTelegraph();
       const expandedInfo = expandWithSpecialTriggers(current, MAX_SKILL_CHAIN);
       const valid = expandedInfo.targets.filter((idx) => state.board[idx] !== null);
       if (valid.length === 0) break;
@@ -3516,23 +4342,24 @@ const CHAPTER_BOSS_ANIMATIONS = {
       renderAll();
       await sleep(260);
 
-      const conditionalEffect = !conditionalSkillTriggered && (source === "normal" || source === "combo")
-        ? buildConditionalPassiveEffect(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo)
-        : null;
-      if (conditionalEffect) {
-        conditionalSkillTriggered = true;
-        await playConditionalPassiveSequence(conditionalEffect);
-        for (const idx of conditionalEffect.indices) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
-      }
-
       const skillEffects = !passiveSkillTriggered && (source === "normal" || source === "combo")
         ? buildOffensiveSkillEffects(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo)
         : [];
+      if ((checkChainAwakening(expandedInfo.chainCount) || getLuckyAuraBonus() > 0) && skillEffects.length > 0) {
+        for (const effect of skillEffects) {
+          if (getLuckyAuraBonus() > 0 && Math.random() < getLuckyAuraBonus()) {
+            const extra = effect.indices.filter((idx) => state.board[idx] !== null).slice(0, 1);
+            for (const idx of extra) if (!effect.indices.includes(idx)) effect.indices.push(idx);
+          }
+        }
+      }
       if (skillEffects.length > 0) {
         passiveSkillTriggered = true;
         await playPassiveSkillSequence(skillEffects);
         for (const effect of skillEffects) {
-          for (const idx of effect.indices) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
+          const resolvedTargets = await applySkillEffect(effect.id, effect.anchor ?? effect.indices[0], effect.indices);
+          const finalTargets = resolvedTargets.length > 0 ? resolvedTargets : (effect.skillType === "destruction" ? effect.indices : []);
+          for (const idx of finalTargets) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
         }
       }
       clearAnim = new Set(valid);
@@ -3624,6 +4451,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       source = "normal";
     }
 
+    ensureBoardHasValidSwap(i18n.getLanguage() === "zh-CN" ? "连锁结束后棋盘已校正，确保仍可交换消除。" : "Board corrected after the cascade to keep a valid swap.");
     renderAll();
   }
 
@@ -3714,6 +4542,38 @@ const CHAPTER_BOSS_ANIMATIONS = {
       }
     }
     return groups;
+  }
+
+  function hasAnyValidSwap() {
+    for (let i = 0; i < state.board.length; i += 1) {
+      const cell = state.board[i];
+      if (!isGem(cell) || cell.lockedTurns > 0 || cell.frozen) continue;
+      const neighbors = [i + 1, i + boardSize].filter((idx) => idx < state.board.length);
+      for (const neighbor of neighbors) {
+        if (colOf(i) === boardSize - 1 && neighbor === i + 1) continue;
+        const other = state.board[neighbor];
+        if (!isGem(other) || other.lockedTurns > 0 || other.frozen) continue;
+        swap(i, neighbor);
+        const matched = analyzeMatches().clear.length > 0;
+        swap(i, neighbor);
+        if (matched) return true;
+      }
+    }
+    return false;
+  }
+
+  function ensureBoardHasValidSwap(reason = null) {
+    let attempts = 0;
+    while (!hasAnyValidSwap() && attempts < 12) {
+      resolveAutoBoard();
+      attempts += 1;
+    }
+    if (attempts > 0) {
+      renderAll();
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${reason || "棋盘已重整，确保仍可交换消除。"}`
+        : `${reason || "Board refreshed to guarantee at least one valid swap."}`, "warn");
+    }
   }
 
   function sameColor(a, b) {
@@ -3819,6 +4679,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (state.perks.score_bloom && gemCount > 0) base += gemCount * 5;
     if (state.perks.prism_heart && source === "normal") base += Math.floor(gemCount * 1.5);
 
+    base = Math.floor(base * getPerfectionistBonus(gemCount));
+
     return Math.max(0, Math.floor(base * chainMul));
   }
 
@@ -3829,10 +4691,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function updateMomentum(gems, chain) {
-    const gain = Math.min(26, gems + chain * 4);
+    let gain = Math.min(26, gems + chain * 4);
+    const stored = addKineticEnergy(gain);
+    gain = Math.max(0, stored);
     state.momentum = Math.min(MOMENTUM_MAX, state.momentum + gain);
     if (gain > 0) {
       spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `动量 +${gain}` : `Momentum +${gain}`, getElementCenter(momentumBarEl) || getElementCenter(feverTurnsEl) || getViewportCenter(), "fx-text fx-text-momentum");
+    }
+    if (checkComboMania(chain)) {
+      state.score += 30 + chain * 12;
+      spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? "连击狂热" : "Combo Mania", getElementCenter(momentumBarEl) || getViewportCenter(), "fx-text fx-text-momentum");
     }
     if (state.momentum >= MOMENTUM_MAX) {
       state.momentum = 0;
@@ -3865,10 +4733,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
   function convertTargetsToAsh(indices, count) {
     const gemTargets = indices.filter((idx) => isGem(state.board[idx]));
     shuffle(gemTargets);
-    let converted = 0;
+    const converted = [];
     for (const idx of gemTargets.slice(0, count)) {
       state.board[idx] = { kind: "obstacle", ash: true };
-      converted += 1;
+      converted.push(idx);
     }
     return converted;
   }
@@ -3929,26 +4797,66 @@ const CHAPTER_BOSS_ANIMATIONS = {
     checkFloorState();
   }
 
+  function buildChapterBlessingChoices() {
+    const choices = [];
+    const equipped = getEquippedBlessings();
+    const unequipped = BLESSING_ORDER.filter((id) => !hasBlessingEquipped(id) && BLESSING_DEFS[id]);
+
+    if (blessingSlotAvailable() && unequipped.length > 0) {
+      const pool = [...unequipped];
+      shuffle(pool);
+      for (const id of pool.slice(0, 3)) {
+        const def = BLESSING_DEFS[id];
+        choices.push({
+          rarity: def.rarity,
+          title: lt(def.title),
+          desc: lt(def.desc),
+          apply: () => {
+            equipBlessing(id, 1);
+            return lt(def.title);
+          },
+        });
+      }
+      return choices;
+    }
+
+    const upgradePool = (equipped.length > 0 ? [...equipped] : [...BLESSING_ORDER.filter((id) => BLESSING_DEFS[id])])
+      .sort((a, b) => getBlessingLevel(a) - getBlessingLevel(b));
+    for (const id of [...new Set(upgradePool)].slice(0, 3)) {
+      const def = BLESSING_DEFS[id];
+      if (!def) continue;
+      choices.push({
+        rarity: def.rarity,
+        title: `${lt(def.title)} · ${t("itemLevel", { level: getBlessingLevel(id) + 1 })}`,
+        desc: lt(def.effect || def.desc),
+        apply: () => {
+          if (!hasBlessingEquipped(id)) equipBlessing(id, 1);
+          else upgradeBlessing(id, 1);
+          return lt(def.title);
+        },
+      });
+    }
+    return choices;
+  }
+
   function showChapterBlessings(isChapterStart = false) {
-    overlayTitleEl.textContent = `${t("conditionalPassivePrefix") || t("chapterBlessingPrefix")}${lt(state.floorTheme.title)}`;
-    overlayDescEl.textContent = isChapterStart ? t("conditionalPassiveStart") || t("chapterBlessingStart") : t("conditionalPassiveNext") || t("chapterBlessingNext");
+    overlayTitleEl.textContent = `${t("chapterBlessingPrefix")}${lt(state.floorTheme.title)}`;
+    overlayDescEl.textContent = isChapterStart ? t("chapterBlessingStart") : t("chapterBlessingNext");
     overlayEl?.querySelector(".modal")?.style.setProperty("--modal-enter-duration", isChapterStart ? "540ms" : "180ms");
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
-    const pool = Object.entries(CONDITIONAL_PASSIVE_DEFS).filter(([id]) => id !== state.conditionalPassive);
-    shuffle(pool);
-    const picks = pool.slice(0, 3);
+    const picks = buildChapterBlessingChoices();
 
-    for (const [id, def] of picks) {
+    for (const reward of picks) {
       const btn = document.createElement("button");
-      btn.className = `choice rarity-${def.rarity}`;
-      btn.innerHTML = `<span class="choice-rarity">${t("conditionalPassive") || t("blessing")}</span><strong>${lt(def.title)}</strong><small>${lt(def.desc)}</small>`;
+      btn.className = `choice rarity-${reward.rarity}`;
+      btn.innerHTML = `<span class="choice-rarity">${t("blessing")}</span><strong>${reward.title}</strong><small>${reward.desc}</small>`;
       btn.addEventListener("click", () => {
-        def.apply(state);
+        const blessingName = reward.apply();
         audio.play("rewardPick");
         overlayEl.classList.add("hidden");
-        notify(t("conditionalPassiveAcquired", { name: lt(def.title) }) || t("blessingAcquired", { name: lt(def.title) }), "ok");
+        notify(t("blessingAcquired", { name: blessingName }), "ok");
         renderAll();
         if (isChapterStart) startFloor(state.selectedChapter.start);
         else startFloor(state.floor + 1);
@@ -4542,15 +5450,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }
 
-  function getConditionalPassiveCenter(passiveId) {
-    const chips = perkWrapEl?.querySelectorAll(".perk-chip");
-    if (!chips?.length) return null;
-    const target = [...chips].find((el) => el.textContent?.includes(lt(CONDITIONAL_PASSIVE_DEFS[passiveId]?.title || {}))) || chips[0];
-    if (!target) return null;
-    const rect = target.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  }
-
   function getViewportCenter() {
     return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   }
@@ -4583,6 +5482,39 @@ const CHAPTER_BOSS_ANIMATIONS = {
     fxLayerEl.appendChild(el);
     setTimeout(() => el.remove(), ttl);
     return el;
+  }
+
+  function registerEnemyCastFx(el, ttl = 0) {
+    if (!el) return null;
+    enemyCastFx.push(el);
+    const cleanup = () => {
+      enemyCastFx = enemyCastFx.filter((entry) => entry !== el);
+    };
+    el.addEventListener("animationend", cleanup, { once: true });
+    if (ttl > 0) setTimeout(cleanup, ttl + 80);
+    return el;
+  }
+
+  function clearEnemyCastFx() {
+    for (const el of enemyCastFx) {
+      try { el.remove(); } catch {}
+    }
+    enemyCastFx = [];
+  }
+
+  function spawnGemImpactFx(indices, theme = "enemy") {
+    const unique = [...new Set((indices || []).filter((idx) => Number.isInteger(idx) && idx >= 0 && idx < boardSize * boardSize))];
+    for (const idx of unique) {
+      spawnShockwaveFX(idx, theme === "enemy");
+      if (theme === "enemy") {
+        const point = getCellCenter(idx);
+        if (point) {
+          registerEnemyCastFx(spawnTransientFx("fx-encounter-impact", point, 520, {
+            "--fx-duration": "480ms",
+          }), 520);
+        }
+      }
+    }
   }
 
   function spawnViewportFloatText(text, point, className = "fx-text") {
@@ -4868,41 +5800,13 @@ const CHAPTER_BOSS_ANIMATIONS = {
       if (audioProfile.accent) audio.play(audioProfile.accent.sound, { volume: audioProfile.accent.volume, rate: audioProfile.accent.rate });
       renderAll();
       await sleep(620);
-    }
-    clearAnim.clear();
-    setActiveSkillHighlight(null);
-  }
-
-  async function playConditionalPassiveSequence(effect) {
-    if (!effect?.indices?.length) return;
-    const origin = getConditionalPassiveCenter(effect.id) || getViewportCenter();
-    spawnTransientFx("fx-skill-cast-icon passive-conditional", origin, 560, {
-      "--fx-delay": "0ms",
-      "--skill-icon": "none",
-    });
-    spawnPassiveSkillFX(effect, origin);
-    spawnFloatText(effect.name, effect.indices[0]);
-    const audioProfile = getSkillAudioProfile(effect.id);
-    audio.play(audioProfile.sound, { volume: Math.max(0.18, audioProfile.volume - 0.04), rate: audioProfile.rate });
-    if (audioProfile.accent) audio.play(audioProfile.accent.sound, { volume: Math.max(0.06, audioProfile.accent.volume - 0.02), rate: audioProfile.accent.rate });
-    clearAnim = new Set(effect.indices);
-    renderAll();
-    await sleep(280);
-    if (effect.id === "boss_shunt" && effect.chargeDrain) {
-      state.boss.charge = Math.max(0, Number(state.boss.charge || 0) - effect.chargeDrain);
-    }
-    if (effect.id === "purifier_sigil") {
-      for (const idx of effect.indices) {
-        const cell = state.board[idx];
-        if (!isGem(cell)) continue;
-        cell.glass = false;
-        cell.frozen = false;
-        cell.lockedTurns = 0;
+      if (getBlessingLevel("skillBarrage") > 0 && Math.random() < 0.05 * (1 + getBlessingLevel("skillBarrage"))) {
+        spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? "技能连发" : "Skill Barrage", getSkillButtonCenter(effect.id) || getViewportCenter(), "fx-text fx-text-momentum");
+        await sleep(180);
       }
     }
     clearAnim.clear();
-    renderAll();
-    await sleep(120);
+    setActiveSkillHighlight(null);
   }
 
   function getCellCenter(index) {
@@ -5041,17 +5945,18 @@ const CHAPTER_BOSS_ANIMATIONS = {
     bolt.style.setProperty("--bolt-angle", `${Math.atan2(dy, dx)}rad`);
     fxLayerEl.appendChild(bolt);
     setTimeout(() => bolt.remove(), duration + 60);
+    return bolt;
   }
 
   function spawnEncounterClawFx(point, duration = 420) {
     if (!point) return;
     const palette = getEncounterBoltPalette("enemy");
-    spawnTransientFx("fx-encounter-claw", point, duration + 120, {
+    return registerEnemyCastFx(spawnTransientFx("fx-encounter-claw", point, duration + 120, {
       "--fx-duration": `${duration}ms`,
       "--claw-core": palette.core,
       "--claw-mid": palette.mid,
       "--claw-glow": palette.glow,
-    });
+    }), duration + 120);
   }
 
   async function playEncounterDamageFX(indices, damage) {
@@ -5096,8 +6001,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const fallback = getBoardCenter();
     const targets = impactPoints.length > 0 ? impactPoints.slice(0, 6) : (fallback ? [fallback] : []);
     targets.forEach((target, i) => {
-      spawnEncounterBolt(start, target, "enemy", 560 + i * 34);
+      const bolt = spawnEncounterBolt(start, target, "enemy", 560 + i * 34);
+      registerEnemyCastFx(bolt, 560 + i * 34);
     });
+    spawnGemImpactFx(exactIndices, "enemy");
     await sleep(640);
     if (shell) shell.classList.remove("casting");
     if (bossPortraitEl) bossPortraitEl.classList.remove("minion-casting");
@@ -5288,8 +6195,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
       bossMeterEl.classList.toggle("critical-warning", !state.boss.casting && Number(state.boss.warningStage || 0) > 1);
     }
 
-    if (state.mode.type === "normal") modeTextEl.textContent = t("modeStandard");
-    if (state.mode.type === "target_item") modeTextEl.textContent = t("modeTarget", { name: lt(ITEM_DEFS[state.mode.item].name) });
+    const encounterTargetName = lt(getEncounterName(state.floorTheme));
+    if (state.mode.type === "normal") modeTextEl.textContent = t("defeatTarget", { target: encounterTargetName });
+    if (state.mode.type === "target_item") modeTextEl.textContent = t("defeatTarget", { target: encounterTargetName });
   }
 
   function renderBossSkillbook() {
@@ -5385,7 +6293,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function renderPerks() {
-    renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS: CONDITIONAL_PASSIVE_DEFS, RARITY_LABELS, t, lt });
+    renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, RARITY_LABELS, t, lt });
   }
 
   function renderBoard() {
@@ -5403,6 +6311,18 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function notify(text, type = "ok") {
     messageEl.textContent = text;
+    messageHistory.unshift({ text, type, at: Date.now() });
+    if (messageHistory.length > 24) messageHistory.length = 24;
+    if (messageHistoryEl) {
+      messageHistoryEl.innerHTML = "";
+      const latestLabel = t("logLatest");
+      messageHistory.forEach((entry, index) => {
+        const row = document.createElement("div");
+        row.className = `message-history-entry ${entry.type}`;
+        row.textContent = index === 0 ? `${latestLabel} · ${entry.text}` : entry.text;
+        messageHistoryEl.appendChild(row);
+      });
+    }
     if (type === "warn") {
       messageEl.style.background = "#3a2226";
       messageEl.style.borderColor = "#9a3f58";

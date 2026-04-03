@@ -26,7 +26,6 @@
           <h1>Rogue Match-3</h1>
           <button id="audioToggleBtn" class="mini-btn audio-toggle" type="button" aria-pressed="true">🔊 Audio</button>
         </div>
-        <p class="sub">Roguelite relic drafting meets fast match-3 tower climbing.</p>
 
         <section class="chapter-panel">
           <div class="section-head compact">
@@ -56,12 +55,26 @@
           </div>
         </section>
 
+        <section class="build-panel">
+          <div class="section-head compact">
+            <h2 class="build-panel-title">Rogue Skills</h2>
+            <span class="panel-note">Common / Rare / Epic / Legendary</span>
+          </div>
+          <div id="perkWrap" class="perk-list"></div>
+        </section>
+
         <div class="actions-row">
           <button id="guideBtn" class="btn">Open Guide</button>
           <button id="restartBtn" class="btn danger">Restart Run</button>
           <button id="codexBtn" class="btn">Codex</button>
         </div>
-        <div id="message" class="message">Swap neighboring gems, create matches, and outpace the encounter.</div>
+        <section class="message-shell">
+          <button id="logToggleBtn" class="mini-btn log-toggle-btn" type="button" aria-expanded="false">Action Log</button>
+          <div id="messagePanel" class="message-panel hidden">
+            <div id="message" class="message">Swap neighboring gems, create matches, and outpace the encounter.</div>
+            <div id="messageHistory" class="message-history"></div>
+          </div>
+        </section>
       </aside>
 
       <main class="board-wrap" id="boardWrap">
