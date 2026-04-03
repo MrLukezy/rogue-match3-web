@@ -107,26 +107,26 @@
   // src/config/items-config.js
   var MAX_ITEM_TYPES = 5;
   var ITEM_DEFS = {
-    hammer: { name: "Hammer", image: "./assets/generated/items/item_hammer.png", desc: "Break a single tile", target: true, rarity: "common" },
-    row: { name: "Row Sweep", image: "./assets/generated/items/item_row_sweep.png", desc: "Clear one full row", target: true, rarity: "common" },
-    cross: { name: "Cross Burst", image: "./assets/generated/items/item_cross_burst.png", desc: "Clear row and column", target: true, rarity: "rare" },
-    color: { name: "Color Bomb", image: "./assets/generated/items/item_color_bomb.png", desc: "Clear the chosen color", target: true, rarity: "rare" },
+    hammer: { name: "Hammer", image: "./assets/generated/items/item_hammer-20260403-121101-1_rgba.png", desc: "Break a single tile", target: true, rarity: "common" },
+    row: { name: "Row Sweep", image: "./assets/generated/items/item_row_sweep-20260403-121117-1_rgba.png", desc: "Clear one full row", target: true, rarity: "common" },
+    cross: { name: "Cross Burst", image: "./assets/generated/items/item_cross_burst-20260403-121136-1_rgba.png", desc: "Clear row and column", target: true, rarity: "rare" },
+    color: { name: "Color Bomb", image: "./assets/generated/items/item_color_bomb-20260403-121155-1_rgba.png", desc: "Clear the chosen color", target: true, rarity: "rare" },
     shuffle: { name: "Shuffle", image: "./assets/generated/items/item_shuffle.png", desc: "Re-roll the board", target: false, rarity: "common" },
-    screen_wipe: { name: "Screen Pulse", image: "./assets/generated/items/item_screen_pulse.png", desc: "Instantly clear every gem", target: false, rarity: "epic" },
-    rainbow_burst: { name: "Rainbow Burst", image: "./assets/generated/items/item_rainbow_burst.png", desc: "Clear two random colors and trigger specials", target: false, rarity: "epic" },
-    time_freeze: { name: "Time Freeze", image: "./assets/generated/items/item_time_freeze.png", desc: "Gain moves, unlock gems, and stabilize momentum", target: false, rarity: "epic" },
-    boss_breaker: { name: "Boss Breaker", image: "./assets/generated/items/item_boss_breaker.png", desc: "Smash charge and shatter a wide section of the board", target: false, rarity: "legendary" }
+    screen_wipe: { name: "Screen Pulse", image: "./assets/generated/items/item_screen_pulse-20260403-121242-1_rgba.png", desc: "Instantly clear every gem", target: false, rarity: "epic" },
+    rainbow_burst: { name: "Rainbow Burst", image: "./assets/generated/items/item_rainbow_burst-20260403-121214-1_rgba.png", desc: "Clear two random colors and trigger specials", target: false, rarity: "epic" },
+    time_freeze: { name: "Time Freeze", image: "./assets/generated/items/item_time_freeze-20260403-121301-1_rgba.png", desc: "Gain moves, unlock gems, and stabilize momentum", target: false, rarity: "epic" },
+    boss_breaker: { name: "Boss Breaker", image: "./assets/generated/items/item_boss_breaker-20260403-121358-1_rgba.png", desc: "Smash charge and shatter a wide section of the board", target: false, rarity: "legendary" }
   };
   var ITEM_ANIM_FRAMES = {
-    hammer: ["./assets/generated/items/anim/item_hammer_f1.png", "./assets/generated/items/anim/item_hammer_f2.png", "./assets/generated/items/anim/item_hammer_f3.png", "./assets/generated/items/anim/item_hammer_f4.png", "./assets/generated/items/anim/item_hammer_f5.png", "./assets/generated/items/anim/item_hammer_f6.png", "./assets/generated/items/anim/item_hammer_f7.png", "./assets/generated/items/anim/item_hammer_f8.png"],
-    row: ["./assets/generated/items/anim/item_row_sweep_f1.png", "./assets/generated/items/anim/item_row_sweep_f2.png", "./assets/generated/items/anim/item_row_sweep_f3.png", "./assets/generated/items/anim/item_row_sweep_f4.png", "./assets/generated/items/anim/item_row_sweep_f5.png", "./assets/generated/items/anim/item_row_sweep_f6.png", "./assets/generated/items/anim/item_row_sweep_f7.png", "./assets/generated/items/anim/item_row_sweep_f8.png"],
-    cross: ["./assets/generated/items/anim/item_cross_burst_f1.png", "./assets/generated/items/anim/item_cross_burst_f2.png", "./assets/generated/items/anim/item_cross_burst_f3.png", "./assets/generated/items/anim/item_cross_burst_f4.png", "./assets/generated/items/anim/item_cross_burst_f5.png", "./assets/generated/items/anim/item_cross_burst_f6.png", "./assets/generated/items/anim/item_cross_burst_f7.png", "./assets/generated/items/anim/item_cross_burst_f8.png"],
-    color: ["./assets/generated/items/anim/item_color_bomb_f1.png", "./assets/generated/items/anim/item_color_bomb_f2.png", "./assets/generated/items/anim/item_color_bomb_f3.png", "./assets/generated/items/anim/item_color_bomb_f4.png", "./assets/generated/items/anim/item_color_bomb_f5.png", "./assets/generated/items/anim/item_color_bomb_f6.png", "./assets/generated/items/anim/item_color_bomb_f7.png", "./assets/generated/items/anim/item_color_bomb_f8.png"],
+    hammer: ["./assets/generated/items/item_hammer-20260403-121101-1_rgba.png"],
+    row: ["./assets/generated/items/item_row_sweep-20260403-121117-1_rgba.png"],
+    cross: ["./assets/generated/items/item_cross_burst-20260403-121136-1_rgba.png"],
+    color: ["./assets/generated/items/item_color_bomb-20260403-121155-1_rgba.png"],
     shuffle: ["./assets/generated/items/anim/item_shuffle_f1.png", "./assets/generated/items/anim/item_shuffle_f2.png", "./assets/generated/items/anim/item_shuffle_f3.png", "./assets/generated/items/anim/item_shuffle_f4.png", "./assets/generated/items/anim/item_shuffle_f5.png", "./assets/generated/items/anim/item_shuffle_f6.png", "./assets/generated/items/anim/item_shuffle_f7.png", "./assets/generated/items/anim/item_shuffle_f8.png"],
-    screen_wipe: ["./assets/generated/items/anim/item_screen_pulse_f1.png", "./assets/generated/items/anim/item_screen_pulse_f2.png", "./assets/generated/items/anim/item_screen_pulse_f3.png", "./assets/generated/items/anim/item_screen_pulse_f4.png", "./assets/generated/items/anim/item_screen_pulse_f5.png", "./assets/generated/items/anim/item_screen_pulse_f6.png", "./assets/generated/items/anim/item_screen_pulse_f7.png", "./assets/generated/items/anim/item_screen_pulse_f8.png"],
-    rainbow_burst: ["./assets/generated/items/anim/item_rainbow_burst_f1.png", "./assets/generated/items/anim/item_rainbow_burst_f2.png", "./assets/generated/items/anim/item_rainbow_burst_f3.png", "./assets/generated/items/anim/item_rainbow_burst_f4.png", "./assets/generated/items/anim/item_rainbow_burst_f5.png", "./assets/generated/items/anim/item_rainbow_burst_f6.png", "./assets/generated/items/anim/item_rainbow_burst_f7.png", "./assets/generated/items/anim/item_rainbow_burst_f8.png"],
-    time_freeze: ["./assets/generated/items/anim/item_time_freeze_f1.png", "./assets/generated/items/anim/item_time_freeze_f2.png", "./assets/generated/items/anim/item_time_freeze_f3.png", "./assets/generated/items/anim/item_time_freeze_f4.png", "./assets/generated/items/anim/item_time_freeze_f5.png", "./assets/generated/items/anim/item_time_freeze_f6.png", "./assets/generated/items/anim/item_time_freeze_f7.png", "./assets/generated/items/anim/item_time_freeze_f8.png"],
-    boss_breaker: ["./assets/generated/items/anim/item_boss_breaker_f1.png", "./assets/generated/items/anim/item_boss_breaker_f2.png", "./assets/generated/items/anim/item_boss_breaker_f3.png", "./assets/generated/items/anim/item_boss_breaker_f4.png", "./assets/generated/items/anim/item_boss_breaker_f5.png", "./assets/generated/items/anim/item_boss_breaker_f6.png", "./assets/generated/items/anim/item_boss_breaker_f7.png", "./assets/generated/items/anim/item_boss_breaker_f8.png"]
+    screen_wipe: ["./assets/generated/items/item_screen_pulse-20260403-121242-1_rgba.png"],
+    rainbow_burst: ["./assets/generated/items/item_rainbow_burst-20260403-121214-1_rgba.png"],
+    time_freeze: ["./assets/generated/items/item_time_freeze-20260403-121301-1_rgba.png"],
+    boss_breaker: ["./assets/generated/items/item_boss_breaker-20260403-121358-1_rgba.png"]
   };
   var ITEM_ORDER = ["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker"];
   var ITEM_BASE_COUNTS = { hammer: 2, shuffle: 1 };
@@ -912,9 +912,21 @@
     const manifest = {
       bgm: { src: "./assets/audio/bgm_battle_loop.ogg", volume: 0.3, loop: true, kind: "music" },
       uiClick: { src: "./assets/audio/ui_click.ogg", volume: 0.42 },
-      uiError: { src: "./assets/audio/ui_error.ogg", volume: 0.4 },
+      uiError: { src: "./assets/audio/ui_error_game.mp3", volume: 0.5 },
+      gemTap: { src: "./assets/audio/gem_sfx/gem_clear_main.mp3", volume: 0.9 },
       swap: { src: "./assets/audio/swap.ogg", volume: 0.26 },
       matchClear: { src: "./assets/audio/match_clear.ogg", volume: 0.3 },
+      matchClearHeavy: { src: "./assets/audio/skill_sfx/skill_hammer.ogg", volume: 0.28 },
+      matchClearBurst: { src: "./assets/audio/skill_sfx/skill_pulse9.ogg", volume: 0.26 },
+      
+      gemClear1: { src: "./assets/audio/gem_sfx/gem_tap_main.mp3", volume: 0.1 },
+      gemClear2: { src: "./assets/audio/gem_sfx/gem_tap_main.mp3", volume: 0.12 },
+      gemClear3: { src: "./assets/audio/gem_sfx/gem_tap_main.mp3", volume: 0.14 },
+      gemClear4: { src: "./assets/audio/gem_sfx/gem_tap_main.mp3", volume: 0.16 },
+      gemClear5: { src: "./assets/audio/gem_sfx/gem_tap_main.mp3", volume: 0.18 },
+      gemClear6: { src: "./assets/audio/gem_sfx/gem_tap_main.mp3", volume: 0.2 },
+      gemClear7: { src: "./assets/audio/gem_sfx/gem_tap_main.mp3", volume: 0.22 },
+      comboRise: { src: "./assets/audio/skill_sfx/skill_color.ogg", volume: 0.2 },
       rewardPick: { src: "./assets/audio/reward_pick.ogg", volume: 0.48 },
       victory: { src: "./assets/audio/victory.ogg", volume: 0.52 },
       defeat: { src: "./assets/audio/defeat.ogg", volume: 0.42 },
@@ -922,7 +934,33 @@
       itemCast: { src: "./assets/audio/item_cast.ogg", volume: 0.42 },
       itemGain: { src: "./assets/audio/item_gain.ogg", volume: 0.36 },
       bossCast: { src: "./assets/audio/boss_cast.ogg", volume: 0.4 },
-      floorStart: { src: "./assets/audio/floor_start.ogg", volume: 0.28 }
+      enemyFireCast: { src: "./assets/audio/enemy_layers/enemy_fire_cast.ogg", volume: 0.34 },
+      enemyIceCast: { src: "./assets/audio/enemy_layers/enemy_ice_cast.ogg", volume: 0.3 },
+      enemyArcaneCast: { src: "./assets/audio/enemy_layers/enemy_arcane_cast.ogg", volume: 0.3 },
+      enemyLightningCast: { src: "./assets/audio/enemy_layers/enemy_lightning_cast.ogg", volume: 0.34 },
+      enemyPoisonCast: { src: "./assets/audio/enemy_layers/enemy_poison_cast.ogg", volume: 0.32 },
+      enemyStoneCast: { src: "./assets/audio/enemy_layers/enemy_stone_cast.ogg", volume: 0.34 },
+      enemyWaterCast: { src: "./assets/audio/enemy_layers/enemy_water_cast.ogg", volume: 0.3 },
+      enemyBossVoice: { src: "./assets/audio/enemy_layers/enemy_boss_voice.ogg", volume: 0.3 },
+      enemyMinionVoice: { src: "./assets/audio/enemy_layers/enemy_minion_voice.ogg", volume: 0.22 },
+      enemyBossRoar: { src: "./assets/audio/enemy_layers/enemy_boss_roar.wav", volume: 0.38 },
+      floorStart: { src: "./assets/audio/floor_start.ogg", volume: 0.28 },
+      skillHammer: { src: "./assets/audio/skill_sfx/skill_hammer.ogg", volume: 0.34 },
+      skillRow: { src: "./assets/audio/skill_sfx/skill_row.wav", volume: 0.34 },
+      skillCross: { src: "./assets/audio/skill_sfx/skill_cross.wav", volume: 0.36 },
+      skillColor: { src: "./assets/audio/skill_sfx/skill_color.ogg", volume: 0.32 },
+      skillShuffle: { src: "./assets/audio/skill_sfx/skill_shuffle.ogg", volume: 0.34 },
+      skillPulse9: { src: "./assets/audio/skill_sfx/skill_pulse9.ogg", volume: 0.38 },
+      skillRainbow: { src: "./assets/audio/skill_sfx/skill_rainbow.wav", volume: 0.34 },
+      skillOverclock: { src: "./assets/audio/skill_sfx/skill_overclock.ogg", volume: 0.32 },
+      skillExecute: { src: "./assets/audio/skill_sfx/skill_execute.ogg", volume: 0.4 },
+      condChainMatrix: { src: "./assets/audio/skill_sfx/cond_chain_matrix.ogg", volume: 0.28 },
+      condFeverEngine: { src: "./assets/audio/skill_sfx/cond_fever_engine.wav", volume: 0.28 },
+      condPurifier: { src: "./assets/audio/skill_sfx/cond_purifier.ogg", volume: 0.26 },
+      condBossShunt: { src: "./assets/audio/skill_sfx/cond_boss_shunt.ogg", volume: 0.24 },
+      enemyMinionCast: { src: "./assets/audio/skill_sfx/enemy_minion_cast.ogg", volume: 0.3 },
+      enemyBossCast: { src: "./assets/audio/skill_sfx/enemy_boss_cast.ogg", volume: 0.34 },
+      enemyUltimateCast: { src: "./assets/audio/skill_sfx/enemy_ultimate_cast.ogg", volume: 0.4 },
     };
     let toggleButton = null;
     let unlocked = false;
