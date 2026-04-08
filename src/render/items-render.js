@@ -20,7 +20,9 @@ export function renderItemsView({
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "ability";
+    btn.classList.add("passive-skill");
     btn.dataset.item = id;
+    btn.draggable = true;
     btn.classList.add(`rarity-${ITEM_DEFS[id].rarity}`);
     btn.innerHTML = `<img class="item-icon item-image" data-anim-item="${id}" src="${getAnimatedItemImage(id)}" alt="${lt(ITEM_DEFS[id].name)}"><i class="item-level">${t("itemLevel", { level: getItemLevel(id) })}</i><i class="item-badge passive-tag">AUTO</i><strong>${lt(ITEM_DEFS[id].name)}</strong>`;
     itemWrapEl.appendChild(btn);

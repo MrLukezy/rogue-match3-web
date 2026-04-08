@@ -6,6 +6,16 @@ const DEFAULT_AUDIO_STATE = {
 export function createAudioManager({ storage = window.localStorage, storageKey = "rogue-match3-audio" } = {}) {
   const manifest = {
     bgm: { src: "./assets/audio/bgm_battle_loop.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_ember_hollows: { src: "./assets/audio/bgm/chapter_ember_hollows.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_frost_spire: { src: "./assets/audio/bgm/chapter_frost_spire.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_stone_grove: { src: "./assets/audio/bgm/chapter_stone_grove.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_storm_peaks: { src: "./assets/audio/bgm/chapter_storm_peaks.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_venom_bloom: { src: "./assets/audio/bgm/chapter_venom_bloom.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_tidal_depths: { src: "./assets/audio/bgm/chapter_tidal_depths.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_mirror_circus: { src: "./assets/audio/bgm/chapter_mirror_circus.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_iron_forge: { src: "./assets/audio/bgm/chapter_iron_forge.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_eclipse_sanctum: { src: "./assets/audio/bgm/chapter_eclipse_sanctum.ogg", volume: 0.3, loop: true, kind: "music" },
+    bgm_void_throne: { src: "./assets/audio/bgm/chapter_void_throne.ogg", volume: 0.3, loop: true, kind: "music" },
     uiClick: { src: "./assets/audio/ui_click.ogg", volume: 0.42 },
     uiError: { src: "./assets/audio/ui_error_game.mp3", volume: 0.5 },
     gemTap: { src: "./assets/audio/gem_sfx/gem_clear_main.mp3", volume: 0.9 },
@@ -60,6 +70,7 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
   let unlocked = false;
   let musicStarted = false;
   let musicEl = null;
+  let currentMusicName = "bgm";
   const state = loadState();
 
   function loadState() {
@@ -79,9 +90,15 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
     }
   }
 
-  function ensureMusic() {
-    if (musicEl) return musicEl;
-    const cfg = manifest.bgm;
+  function ensureMusic(name = currentMusicName) {
+    const key = manifest[name] ? name : "bgm";
+    if (musicEl && currentMusicName === key) return musicEl;
+    if (musicEl) {
+      try { musicEl.pause(); } catch {}
+      musicEl = null;
+    }
+    currentMusicName = key;
+    const cfg = manifest[key];
     musicEl = new Audio(cfg.src);
     musicEl.loop = true;
     musicEl.preload = "auto";
@@ -99,7 +116,7 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
 
   function syncMusicVolume() {
     if (!musicEl) return;
-    const cfg = manifest.bgm;
+    const cfg = manifest[currentMusicName] || manifest.bgm;
     musicEl.volume = (cfg.volume ?? 0.3) * state.masterVolume;
     musicEl.muted = state.muted;
   }
@@ -120,9 +137,9 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
     return true;
   }
 
-  async function startMusic() {
+  async function startMusic(name = currentMusicName) {
     if (state.muted) return false;
-    const audio = ensureMusic();
+    const audio = ensureMusic(name);
     audio.muted = false;
     if (musicStarted && !audio.paused) return true;
     musicStarted = true;
@@ -139,6 +156,12 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
     if (!musicEl) return;
     musicEl.pause();
     musicStarted = false;
+  }
+
+  async function playChapterMusic(chapterId) {
+    const musicName = chapterId ? `bgm_${chapterId}` : "bgm";
+    await unlock();
+    return startMusic(musicName);
   }
 
   async function toggleMute(forceMuted = !state.muted) {
@@ -207,6 +230,7 @@ export function createAudioManager({ storage = window.localStorage, storageKey =
     unlock,
     play,
     startMusic,
+    playChapterMusic,
     stopMusic,
     toggleMute,
     setMasterVolume,

@@ -133,8 +133,9 @@ export function renderBoardView({
       block.className = `obstacle${value.ash ? " ash" : ""}`;
       cell.appendChild(block);
     } else if (isGem(value)) {
+      const shownColor = Number.isInteger(value.disguisedColor) && selected !== i ? value.disguisedColor : value.color;
       const gem = document.createElement("div");
-      gem.className = `gem g-${value.color}`;
+      gem.className = `gem g-${shownColor}`;
       if (value.special) gem.classList.add(`sp-${value.special}`);
       if (value.explosive) gem.classList.add("sp-bomb");
       if (value.lineH) gem.classList.add("sp-line_h");
@@ -161,9 +162,9 @@ export function renderBoardView({
 
       const icon = document.createElement("img");
       icon.className = "gem-icon gem-image";
-      icon.dataset.animGem = String(value.color);
-      icon.src = getAnimatedGemImage(value.color);
-      icon.alt = `gem-${value.color}`;
+      icon.dataset.animGem = String(shownColor);
+      icon.src = getAnimatedGemImage(shownColor);
+      icon.alt = `gem-${shownColor}`;
       gem.appendChild(icon);
 
       cell.appendChild(gem);

@@ -258,6 +258,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   let inputLocked = false;
   let clearAnim = new Set();
   let fallAnim = new Set();
+  let draggedSkillId = null;
   let gemClearPitchStep = 0;
   let activeShards = 0;
   let boardSize = MIN_BOARD_SIZE;
@@ -531,8 +532,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function grantSkillLevel(id, levelGain = 1) {
     if (!isAllowedCombatSkill(id)) return;
+    const existed = hasItemType(id);
     if (!hasItemType(id)) ensureItemType(id);
-    state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(id) + levelGain);
+    state.itemLevels[id] = existed ? Math.max(ITEM_BASE_LEVEL, getItemLevel(id) + 1) : ITEM_BASE_LEVEL;
     state.items[id] = 0;
     queueSkillGuideIfNew(id);
   }
@@ -545,12 +547,26 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (!isAllowedCombatSkill(newId)) return false;
     const slotIndex = state.itemSlots.indexOf(replacedId);
     if (slotIndex < 0) return false;
+    const existed = hasItemType(newId);
     delete state.itemLevels[replacedId];
     delete state.items[replacedId];
     state.itemSlots[slotIndex] = newId;
-    state.itemLevels[newId] = Math.max(ITEM_BASE_LEVEL, (state.itemLevels[newId] || 0) + levelGain);
+    state.itemLevels[newId] = existed ? Math.max(ITEM_BASE_LEVEL, (state.itemLevels[newId] || 0) + 1) : ITEM_BASE_LEVEL;
     state.items[newId] = 0;
     queueSkillGuideIfNew(newId);
+    return true;
+  }
+
+  function reorderCarriedSkill(fromId, toId) {
+    if (!fromId || !toId || fromId === toId) return false;
+    const fromIndex = state.itemSlots.indexOf(fromId);
+    const toIndex = state.itemSlots.indexOf(toId);
+    if (fromIndex < 0 || toIndex < 0) return false;
+    const next = [...state.itemSlots];
+    next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, fromId);
+    state.itemSlots = next;
+    renderItems();
     return true;
   }
 
@@ -656,6 +672,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
     if (guideTabGemsEl) guideTabGemsEl.addEventListener("click", () => setGuideTab("gems"));
     if (guideTabSkillsEl) guideTabSkillsEl.addEventListener("click", () => setGuideTab("skills"));
+    if (itemWrapEl) {
+      itemWrapEl.addEventListener("dragstart", onSkillDragStart);
+      itemWrapEl.addEventListener("dragover", onSkillDragOver);
+      itemWrapEl.addEventListener("drop", onSkillDrop);
+      itemWrapEl.addEventListener("dragend", onSkillDragEnd);
+      itemWrapEl.addEventListener("dragleave", (event) => {
+        const btn = event.target.closest?.(".ability.drag-over");
+        if (btn) btn.classList.remove("drag-over");
+      });
+    }
 
     window.addEventListener("resize", updateResponsiveScale);
     window.addEventListener("orientationchange", updateResponsiveScale);
@@ -1345,6 +1371,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     state.floorThreat = { label: lt(threat.label), bossGain: threat.bossGain, pressure: threat.pressure };
     state.floorTheme = theme;
     applyThemeVisuals(theme);
+    audio.playChapterMusic?.(theme.id);
     const unlockedNewColor = state.activeGemColors.length > previousColorCount;
 
     state.targetScore = Math.floor(cfg.target * (threat.targetMul + route.targetMulDelta));
@@ -1744,6 +1771,43 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const related = event.relatedTarget;
     if (related && related.closest && related.closest("#itemWrap")) return;
     itemTooltipEl.classList.add("hidden");
+  }
+
+  function onSkillDragStart(event) {
+    const btn = event.target.closest(".ability[data-item]");
+    if (!btn) return;
+    draggedSkillId = btn.dataset.item || null;
+    if (!draggedSkillId) return;
+    btn.classList.add("dragging");
+    try {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", draggedSkillId);
+    } catch {}
+  }
+
+  function onSkillDragOver(event) {
+    const btn = event.target.closest(".ability[data-item]");
+    if (!btn || !draggedSkillId || btn.dataset.item === draggedSkillId) return;
+    event.preventDefault();
+    try { event.dataTransfer.dropEffect = "move"; } catch {}
+    itemWrapEl?.querySelectorAll(".ability.drag-over").forEach((el) => el.classList.remove("drag-over"));
+    btn.classList.add("drag-over");
+  }
+
+  function onSkillDragEnd() {
+    itemWrapEl?.querySelectorAll(".ability.dragging, .ability.drag-over").forEach((el) => {
+      el.classList.remove("dragging");
+      el.classList.remove("drag-over");
+    });
+    draggedSkillId = null;
+  }
+
+  function onSkillDrop(event) {
+    const btn = event.target.closest(".ability[data-item]");
+    if (!btn || !draggedSkillId) return;
+    event.preventDefault();
+    reorderCarriedSkill(draggedSkillId, btn.dataset.item);
+    onSkillDragEnd();
   }
 
   async function onBoardClick(event) {
@@ -2460,9 +2524,22 @@ const CHAPTER_BOSS_ANIMATIONS = {
       const cell = state.board[idx];
       let to = randColor();
       if (to === cell.color) to = nextGemColor(cell.color);
-      cell.color = to;
+      cell.disguisedColor = to;
     }
     return picked;
+  }
+
+  function disguiseTargets(indices) {
+    const changed = [];
+    for (const idx of indices || []) {
+      const cell = state.board[idx];
+      if (!isGem(cell)) continue;
+      let to = randColor();
+      if (to === cell.color) to = nextGemColor(cell.color);
+      cell.disguisedColor = to;
+      changed.push(idx);
+    }
+    return changed;
   }
 
   function markTideRows(count) {
@@ -3412,15 +3489,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
         const { row } = rotateRow();
         const rowTargets = indicesInRow(row).filter((idx) => isGem(state.board[idx]));
         shuffle(rowTargets);
-        let changed = 0;
-        for (const idx of rowTargets.slice(0, state.boss.elite ? 3 : 2)) {
-          const cell = state.board[idx];
-          if (!isGem(cell)) continue;
-          let to = randColor();
-          if (to === cell.color) to = nextGemColor(cell.color);
-          cell.color = to;
-          changed += 1;
-        }
+        const changed = disguiseTargets(rowTargets.slice(0, state.boss.elite ? 3 : 2)).length;
         setBossCastHint(lt(skill.name), `第 ${row + 1} 行出现伪装连线，${changed} 枚被伪装`, `row ${row + 1} faked, ${changed} disguised`);
         notifyBossCast(lt(skill.name));
         break;
@@ -3847,30 +3916,43 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return candidates.slice(0, Math.min(count, candidates.length));
   }
 
-  function buildOffensiveSkillEffects(valid, gemTargets, chain, expandedInfo) {
-    const reserved = new Set(valid);
+  function pickPreferredTargetAnchor(candidateIndices, covered = new Set()) {
+    const unique = [...new Set((candidateIndices || []).filter((idx) => isGem(state.board[idx])))];
+    const preferred = unique.filter((idx) => !covered.has(idx));
+    if (preferred.length > 0) return randomPick(preferred);
+    if (unique.length > 0) return randomPick(unique);
+    const fallback = getBoardGemIndices().filter((idx) => !covered.has(idx));
+    if (fallback.length > 0) return randomPick(fallback);
+    const all = getBoardGemIndices();
+    return all.length > 0 ? randomPick(all) : null;
+  }
+
+  function buildOffensiveSkillEffects(seedGemTargets) {
     const effects = [];
     const orderedSkills = getCarriedItems();
-    const pushEffect = (id, indices, { allowReserved = false } = {}) => {
-      const unique = [...new Set((indices || []).filter((idx) => (allowReserved || !reserved.has(idx)) && idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))];
-      if (unique.length <= 0) return;
-      unique.forEach((idx) => reserved.add(idx));
-      effects.push({ id, name: lt(ITEM_DEFS[id].name), indices: unique, anchor: unique[0], skillType: ITEM_DEFS[id]?.type || null });
-    };
+    const covered = new Set(seedGemTargets || []);
+    let triggerPool = [...new Set((seedGemTargets || []).filter((idx) => isGem(state.board[idx])))];
 
     for (const id of orderedSkills) {
       const def = ITEM_DEFS[id];
-      if (!def) continue;
+      if (!def || triggerPool.length <= 0) continue;
       const triggerProb = Math.min(1, Number(ITEM_TRIGGERS[id]?.(itemPower(id)) ?? 1));
-      if (Math.random() > triggerProb) continue;
-      const sourceTargets = [...valid];
-      const baseTargets = [...new Set(sourceTargets)].filter((idx) => isGem(state.board[idx]));
-      const anchor = baseTargets[0];
-      if (anchor == null) continue;
+      const triggerCount = triggerPool.length;
+      const produced = [];
 
-      const indices = getItemTargets(id, anchor);
-      const fallback = indices.length > 0 ? indices : [anchor];
-      pushEffect(id, fallback, { allowReserved: true });
+      for (let attempt = 0; attempt < triggerCount; attempt += 1) {
+        if (Math.random() > triggerProb) continue;
+        const anchor = pickPreferredTargetAnchor(triggerPool, covered);
+        if (anchor == null) continue;
+        const indices = getItemTargets(id, anchor);
+        const unique = [...new Set((indices.length > 0 ? indices : [anchor]).filter((idx) => idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))];
+        if (unique.length <= 0) continue;
+        unique.forEach((idx) => covered.add(idx));
+        effects.push({ id, name: lt(ITEM_DEFS[id].name), indices: unique, anchor, skillType: ITEM_DEFS[id]?.type || null });
+        produced.push(...unique);
+      }
+
+      triggerPool = [...new Set(produced.filter((idx) => isGem(state.board[idx])))];
     }
 
     return effects;
@@ -3917,24 +3999,58 @@ const CHAPTER_BOSS_ANIMATIONS = {
       renderAll();
       await sleep(260);
 
-      const skillEffects = !passiveSkillTriggered && (source === "normal" || source === "combo")
-        ? buildOffensiveSkillEffects(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo)
-        : [];
-      if (skillEffects.length > 0) {
+      let passiveSkillCastCount = 0;
+      if (!passiveSkillTriggered && (source === "normal" || source === "combo")) {
         passiveSkillTriggered = true;
-        await playPassiveSkillSequence(skillEffects);
-        for (const effect of skillEffects) {
-          if (rollCriticalBlessing(lt(ITEM_DEFS[effect.id]?.name), getSkillButtonCenter(effect.id) || getViewportCenter())) {
-            effect.indices = [...new Set([...effect.indices, ...effect.indices])];
+        const orderedSkills = getCarriedItems();
+        const covered = new Set(valid.filter((idx) => isGem(state.board[idx])));
+        let triggerPool = [...covered];
+
+        for (const id of orderedSkills) {
+          const def = ITEM_DEFS[id];
+          if (!def || triggerPool.length <= 0) continue;
+          const triggerProb = Math.min(1, Number(ITEM_TRIGGERS[id]?.(itemPower(id)) ?? 1));
+          const triggerCount = triggerPool.length;
+          const nextTriggerPool = [];
+
+          for (let attempt = 0; attempt < triggerCount; attempt += 1) {
+            if (Math.random() > triggerProb) continue;
+            const anchor = pickPreferredTargetAnchor(triggerPool, covered);
+            if (anchor == null) continue;
+            const indices = getItemTargets(id, anchor);
+            const effect = {
+              id,
+              name: lt(ITEM_DEFS[id].name),
+              indices: [...new Set((indices.length > 0 ? indices : [anchor]).filter((idx) => idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))],
+              anchor,
+              skillType: ITEM_DEFS[id]?.type || null,
+            };
+            if (effect.indices.length <= 0) continue;
+
+            effect.indices.forEach((idx) => covered.add(idx));
+            await playPassiveSkillSequence([effect]);
+            passiveSkillCastCount += 1;
+
+            const resolvedTargets = await applySkillEffect(effect.id, effect.anchor ?? effect.indices[0], effect.indices);
+            const effectTargets = resolvedTargets.length > 0 ? resolvedTargets : (effect.skillType === "destruction" ? effect.indices : []);
+            const freshTargets = [...new Set(effectTargets.filter((idx) => idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null && !valid.includes(idx)))];
+            if (freshTargets.length > 0) {
+              const expandedFromSkill = expandWithSpecialTriggers(freshTargets, MAX_SKILL_CHAIN);
+              const followupGemTargets = expandedFromSkill.targets.filter((idx) => isGem(state.board[idx]) && !covered.has(idx));
+              for (const idx of expandedFromSkill.targets) {
+                if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
+              }
+              nextTriggerPool.push(...followupGemTargets);
+              expandedFromSkill.targets.forEach((idx) => covered.add(idx));
+            }
           }
-          const resolvedTargets = await applySkillEffect(effect.id, effect.anchor ?? effect.indices[0], effect.indices);
-          const finalTargets = resolvedTargets.length > 0 ? resolvedTargets : (effect.skillType === "destruction" ? effect.indices : []);
-          for (const idx of finalTargets) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
+
+          triggerPool = [...new Set(nextTriggerPool)];
         }
       }
       clearAnim = new Set(valid);
       renderAll();
-      await sleep(skillEffects.length > 0 ? 120 : 40);
+      await sleep(passiveSkillCastCount > 0 ? 120 : 40);
 
       const gemTargets = valid.filter((i) => isGem(state.board[i]));
       const obstacles = valid.filter((i) => isObstacle(state.board[i])).length;
@@ -3972,11 +4088,11 @@ const CHAPTER_BOSS_ANIMATIONS = {
       const ashCreated = triggerThunderAshOnClear(gemTargets);
       breakAdjacentObstacles(gemTargets);
 
-        if (chain === 1 && localSpawnMap && localSpawnMap.size > 0) {
+      let pendingSpecialSpawn = null;
+      if (chain === 1 && localSpawnMap && localSpawnMap.size > 0) {
         const spawnIndex = pickSpawnIndex(localSpawnMap, preferSpawnIndex);
-        if (spawnIndex !== null && state.board[spawnIndex] === null) {
-          state.board[spawnIndex] = { kind: "gem", color: randColor(), special: localSpawnMap.get(spawnIndex), glass: false, burning: false, poisonedTurns: 0, frostedTurns: 0, frozen: false, lockedTurns: 0, holyMarked: false, voidMarked: false, slippery: false };
-          spawnShockwaveFX(spawnIndex, true);
+        if (spawnIndex !== null) {
+          pendingSpecialSpawn = { index: spawnIndex, special: localSpawnMap.get(spawnIndex) };
         }
       }
 
@@ -3998,19 +4114,20 @@ const CHAPTER_BOSS_ANIMATIONS = {
           : `${lt(getEncounterName(state.floorTheme))} takes ${inflicted} damage and drops to ${state.boss.hp}/${state.boss.maxHp}`;
       }
 
-      renderAll();
-      await sleep(120);
-
-      clearAnim.clear();
-      renderAll();
-      await sleep(90);
-
       const moved = collapseBoard();
       const born = refillBoard();
-      fallAnim = new Set([...moved, ...born]);
+      if (pendingSpecialSpawn) {
+        const currentCell = state.board[pendingSpecialSpawn.index];
+        if (isGem(currentCell)) {
+          state.board[pendingSpecialSpawn.index] = { ...currentCell, special: pendingSpecialSpawn.special };
+          spawnShockwaveFX(pendingSpecialSpawn.index, true);
+        }
+      }
+      fallAnim = new Set([...moved, ...born, ...(pendingSpecialSpawn ? [pendingSpecialSpawn.index] : [])]);
       renderAll();
       await sleep(230);
       fallAnim.clear();
+      clearAnim.clear();
 
       maybeDropItem(chain);
 
@@ -4953,14 +5070,14 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function createNewItemReward(id, options = {}) {
-    const bonus = state.perks.vault_expander ? 2 : 1;
+    const bonus = 1;
     return {
       type: "item",
       rarity: ITEM_DEFS[id].rarity,
       title: i18n.getLanguage() === "zh-CN" ? `新技能：${lt(ITEM_DEFS[id].name)}` : `New Skill: ${lt(ITEM_DEFS[id].name)}`,
       desc: itemSlotAvailable()
-        ? (i18n.getLanguage() === "zh-CN" ? `将 ${lt(ITEM_DEFS[id].name)} 加入你的作战槽位，并直接提升到 ${t("itemLevel", { level: bonus })}。` : `Add ${lt(ITEM_DEFS[id].name)} to your combat bar at Lv.${bonus}.`)
-        : (i18n.getLanguage() === "zh-CN" ? `技能栏已满，可主动选择替换一个已装备技能。` : `Your skill bar is full, so you may choose one equipped skill to replace.`),
+        ? (i18n.getLanguage() === "zh-CN" ? `将 ${lt(ITEM_DEFS[id].name)} 加入你的作战槽位，初始为 ${t("itemLevel", { level: bonus })}。` : `Add ${lt(ITEM_DEFS[id].name)} to your combat bar at Lv.${bonus}.`)
+        : (i18n.getLanguage() === "zh-CN" ? `技能栏已满：选择此项后，可在下一步替换一个已装备技能为 ${lt(ITEM_DEFS[id].name)}。` : `Skill bar full: choosing this lets you replace one equipped skill with ${lt(ITEM_DEFS[id].name)}.`),
       apply: async () => {
         if (itemSlotAvailable() || hasItemType(id)) {
           unlockOrUpgradeSkill(id, bonus);
@@ -4973,7 +5090,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function createUpgradeReward(id) {
-    const levels = ITEM_DEFS[id].rarity === "legendary" ? 1 : 2;
+    const levels = 1;
     return {
       type: "item",
       rarity: ITEM_DEFS[id].rarity,
@@ -5239,7 +5356,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function spawnPassiveSkillFX(effect, originOverride = null) {
     const skillOrigin = originOverride || getSkillButtonCenter(effect.id);
-    const targets = effect.indices.map((idx) => ({ idx, point: getCellCenter(idx) })).filter((entry) => Boolean(entry.point));
+    const orderedIndices = [effect.anchor, ...(effect.indices || []).filter((idx) => idx !== effect.anchor)].filter((idx) => Number.isInteger(idx));
+    const targets = orderedIndices.map((idx) => ({ idx, point: getCellCenter(idx) })).filter((entry) => Boolean(entry.point));
     const points = targets.map((entry) => entry.point);
     if (points.length === 0) return;
     if (skillOrigin) {
@@ -5335,7 +5453,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       const castOrigin = await playSkillIconReveal(effect);
       spawnPassiveSkillFX(effect, castOrigin);
       spawnShatterFX(effect.indices);
-      spawnFloatText(effect.name, effect.indices[0]);
+      spawnFloatText(effect.name, effect.anchor ?? effect.indices[0]);
       const audioProfile = getSkillAudioProfile(effect.id);
       audio.play(audioProfile.sound, { volume: audioProfile.volume, rate: audioProfile.rate });
       if (audioProfile.accent) audio.play(audioProfile.accent.sound, { volume: audioProfile.accent.volume, rate: audioProfile.accent.rate });
@@ -5614,6 +5732,28 @@ const CHAPTER_BOSS_ANIMATIONS = {
     renderGuideList();
     renderBoard();
     boardEl.style.setProperty("--board-size", String(boardSize));
+    boardWrapEl?.style.setProperty("--chapter-board-tone", getChapterBoardTone());
+  }
+
+  function getChapterBoardTone() {
+    const themeId = state.floorTheme?.id || "ember_hollows";
+    const tones = {
+      crystal_mines: "hue-rotate(12deg) saturate(1.06) brightness(1.02)",
+      frozen_archive: "hue-rotate(-18deg) saturate(1.08) brightness(1.04)",
+      storm_forge: "hue-rotate(18deg) saturate(1.14) brightness(1.04)",
+      void_rift: "hue-rotate(48deg) saturate(1.12) brightness(0.98)",
+      ember_hollows: "hue-rotate(6deg) saturate(1.14) brightness(1.02)",
+      frost_spire: "hue-rotate(-20deg) saturate(1.1) brightness(1.05)",
+      stone_grove: "hue-rotate(26deg) saturate(1.02) brightness(0.98)",
+      storm_peaks: "hue-rotate(-12deg) saturate(1.18) brightness(1.04)",
+      venom_bloom: "hue-rotate(72deg) saturate(1.18) brightness(0.98)",
+      tidal_depths: "hue-rotate(-34deg) saturate(1.12) brightness(1.03)",
+      mirror_circus: "hue-rotate(118deg) saturate(1.08) brightness(1.04)",
+      iron_forge: "hue-rotate(14deg) saturate(1.22) brightness(1.01)",
+      eclipse_sanctum: "hue-rotate(152deg) saturate(1.08) brightness(1.02)",
+      void_throne: "hue-rotate(190deg) saturate(1.14) brightness(0.96)",
+    };
+    return tones[themeId] || "hue-rotate(0deg) saturate(1.04) brightness(1.01)";
   }
 
   function renderHUD() {
