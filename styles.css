@@ -1064,6 +1064,229 @@ h1 { margin: 0; font-size: 28px; letter-spacing: 0.015em; }
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
+.blessing-chip {
+  position: relative;
+  overflow: hidden;
+}
+
+.blessing-chip::after,
+.choice-blessing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent 35%, transparent 65%, rgba(255,255,255,0.06));
+  opacity: 0.75;
+}
+
+.perk-chip-head,
+.choice-blessing {
+  position: relative;
+}
+
+.perk-chip-head {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.perk-chip-icon-shell,
+.choice-blessing-art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.18), rgba(255,255,255,0.04) 45%, rgba(0,0,0,0.14) 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 10px 20px rgba(3, 10, 20, 0.24);
+}
+
+.perk-chip-icon-shell {
+  width: 54px;
+  height: 54px;
+}
+
+.perk-chip-copy {
+  min-width: 0;
+}
+
+.perk-chip-icon,
+.choice-blessing-icon {
+  position: relative;
+  z-index: 1;
+  object-fit: cover;
+  filter: saturate(1.06) drop-shadow(0 0 10px rgba(255,255,255,0.16));
+}
+
+.perk-chip-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.choice-blessing {
+  display: grid;
+  grid-template-columns: 108px 1fr;
+  gap: 14px;
+  align-items: center;
+  overflow: hidden;
+  min-height: 118px;
+}
+
+.choice-blessing-art {
+  width: 108px;
+  height: 108px;
+  border-radius: 18px;
+  isolation: isolate;
+}
+
+.choice-blessing-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.2), rgba(255,255,255,0) 22%, rgba(0,0,0,0) 58%, rgba(0,0,0,0.22) 100%),
+    radial-gradient(circle at 50% 24%, rgba(255, 244, 214, 0.18), rgba(255,255,255,0) 48%),
+    radial-gradient(circle at 50% 78%, rgba(0,0,0,0.2), rgba(0,0,0,0) 58%);
+}
+
+.choice-blessing-art::after {
+  content: "";
+  position: absolute;
+  inset: -22% 42% -18% -38%;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255,255,255,0) 18%, rgba(255,255,255,0.18) 42%, rgba(255,255,255,0.34) 50%, rgba(255,255,255,0.08) 58%, rgba(255,255,255,0) 78%);
+  opacity: 0;
+  transform: translateX(-28%) rotate(8deg);
+  transition: opacity 220ms ease, transform 420ms ease;
+}
+
+.choice-blessing-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.02);
+  transition: transform 220ms ease, filter 220ms ease;
+  filter:
+    saturate(1.08)
+    contrast(1.04)
+    brightness(0.98)
+    drop-shadow(0 10px 18px rgba(8, 12, 24, 0.32));
+}
+
+.choice-blessing-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.choice-blessing-copy strong {
+  margin-bottom: 6px;
+  line-height: 1.16;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 8px 18px rgba(0,0,0,0.22);
+}
+
+.choice-blessing-copy small {
+  line-height: 1.42;
+  color: rgba(228, 236, 246, 0.84);
+}
+
+.choice-blessing-glow {
+  position: absolute;
+  inset: 10%;
+  border-radius: 50%;
+  z-index: 1;
+  background: radial-gradient(circle, rgba(255,255,255,0.32), rgba(255,255,255,0.1) 34%, transparent 72%);
+  filter: blur(5px);
+  animation: blessingGlowPulse 1800ms ease-in-out infinite;
+}
+
+.choice:hover,
+.choice:focus-visible {
+  transform: translateY(-2px);
+}
+
+.choice:hover .choice-blessing-art::after,
+.choice:focus-visible .choice-blessing-art::after {
+  opacity: 1;
+  transform: translateX(34%) rotate(8deg);
+}
+
+.choice:hover .choice-blessing-icon,
+.choice:focus-visible .choice-blessing-icon {
+  transform: scale(1.06);
+  filter:
+    saturate(1.12)
+    contrast(1.06)
+    brightness(1.02)
+    drop-shadow(0 14px 24px rgba(8, 12, 24, 0.34));
+}
+
+@keyframes blessingGlowPulse {
+  0%, 100% {
+    transform: scale(0.94);
+    opacity: 0.42;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.9;
+  }
+}
+
+.blessing-fx-momentum .perk-chip-icon-shell,
+.blessing-fx-momentum .choice-blessing-art,
+.blessing-fx-combo .perk-chip-icon-shell,
+.blessing-fx-combo .choice-blessing-art,
+.blessing-fx-burst .perk-chip-icon-shell,
+.blessing-fx-burst .choice-blessing-art,
+.blessing-fx-reserve .perk-chip-icon-shell,
+.blessing-fx-reserve .choice-blessing-art {
+  box-shadow: inset 0 0 0 1px rgba(120, 220, 255, 0.18), 0 0 22px rgba(72, 180, 255, 0.18);
+}
+
+.blessing-fx-charge .perk-chip-icon-shell,
+.blessing-fx-charge .choice-blessing-art,
+.blessing-fx-counter .perk-chip-icon-shell,
+.blessing-fx-counter .choice-blessing-art,
+.blessing-fx-absorb .perk-chip-icon-shell,
+.blessing-fx-absorb .choice-blessing-art,
+.blessing-fx-debuff .perk-chip-icon-shell,
+.blessing-fx-debuff .choice-blessing-art,
+.blessing-fx-time .perk-chip-icon-shell,
+.blessing-fx-time .choice-blessing-art {
+  box-shadow: inset 0 0 0 1px rgba(183, 122, 255, 0.22), 0 0 24px rgba(163, 85, 255, 0.2);
+}
+
+.blessing-fx-aura .perk-chip-icon-shell,
+.blessing-fx-aura .choice-blessing-art,
+.blessing-fx-chain .perk-chip-icon-shell,
+.blessing-fx-chain .choice-blessing-art,
+.blessing-fx-barrage .perk-chip-icon-shell,
+.blessing-fx-barrage .choice-blessing-art,
+.blessing-fx-control .perk-chip-icon-shell,
+.blessing-fx-control .choice-blessing-art,
+.blessing-fx-precision .perk-chip-icon-shell,
+.blessing-fx-precision .choice-blessing-art {
+  box-shadow: inset 0 0 0 1px rgba(255, 165, 71, 0.22), 0 0 26px rgba(255, 146, 44, 0.2);
+}
+
+.blessing-fx-critical .perk-chip-icon-shell,
+.blessing-fx-critical .choice-blessing-art,
+.blessing-fx-desperate .perk-chip-icon-shell,
+.blessing-fx-desperate .choice-blessing-art,
+.blessing-fx-recovery .perk-chip-icon-shell,
+.blessing-fx-recovery .choice-blessing-art,
+.blessing-fx-purify .perk-chip-icon-shell,
+.blessing-fx-purify .choice-blessing-art,
+.blessing-fx-pulse .perk-chip-icon-shell,
+.blessing-fx-pulse .choice-blessing-art {
+  box-shadow: inset 0 0 0 1px rgba(255, 208, 96, 0.22), 0 0 28px rgba(141, 255, 212, 0.2);
+}
+
 .perk-chip span,
 .choice-rarity {
   display: inline-block;
@@ -2253,12 +2476,12 @@ body[data-theme="void_throne"] .board {
 
 .fx-passive-line.fx-row,
 .fx-passive-line.fx-time_freeze,
-.fx-passive-line.fx-chain_matrix {
+.fx-passive-line.fx-tacticalReserve {
   background: linear-gradient(90deg, rgba(255,255,255,0), var(--board-fx-primary, rgba(146, 226, 255, 0.98)), rgba(255,255,255,0));
   box-shadow: 0 0 18px var(--board-fx-glow, rgba(118, 202, 255, 0.42));
 }
 
-.fx-passive-line.fx-chain_matrix {
+.fx-passive-line.fx-tacticalReserve {
   background: linear-gradient(90deg, rgba(255,255,255,0), color-mix(in srgb, var(--board-fx-primary, rgba(255, 224, 136, 0.98)) 70%, #ffd978 30%), rgba(255,255,255,0));
   box-shadow: 0 0 20px color-mix(in srgb, var(--board-fx-glow, rgba(255, 196, 116, 0.44)) 70%, rgba(255, 210, 118, 0.48) 30%);
 }
@@ -2287,7 +2510,7 @@ body[data-theme="void_throne"] .board {
   box-shadow: 0 0 16px rgba(180, 146, 255, 0.36);
 }
 
-.fx-passive-link.fx-purifier_sigil {
+.fx-passive-link.fx-purifierSigil {
   background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255, 246, 196, 0.98), rgba(178, 245, 255, 0.96), rgba(255,255,255,0));
   box-shadow: 0 0 18px rgba(194, 240, 255, 0.38);
 }
@@ -2334,10 +2557,10 @@ body[data-theme="void_throne"] .board {
   border: 3px solid rgba(255, 220, 148, 0.72);
 }
 
-.fx-passive-area.fx-fever_engine {
-  background: radial-gradient(circle, rgba(255, 238, 176, 0.2), rgba(255, 136, 98, 0.34) 40%, rgba(255, 106, 106, 0) 74%);
-  box-shadow: 0 0 36px rgba(255, 144, 108, 0.34);
-  border: 3px solid rgba(255, 188, 126, 0.78);
+.fx-passive-area.fx-restorativePulse {
+  background: radial-gradient(circle, rgba(206, 248, 255, 0.22), rgba(118, 214, 255, 0.34) 40%, rgba(104, 140, 255, 0) 74%);
+  box-shadow: 0 0 36px rgba(126, 192, 255, 0.3);
+  border: 3px solid rgba(162, 230, 255, 0.76);
 }
 
 .fx-rainbow_burst::before {
@@ -2400,26 +2623,18 @@ body[data-theme="void_throne"] .board {
   box-shadow: 0 0 22px rgba(255, 120, 120, 0.34);
 }
 
-.fx-passive-slash.fx-boss_shunt {
-  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(240, 210, 255, 0.96), rgba(180, 108, 255, 0.92), rgba(72, 34, 132, 0.22), rgba(255,255,255,0));
-  box-shadow: 0 0 24px rgba(178, 112, 255, 0.36);
+.fx-passive-skill.fx-tacticalReserve::before {
+  background: radial-gradient(circle, rgba(255, 247, 208, 0.94), rgba(255, 208, 132, 0.76) 40%, rgba(255,255,255,0) 78%);
 }
 
-.fx-passive-skill.fx-chain_matrix::before {
-  background: radial-gradient(circle, rgba(255, 248, 214, 0.94), rgba(255, 184, 112, 0.76) 42%, rgba(255,255,255,0) 76%);
-}
-
-.fx-passive-skill.fx-fever_engine::before {
-  background: radial-gradient(circle, rgba(255, 244, 198, 0.96), rgba(255, 136, 98, 0.8) 42%, rgba(255,255,255,0) 76%);
-}
-
-.fx-passive-skill.fx-purifier_sigil::before {
+.fx-passive-skill.fx-purifierSigil::before {
   background: radial-gradient(circle, rgba(240, 250, 255, 0.82), rgba(196, 244, 255, 0.74) 38%, rgba(255,255,255,0) 78%);
 }
 
-.fx-passive-skill.fx-boss_shunt::before {
-  background: radial-gradient(circle, rgba(243, 228, 255, 0.98), rgba(170, 112, 255, 0.82) 38%, rgba(255,255,255,0) 78%);
+.fx-passive-skill.fx-restorativePulse::before {
+  background: radial-gradient(circle, rgba(228, 246, 255, 0.92), rgba(128, 214, 255, 0.76) 42%, rgba(255,255,255,0) 78%);
 }
+
 
 .fx-skill-cast-icon.passive-conditional {
   --skill-glow: rgba(200,162,255,0.28);

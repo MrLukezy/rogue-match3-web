@@ -25,6 +25,7 @@ export function createInitialState({ MIN_BOARD_SIZE, ITEM_ORDER, BLESSING_ORDER 
       skillCooldowns: {},     // 技能冷却追踪
       critActive: false,      // 暴击是否激活
       desperateMode: false,   // 绝境模式
+      restorativePulseTriggered: false,
     },
     modifier: null,
     modGlass: 0,
@@ -239,10 +240,20 @@ export function defaultCodex() {
   };
 
   return {
-    itemUse: { hammer: 0, row: 0, cross: 0, color: 0, shuffle: 0, screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
+    itemUse: {
+      blast: 0,
+      chainLightning: 0,
+      crossStrike: 0,
+      meteor: 0,
+      splatter: 0,
+      shatter: 0,
+      colorAssimilation: 0,
+      neighborMimic: 0,
+      explosiveEnchant: 0,
+      lineEnchant: 0,
+    },
     specialTrigger: { line_h: 0, line_v: 0, bomb: 0, rainbow: 0 },
     bossSeen,
-    skillUse: { screen_wipe: 0, rainbow_burst: 0, time_freeze: 0, boss_breaker: 0 },
     maxSingleClear: 0,
     maxChain: 0,
     runs: 0,
@@ -287,7 +298,6 @@ export function loadMeta(storage, META_KEY) {
         itemUse: { ...defaultCodex().itemUse, ...((parsed.codex || {}).itemUse || {}) },
         specialTrigger: { ...defaultCodex().specialTrigger, ...((parsed.codex || {}).specialTrigger || {}) },
         bossSeen: { ...defaultCodex().bossSeen, ...((parsed.codex || {}).bossSeen || {}) },
-        skillUse: { ...defaultCodex().skillUse, ...((parsed.codex || {}).skillUse || {}) },
         guideSeen: { ...defaultCodex().guideSeen, ...((parsed.codex || {}).guideSeen || {}) },
       },
     };
@@ -352,7 +362,7 @@ export function addKineticEnergy(state, amount, MOMENTUM_MAX) {
   const level = getBlessingLevel(state, "kineticAccumulation");
   if (level <= 0) return amount;
   
-  const cap = level === 1 ? 50 : level === 2 ? 75 : level === 3 ? 100 : level === 4 ? 150 : 200;
+  const cap = level === 1 ? 30 : level === 2 ? 45 : level === 3 ? 60 : level === 4 ? 80 : 100;
   const prev = state.blessingState.kineticEnergy;
   state.blessingState.kineticEnergy = Math.min(cap, prev + amount);
   
@@ -366,154 +376,51 @@ export function checkComboMania(state, comboCount) {
   const level = getBlessingLevel(state, "comboMania");
   if (level <= 0) return false;
   
-  const threshold = level >= 3 ? 2 : 3;
+  const threshold = level >= 4 ? 2 : 3;
   if (comboCount < threshold) return false;
   
-  const triggerProb = (15 + 15 * level) / 100;
+  const triggerProb = level === 1 ? 0.18 : level === 2 ? 0.28 : level === 3 ? 0.38 : level === 4 ? 0.5 : 0.62;
   return Math.random() < triggerProb;
-}
-
-// 幸运光环 - 提高技能触发概率
-export function getLuckyAuraBonus(state) {
-  const level = getBlessingLevel(state, "luckyAura");
-  if (level <= 0) return 0;
-  return (3 * level + 2) / 100;
 }
 
 // 暴击祝福 - 获取暴击概率
 export function getCriticalChance(state) {
   const level = getBlessingLevel(state, "criticalBlessing");
   if (level <= 0) return 0;
-  return (8 + 6 * level) / 100;
+  return level === 1 ? 0.12 : level === 2 ? 0.18 : level === 3 ? 0.24 : level === 4 ? 0.3 : 0.36;
 }
 
 // 暴击效果倍率
 export function getCriticalEffect(state) {
   const level = getBlessingLevel(state, "criticalBlessing");
   if (level <= 0) return 1.0;
-  return 1.3 + 0.4 * level;
+  return 2;
 }
 
 // 蓄能削弱效果
 export function getChargeWeakenRate(state) {
   const level = getBlessingLevel(state, "chargeWeaken");
   if (level <= 0) return 0;
-  return (8 * level + 2) / 100;
+  return level === 1 ? 0.12 : level === 2 ? 0.18 : level === 3 ? 0.24 : level === 4 ? 0.3 : 0.36;
 }
 
-// 技能冷却缩减
-export function getCooldownReduction(state) {
-  const level = getBlessingLevel(state, "cooldownReduction");
-  if (level <= 0) return 0;
-  return (8 * level + 2) / 100;
-}
-
-// 资源回收 - 检查是否返还技能冷却
-export function checkResourceRecovery(state) {
-  const level = getBlessingLevel(state, "resourceRecovery");
-  if (level <= 0) return false;
-  const refundProb = (3 + 5 * level) / 100;
-  return Math.random() < refundProb;
-}
-
-// 绝境逢生 - 检查低血量增益
-export function checkDesperateMode(state, hp, maxHp) {
+// 绝境逢生 - 检查低步数状态
+export function checkDesperateMode(state) {
   const level = getBlessingLevel(state, "desperateSurvival");
   if (level <= 0) return false;
-  
-  const threshold = 20 + 5 * level;
-  const hpPercent = (hp / maxHp) * 100;
-  state.blessingState.desperateMode = hpPercent <= threshold;
+
+  state.blessingState.desperateMode = Number(state.movesLeft || 0) < 5;
   return state.blessingState.desperateMode;
 }
 
-// 完美主义加成
-export function getPerfectionistBonus(state, matchCount) {
-  const level = getBlessingLevel(state, "perfectionist");
-  if (level <= 0) return 1.0;
-  
-  if (matchCount >= 5) return 1.4 + 0.2 * level;
-  if (matchCount >= 4) return 1.15 + 0.1 * level;
-  return 1.0;
-}
-
-// 连锁觉醒检测
-export function checkChainAwakening(state, chainCount) {
-  const level = getBlessingLevel(state, "chainAwakening");
-  if (level <= 0) return false;
-  if (chainCount < 3) return false;
-  
-  const mult = 0.8 + 0.4 * level;
-  const bonus = 8 + 3 * level;
-  const triggerProb = (0.1 + (chainCount - 3) * bonus / 100) * mult;
-  return Math.random() < triggerProb;
-}
-
-// 技能连发检测
-export function checkSkillBarrage(state) {
-  const level = getBlessingLevel(state, "skillBarrage");
-  if (level <= 0) return false;
-  
-  const triggerProb = (5 + 7 * level) / 100;
-  return Math.random() < triggerProb;
-}
-
-export function getSkillBarrageMax(state) {
-  const level = getBlessingLevel(state, "skillBarrage");
-  if (level <= 1) return 1;
-  if (level === 2) return 2;
-  if (level === 3) return 3;
-  if (level === 4) return 4;
-  return Infinity;
-}
-
-// 战场统治 - 重排检测
-export function checkBattlefieldControl(state) {
-  const level = getBlessingLevel(state, "battlefieldControl");
-  if (level <= 0) return false;
-  
-  const reshuffleProb = (3 + 4 * level) / 100;
-  return Math.random() < reshuffleProb;
-}
-
-// 动能转化 - 获取转化率
-export function getKineticConversionRate(state) {
-  const level = getBlessingLevel(state, "kineticConversion");
+export function getTacticalReserveMoves(state) {
+  const level = getBlessingLevel(state, "tacticalReserve");
   if (level <= 0) return 0;
-  return (5 + 10 * level) / 100;
+  return 2 + Math.floor(Math.random() * 4);
 }
 
-// 充能反击 - 获取反击伤害倍率
-export function getChargedCounterDamage(state) {
-  const level = getBlessingLevel(state, "chargedCounter");
+export function getPurifierSigilCleanseCount(state) {
+  const level = getBlessingLevel(state, "purifierSigil");
   if (level <= 0) return 0;
-  return 0.5 * Math.pow(2, level - 1);
-}
-
-// 充能反击触发概率
-export function getChargedCounterTrigger(state) {
-  const level = getBlessingLevel(state, "chargedCounter");
-  if (level <= 0) return 0;
-  return (15 + 15 * level) / 100;
-}
-
-// 能量吸收率
-export function getEnergyAbsorbRate(state) {
-  const level = getBlessingLevel(state, "energyAbsorb");
-  if (level <= 0) return 0;
-  return (3 + 7 * level) / 100;
-}
-
-// 蓄能感知阈值
-export function getChargeSenseThreshold(state) {
-  const level = getBlessingLevel(state, "chargeSense");
-  if (level <= 0) return 1.0;
-  return (60 - 10 * level) / 100;
-}
-
-// 能量吸收上限
-export function getEnergyAbsorbCap(state) {
-  const level = getBlessingLevel(state, "energyAbsorb");
-  if (level <= 0) return 0;
-  return 50 * Math.pow(2, level - 1);
+  return level * 2;
 }

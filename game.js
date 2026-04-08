@@ -16,6 +16,7 @@ import {
 import {
   MAX_ITEM_TYPES,
   ITEM_DEFS,
+  ITEM_FORMULAS,
   ITEM_TRIGGERS,
   ITEM_ANIM_FRAMES,
   ITEM_ORDER,
@@ -27,6 +28,8 @@ import { GUIDE_DEFS, GEM_IMAGE_BY_COLOR, GEM_ANIM_FRAMES, GEM_POOL_BY_FLOOR, GEM
 import { UI_IMAGES, BOSS_ANIM_FRAMES, BOSS_PROFILES } from "./src/config/boss-ui-config.js";
 import {
   BLESSING_DEFS,
+  BLESSING_EFFECT_BY_ID,
+  BLESSING_IMAGE_BY_ID,
   BLESSING_ORDER,
 } from "./src/config/blessings-config.js";
 import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
@@ -57,20 +60,12 @@ import {
   upgradeBlessing as upgradeStateBlessing,
   addKineticEnergy as applyKineticEnergy,
   checkComboMania as rollComboMania,
-  getLuckyAuraBonus as readLuckyAuraBonus,
   getCriticalChance as readCriticalChance,
   getCriticalEffect as readCriticalEffect,
   getChargeWeakenRate as readChargeWeakenRate,
   checkDesperateMode as updateDesperateMode,
-  getPerfectionistBonus as readPerfectionistBonus,
-  checkChainAwakening as rollChainAwakening,
-  checkBattlefieldControl as rollBattlefieldControl,
-  getKineticConversionRate as readKineticConversionRate,
-  getChargedCounterDamage as readChargedCounterDamage,
-  getChargedCounterTrigger as readChargedCounterTrigger,
-  getEnergyAbsorbRate as readEnergyAbsorbRate,
-  getChargeSenseThreshold as readChargeSenseThreshold,
-  getEnergyAbsorbCap as readEnergyAbsorbCap,
+  getTacticalReserveMoves as readTacticalReserveMoves,
+  getPurifierSigilCleanseCount as readPurifierSigilCleanseCount,
   defaultCodex,
   loadMeta as loadMetaState,
   saveMeta as persistMeta,
@@ -291,6 +286,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return initial;
   }
 
+  sanitizeCombatSkills();
+
   function getItemCount(id) {
     return readItemCount(state, id);
   }
@@ -431,6 +428,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function getCarriedItems() {
+    sanitizeCombatSkills();
     return listCarriedItems(state, ITEM_DEFS);
   }
 
@@ -462,10 +460,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return upgradeStateBlessing(state, id, levels);
   }
 
-  function getLuckyAuraBonus() {
-    return readLuckyAuraBonus(state);
-  }
-
   function getCriticalChance() {
     return readCriticalChance(state);
   }
@@ -478,40 +472,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return readChargeWeakenRate(state);
   }
 
-  function getPerfectionistBonus(matchCount) {
-    return readPerfectionistBonus(state, matchCount);
-  }
-
-  function checkBattlefieldControl() {
-    return rollBattlefieldControl(state);
-  }
-
   function checkDesperateMode() {
-    return updateDesperateMode(state, Number(state.boss.hp || 0), Math.max(1, Number(state.boss.maxHp || 1)));
+    return updateDesperateMode(state);
   }
 
-  function getKineticConversionRate() {
-    return readKineticConversionRate(state);
+  function getTacticalReserveMoves() {
+    return readTacticalReserveMoves(state);
   }
 
-  function getChargedCounterDamage() {
-    return readChargedCounterDamage(state);
-  }
-
-  function getChargedCounterTrigger() {
-    return readChargedCounterTrigger(state);
-  }
-
-  function getEnergyAbsorbRate() {
-    return readEnergyAbsorbRate(state);
-  }
-
-  function getChargeSenseThreshold() {
-    return readChargeSenseThreshold(state);
-  }
-
-  function getEnergyAbsorbCap() {
-    return readEnergyAbsorbCap(state);
+  function getPurifierSigilCleanseCount() {
+    return readPurifierSigilCleanseCount(state);
   }
 
   function addKineticEnergy(amount) {
@@ -520,10 +490,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function checkComboMania(chainCount) {
     return rollComboMania(state, chainCount);
-  }
-
-  function checkChainAwakening(chainCount) {
-    return rollChainAwakening(state, chainCount);
   }
 
   function ensureItemType(id) {
@@ -542,7 +508,29 @@ const CHAPTER_BOSS_ANIMATIONS = {
     spendStateItemCharge(state, id);
   }
 
+  function isAllowedCombatSkill(id) {
+    return ITEM_ORDER.includes(id);
+  }
+
+  function sanitizeCombatSkills() {
+    const allowed = new Set(ITEM_ORDER);
+    state.itemSlots = (state.itemSlots || []).filter((id) => allowed.has(id) && ITEM_DEFS[id]);
+
+    for (const id of Object.keys(state.items || {})) {
+      if (!allowed.has(id)) delete state.items[id];
+    }
+    for (const id of Object.keys(state.itemLevels || {})) {
+      if (!allowed.has(id)) delete state.itemLevels[id];
+    }
+
+    for (const id of ITEM_ORDER) {
+      if (!(id in state.items)) state.items[id] = 0;
+      if (!(id in state.itemLevels)) state.itemLevels[id] = 0;
+    }
+  }
+
   function grantSkillLevel(id, levelGain = 1) {
+    if (!isAllowedCombatSkill(id)) return;
     if (!hasItemType(id)) ensureItemType(id);
     state.itemLevels[id] = Math.max(ITEM_BASE_LEVEL, getItemLevel(id) + levelGain);
     state.items[id] = 0;
@@ -554,6 +542,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function replaceSkill(replacedId, newId, levelGain = 1) {
+    if (!isAllowedCombatSkill(newId)) return false;
     const slotIndex = state.itemSlots.indexOf(replacedId);
     if (slotIndex < 0) return false;
     delete state.itemLevels[replacedId];
@@ -1142,21 +1131,18 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const rows = [
       [i18n.getLanguage() === "zh-CN" ? "对局次数" : "Runs", c.runs],
       [i18n.getLanguage() === "zh-CN" ? "最高连锁" : "Best Chain", c.maxChain],
-      [i18n.getLanguage() === "zh-CN" ? "锤子使用" : "Hammer Uses", c.itemUse.hammer],
-      [i18n.getLanguage() === "zh-CN" ? "横扫使用" : "Row Sweep Uses", c.itemUse.row],
-      [i18n.getLanguage() === "zh-CN" ? "十字爆发使用" : "Cross Burst Uses", c.itemUse.cross],
-      [i18n.getLanguage() === "zh-CN" ? "彩色炸弹使用" : "Color Bomb Uses", c.itemUse.color],
-      [i18n.getLanguage() === "zh-CN" ? "洗牌使用" : "Shuffle Uses", c.itemUse.shuffle],
+      [i18n.getLanguage() === "zh-CN" ? "爆破使用" : "Blast Uses", c.itemUse.blast],
+      [i18n.getLanguage() === "zh-CN" ? "连锁闪电使用" : "Chain Lightning Uses", c.itemUse.chainLightning],
+      [i18n.getLanguage() === "zh-CN" ? "十字斩使用" : "Cross Strike Uses", c.itemUse.crossStrike],
+      [i18n.getLanguage() === "zh-CN" ? "色彩同化使用" : "Color Assimilation Uses", c.itemUse.colorAssimilation],
+      [i18n.getLanguage() === "zh-CN" ? "爆炸强化使用" : "Explosive Enchant Uses", c.itemUse.explosiveEnchant],
+      [i18n.getLanguage() === "zh-CN" ? "横竖强化使用" : "Line Enchant Uses", c.itemUse.lineEnchant],
       [i18n.getLanguage() === "zh-CN" ? "直线特效触发" : "Line Triggers", c.specialTrigger.line_h + c.specialTrigger.line_v],
       [i18n.getLanguage() === "zh-CN" ? "炸弹触发" : "Bomb Triggers", c.specialTrigger.bomb],
       [i18n.getLanguage() === "zh-CN" ? "彩虹触发" : "Rainbow Triggers", c.specialTrigger.rainbow],
       [i18n.getLanguage() === "zh-CN" ? "Boss：余烬火花" : "Boss: Ember Spark", c.bossSeen.ember_spark],
       [i18n.getLanguage() === "zh-CN" ? "Boss：绝对静止" : "Boss: Absolute Stillness", c.bossSeen.absolute_stillness],
       [i18n.getLanguage() === "zh-CN" ? "Boss：星渊终末" : "Boss: Star Abyss End", c.bossSeen.star_abyss_end],
-      [i18n.getLanguage() === "zh-CN" ? "全屏脉冲使用" : "Screen Pulse Uses", c.skillUse.screen_wipe],
-      [i18n.getLanguage() === "zh-CN" ? "彩虹爆发使用" : "Rainbow Burst Uses", c.skillUse.rainbow_burst],
-      [i18n.getLanguage() === "zh-CN" ? "时间冻结使用" : "Time Freeze Uses", c.skillUse.time_freeze],
-      [i18n.getLanguage() === "zh-CN" ? "Boss 粉碎者使用" : "Boss Breaker Uses", c.skillUse.boss_breaker],
       [i18n.getLanguage() === "zh-CN" ? "单次最高清除" : "Best Single Clear", c.maxSingleClear],
     ];
 
@@ -1201,6 +1187,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function startRun() {
     state = createInitialState();
+    sanitizeCombatSkills();
     pauseOverlayDepth = 0;
     selected = null;
     inputLocked = false;
@@ -1320,6 +1307,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
         if (!isUnlocked) return;
         audio.play("uiClick");
         state = createInitialState();
+        sanitizeCombatSkills();
         state.selectedChapter = chapter;
         state.floorTheme = chapter;
         state.routePlan = { id: "main", title: t("carryingPath"), floorsRemaining: 0, moveBonus: 0, movePenalty: 0, targetMulDelta: 0, pressureDelta: 0, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
@@ -1393,6 +1381,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
       state.nextFloorMoveBonus = 0;
     }
     state.movesLeft += Number(meta.progression.upgrades.veteran_boots || 0);
+    const tacticalReserveMoves = getTacticalReserveMoves();
+    state.movesLeft += tacticalReserveMoves;
 
     if (state.perks.overcharge) {
       state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 28);
@@ -1417,9 +1407,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
       state.chainBonus += 0.1;
     }
 
-    const purifierOffset = 0;
-    if (state.modGlass > 0) placeGlass(Math.max(0, state.modGlass + threat.glassBonus - purifierOffset));
-    if (state.modLocks > 0) placeLocks(Math.max(0, state.modLocks + Math.max(0, threat.pressure - 1) - purifierOffset));
+    if (state.modGlass > 0) placeGlass(Math.max(0, state.modGlass + threat.glassBonus));
+    if (state.modLocks > 0) placeLocks(Math.max(0, state.modLocks + Math.max(0, threat.pressure - 1)));
 
     const isElite = ELITE_FLOORS.includes(state.floor);
     const bossProfile = getBossProfile(theme);
@@ -1448,6 +1437,11 @@ const CHAPTER_BOSS_ANIMATIONS = {
     fallAnim.clear();
 
     renderAll();
+    if (tacticalReserveMoves > 0) {
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `战术预备：本层额外获得 ${tacticalReserveMoves} 步。`
+        : `Tactical Reserve: gained ${tacticalReserveMoves} extra moves this floor.`, "ok");
+    }
     showFloorIntro(threat);
     audio.play("floorStart");
     if (unlockedNewColor) {
@@ -1502,9 +1496,11 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const hp = Math.max(0, Number(state.boss.hp || 0));
     const maxHp = Math.max(1, Number(state.boss.maxHp || 1));
     const lowHpEnrage = !profile.isMinion && hp / maxHp <= 0.2 ? 1.45 : 1;
-    return profile.isMinion
+    const weakenRate = Math.max(0, getChargeWeakenRate());
+    const baseRate = profile.isMinion
       ? Math.max(8, Math.round(getBossEnergyGain() * 0.92))
       : Math.max(5, Math.round(getBossEnergyGain() * 0.6 * lowHpEnrage));
+    return Math.max(1, Math.round(baseRate * (1 - weakenRate)));
   }
 
   function getBossIdleChargeGain(idleMs = 0) {
@@ -1611,6 +1607,54 @@ const CHAPTER_BOSS_ANIMATIONS = {
     spawnScreenPulse("floor", 620);
     shakeBoard(1.08);
     setTimeout(() => fx.remove(), 760);
+  }
+
+  function countNegativeBoardStates() {
+    let total = 0;
+    for (const cell of state.board) {
+      if (!isGem(cell)) continue;
+      if (cell.lockedTurns > 0) total += 1;
+      if (cell.frozen) total += 1;
+      if (cell.glass) total += 1;
+      if ((cell.frostedTurns || 0) > 0) total += 1;
+      if ((cell.poisonedTurns || 0) > 0) total += 1;
+      if (cell.burning) total += 1;
+    }
+    return total;
+  }
+
+  function cleanseNegativeStates(limit, priority = ["frozen", "locked", "glass", "frosted", "poisoned", "burning"]) {
+    if (limit <= 0) return [];
+    const cleaned = [];
+    for (const type of priority) {
+      for (let i = 0; i < state.board.length; i += 1) {
+        if (cleaned.length >= limit) return cleaned;
+        const cell = state.board[i];
+        if (!isGem(cell)) continue;
+        let changed = false;
+        if (type === "frozen" && cell.frozen) {
+          cell.frozen = false;
+          changed = true;
+        } else if (type === "locked" && cell.lockedTurns > 0) {
+          cell.lockedTurns = 0;
+          changed = true;
+        } else if (type === "glass" && cell.glass) {
+          cell.glass = false;
+          changed = true;
+        } else if (type === "frosted" && (cell.frostedTurns || 0) > 0) {
+          cell.frostedTurns = 0;
+          changed = true;
+        } else if (type === "poisoned" && (cell.poisonedTurns || 0) > 0) {
+          cell.poisonedTurns = 0;
+          changed = true;
+        } else if (type === "burning" && cell.burning) {
+          cell.burning = false;
+          changed = true;
+        }
+        if (changed) cleaned.push(i);
+      }
+    }
+    return cleaned;
   }
 
   function placeObstacles(count) {
@@ -1820,8 +1864,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
     await playItemCastAnimation(item, idx);
 
     // 根据技能类型应用效果
-    if (skillType === "destruction" || skillType === "trigger") {
-      // 销毁类和触发类技能需要resolveAction
+    if (skillType === "destruction") {
+      // 销毁类技能需要 resolveAction
       await resolveAction(targets, item);
     } else {
       // 颜色改变和强化类技能使用新的处理函数
@@ -1844,253 +1888,46 @@ const CHAPTER_BOSS_ANIMATIONS = {
   // ============================================================
 
   function getItemTargets(item, idx) {
-    const r = rowOf(idx);
-    const c = colOf(idx);
     const level = itemPower(item);
 
-    // ==================== 直接销毁类 ====================
     if (item === "blast") {
-      // 爆破 - 以目标为圆心消除周围宝石
-      // Lv1: 2颗(1邻), Lv2: 5颗(3x3), Lv3: 9颗(5x5), Lv4: 14颗(7x7), Lv5: 21颗(9x9)
-      const radius = level * 2 - 1;
-      const arr = [];
-      for (let rr = r - radius; rr <= r + radius; rr += 1) {
-        for (let cc = c - radius; cc <= c + radius; cc += 1) {
-          if (inside(rr, cc) && Math.abs(rr - r) + Math.abs(cc - c) <= radius) {
-            arr.push(rr * boardSize + cc);
-          }
-        }
-      }
-      return [...new Set(arr)];
+      return gatherStrictSquareIndices(idx, ITEM_FORMULAS.blast(level));
     }
 
     if (item === "chainLightning") {
-      // 连锁闪电 - 跳跃消灭同色宝石
-      // Lv1: 3颗(1跳), Lv2: 6颗(2跳), Lv3: 10颗(3跳), Lv4: 15颗(4跳), Lv5: 21颗(5跳)
-      const maxHops = level + 1;
-      const visited = new Set([idx]);
-      const cell = state.board[idx];
-      if (!isGem(cell)) return [idx];
-      
-      let current = [idx];
-      for (let hop = 0; hop < maxHops - 1; hop += 1) {
-        const next = [];
-        for (const pos of current) {
-          const pr = rowOf(pos);
-          const pc = colOf(pos);
-          const neighbors = [
-            [pr - 1, pc], [pr + 1, pc], [pr, pc - 1], [pr, pc + 1]
-          ];
-          for (const [nr, nc] of neighbors) {
-            if (!inside(nr, nc)) continue;
-            const nIdx = nr * boardSize + nc;
-            if (visited.has(nIdx)) continue;
-            const nCell = state.board[nIdx];
-            if (isGem(nCell) && nCell.color === cell.color) {
-              visited.add(nIdx);
-              next.push(nIdx);
-            }
-          }
-        }
-        current = next;
-        if (current.length === 0) break;
-      }
-      return [...visited];
+      return gatherLightningTargets(idx, ITEM_FORMULAS.chainLightning(level));
     }
 
     if (item === "crossStrike") {
-      // 十字斩 - 消除一整行和一整列
-      // Lv1: 9颗(3x3十字), Lv2: 15颗(5x5十字), Lv3: 25颗(7x7十字), Lv4: 35颗(9x9十字), Lv5: 49颗(11x11十字)
-      const halfWidth = level;
-      const arr = [];
-      // 行
-      for (let cc = Math.max(0, c - halfWidth); cc <= Math.min(boardSize - 1, c + halfWidth); cc += 1) {
-        arr.push(r * boardSize + cc);
-      }
-      // 列
-      for (let rr = Math.max(0, r - halfWidth); rr <= Math.min(boardSize - 1, r + halfWidth); rr += 1) {
-        arr.push(rr * boardSize + c);
-      }
-      return [...new Set(arr)];
+      return gatherCrossIndices(idx, level);
     }
 
     if (item === "meteor") {
-      // 宝石雨 - 随机掉落 (无目标，返回空，由系统处理随机位置)
       return [];
     }
 
     if (item === "splatter") {
-      // 溅射 - 30%-80%概率触发额外伤害 (无目标)
       return [];
     }
 
     if (item === "shatter") {
-      // 粉碎 - 60%-100%概率粉碎周围同色
-      const cell = state.board[idx];
-      if (!isGem(cell)) return [idx];
-      const radius = level + 1;
-      const arr = [idx];
-      for (let rr = r - radius; rr <= r + radius; rr += 1) {
-        for (let cc = c - radius; cc <= c + radius; cc += 1) {
-          if (!inside(rr, cc)) continue;
-          const nIdx = rr * boardSize + cc;
-          if (nIdx === idx) continue;
-          const nCell = state.board[nIdx];
-          if (isGem(nCell) && nCell.color === cell.color) {
-            arr.push(nIdx);
-          }
-        }
-      }
-      return [...new Set(arr)];
+      return gatherSameColorTargets(idx, ITEM_FORMULAS.shatter(level), level + 1);
     }
 
-    // ==================== 颜色改变类 ====================
     if (item === "colorAssimilation") {
-      // 色彩同化 - 将周围宝石变为主目标颜色
-      // 返回目标周围需要变色的宝石索引（用于变色，不直接销毁）
-      const radius = 1 + Math.floor(level / 2);
-      const arr = [idx];
-      for (let rr = r - radius; rr <= r + radius; rr += 1) {
-        for (let cc = c - radius; cc <= c + radius; cc += 1) {
-          if (!inside(rr, cc)) continue;
-          const nIdx = rr * boardSize + cc;
-          if (nIdx === idx) continue;
-          const nCell = state.board[nIdx];
-          if (isGem(nCell)) {
-            arr.push(nIdx);
-          }
-        }
-      }
-      return [...new Set(arr)];
-    }
-
-    if (item === "paintTarget") {
-      // 染色目标 - 直接改变目标颜色
-      return [idx];
-    }
-
-    if (item === "rainbowBridge") {
-      // 彩虹桥 - 两点之间路径变色
-      // Lv1: 4颗, Lv2: 6颗, Lv3: 8颗, Lv4: 11颗, Lv5: 15颗
-      const pathLen = 2 * level + 2;
-      const arr = [idx];
-      let currentR = r, currentC = c;
-      const maxR = boardSize - 1, maxC = boardSize - 1;
-      
-      for (let i = 0; i < pathLen; i += 1) {
-        const dirs = [];
-        if (currentR > 0) dirs.push([-1, 0]);
-        if (currentR < maxR) dirs.push([1, 0]);
-        if (currentC > 0) dirs.push([0, -1]);
-        if (currentC < maxC) dirs.push([0, 1]);
-        const [dr, dc] = dirs[Math.floor(Math.random() * dirs.length)];
-        currentR += dr;
-        currentC += dc;
-        const nextIdx = currentR * boardSize + currentC;
-        if (isGem(state.board[nextIdx])) {
-          arr.push(nextIdx);
-        }
-      }
-      return [...new Set(arr)];
-    }
-
-    if (item === "colorCycle") {
-      // 色相轮回 - 循环变色
-      const cycleSize = 2 * level + 1;
-      const arr = [];
-      const candidates = collectIndices((x) => isGem(x)).slice(0, cycleSize);
-      return candidates;
+      return gatherTransformTargets(idx, ITEM_FORMULAS.colorAssimilation(level), level + 1);
     }
 
     if (item === "neighborMimic") {
-      // 邻近模仿 - 变为最常见邻居颜色
-      // 返回所有满足条件的宝石（周围有邻居的）
-      const arr = [];
-      for (let rr = 0; rr < boardSize; rr += 1) {
-        for (let cc = 0; cc < boardSize; cc += 1) {
-          const nIdx = rr * boardSize + cc;
-          const cell = state.board[nIdx];
-          if (!isGem(cell)) continue;
-          // 检查上下左右邻居
-          const neighbors = [];
-          if (rr > 0 && isGem(state.board[(rr - 1) * boardSize + cc])) neighbors.push(state.board[(rr - 1) * boardSize + cc].color);
-          if (rr < boardSize - 1 && isGem(state.board[(rr + 1) * boardSize + cc])) neighbors.push(state.board[(rr + 1) * boardSize + cc].color);
-          if (cc > 0 && isGem(state.board[rr * boardSize + (cc - 1)])) neighbors.push(state.board[rr * boardSize + (cc - 1)].color);
-          if (cc < boardSize - 1 && isGem(state.board[rr * boardSize + (cc + 1)])) neighbors.push(state.board[rr * boardSize + (cc + 1)].color);
-          if (neighbors.length > 0) {
-            arr.push(nIdx);
-          }
-        }
-      }
-      return arr;
+      return gatherTransformTargets(idx, ITEM_FORMULAS.neighborMimic(level), level + 1);
     }
 
-    if (item === "mirrorCopy") {
-      // 镜像复制 - 复制区域到另一区域
-      const copySize = 2 + level;
-      const arr = [];
-      // 复制源区域
-      for (let rr = 0; rr < copySize && rr < boardSize; rr += 1) {
-        for (let cc = 0; cc < copySize && cc < boardSize; cc += 1) {
-          const nIdx = rr * boardSize + cc;
-          if (isGem(state.board[nIdx])) {
-            arr.push(nIdx);
-          }
-        }
-      }
-      return arr;
-    }
-
-    // ==================== 宝石强化类 ====================
     if (item === "explosiveEnchant") {
-      // 爆炸强化 - 添加爆炸属性
-      return [idx];
+      return addEnchantTargets(ITEM_FORMULAS.explosiveEnchant(level), "explosive");
     }
 
     if (item === "lineEnchant") {
-      // 横竖强化 - 添加行列属性
-      return [idx];
-    }
-
-    if (item === "comboEnchant") {
-      // 连击强化 - 添加连击属性
-      return [idx];
-    }
-
-    // ==================== 宝石触发类 ====================
-    if (item === "instantTrigger") {
-      // 即时引爆 - 触发所有强化宝石
-      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
-      return enchanted;
-    }
-
-    if (item === "chainTrigger") {
-      // 连锁引爆 - 连锁触发强化宝石
-      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
-      return enchanted.slice(0, 2 * level + 1);
-    }
-
-    if (item === "timedDetonate") {
-      // 定时爆破 - 延迟引爆
-      return collectIndices((x) => isGem(x));
-    }
-
-    if (item === "conditionalTrigger") {
-      // 条件爆破 - 条件触发
-      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
-      return enchanted.slice(0, 2 * level - 1);
-    }
-
-    if (item === "resonanceTrigger") {
-      // 共鸣引爆 - 同色共鸣
-      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
-      return enchanted;
-    }
-
-    if (item === "priorityTrigger") {
-      // 强化优先 - 优先触发高等级
-      const enchanted = collectIndices((x) => isGem(x) && (x.explosive || x.lineH || x.lineV || x.combo));
-      return enchanted.slice(0, level * 2);
+      return addEnchantTargets(ITEM_FORMULAS.lineEnchant(level), "lineH");
     }
 
     return [];
@@ -2108,38 +1945,12 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   // 颜色改变技能处理
   async function applyColorChangeSkill(item, idx, targets) {
-    const level = itemPower(item);
     const cell = state.board[idx];
     if (!isGem(cell)) return;
 
     const targetColor = cell.color;
 
     if (item === "colorAssimilation") {
-      // 色彩同化 - 将周围宝石变为主目标颜色
-      for (const tIdx of targets) {
-        if (tIdx === idx) continue;
-        const tCell = state.board[tIdx];
-        if (isGem(tCell)) {
-          state.board[tIdx] = { ...tCell, color: targetColor };
-        }
-      }
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: ${targets.length - 1}颗宝石变为颜色${targetColor}`
-        : `${lt(ITEM_DEFS[item].name)}: ${targets.length - 1} gems changed to color ${targetColor}`, "info");
-    }
-
-    if (item === "paintTarget") {
-      // 染色目标 - 随机选择一个不同颜色
-      const colors = [0, 1, 2, 3, 4, 5].filter((c) => c !== targetColor);
-      const newColor = colors[Math.floor(Math.random() * colors.length)];
-      state.board[idx] = { ...cell, color: newColor };
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: 宝石变为颜色${newColor}`
-        : `${lt(ITEM_DEFS[item].name)}: Gem changed to color ${newColor}`, "info");
-    }
-
-    if (item === "rainbowBridge") {
-      // 彩虹桥 - 路径上宝石变为主目标颜色
       for (const tIdx of targets) {
         const tCell = state.board[tIdx];
         if (isGem(tCell)) {
@@ -2149,32 +1960,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
       notify(i18n.getLanguage() === "zh-CN"
         ? `${lt(ITEM_DEFS[item].name)}: ${targets.length - 1}颗宝石变为颜色${targetColor}`
         : `${lt(ITEM_DEFS[item].name)}: ${targets.length - 1} gems changed to color ${targetColor}`, "info");
-    }
-
-    if (item === "colorCycle") {
-      // 色相轮回 - 循环变色
-      const cycleSize = targets.length;
-      if (cycleSize < 2) return;
-      const colors = targets.map((tIdx) => state.board[tIdx]?.color).filter((c) => c !== undefined);
-      if (colors.length < 2) return;
-      const lastColor = colors[colors.length - 1];
-      for (let i = 0; i < targets.length - 1; i++) {
-        const tCell = state.board[targets[i]];
-        if (isGem(tCell)) {
-          state.board[targets[i]] = { ...tCell, color: colors[i + 1] };
-        }
-      }
-      const firstCell = state.board[targets[targets.length - 1]];
-      if (isGem(firstCell)) {
-        state.board[targets[targets.length - 1]] = { ...firstCell, color: lastColor };
-      }
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: ${cycleSize}颗宝石循环变色`
-        : `${lt(ITEM_DEFS[item].name)}: ${cycleSize} gems color-cycled`, "info");
     }
 
     if (item === "neighborMimic") {
-      // 邻近模仿 - 变为最常见邻居颜色
       for (const tIdx of targets) {
         const cell = state.board[tIdx];
         if (!isGem(cell)) continue;
@@ -2200,26 +1988,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
         : `${lt(ITEM_DEFS[item].name)}: ${targets.length} gems changed to neighbor colors`, "info");
     }
 
-    if (item === "mirrorCopy") {
-      // 镜像复制 - 复制源区域到目标区域
-      const copySize = 2 + level;
-      const destStartIdx = (boardSize - copySize) * boardSize + (boardSize - copySize);
-      for (let rr = 0; rr < copySize; rr++) {
-        for (let cc = 0; cc < copySize; cc++) {
-          const srcIdx = rr * boardSize + cc;
-          const destIdx = destStartIdx + rr * boardSize + cc;
-          const srcCell = state.board[srcIdx];
-          const destCell = state.board[destIdx];
-          if (isGem(srcCell) && isGem(destCell)) {
-            state.board[destIdx] = { ...destCell, color: srcCell.color };
-          }
-        }
-      }
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: 镜像复制${copySize}x${copySize}区域`
-        : `${lt(ITEM_DEFS[item].name)}: Mirror copied ${copySize}x${copySize} area`, "info");
-    }
-
     renderAll();
     await sleep(200);
   }
@@ -2229,141 +1997,29 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const level = itemPower(item);
 
     if (item === "explosiveEnchant") {
-      // 爆炸强化
-      state.board[idx] = { ...state.board[idx], explosive: level };
+      for (const target of targets) {
+        const cell = state.board[target];
+        if (!isGem(cell)) continue;
+        state.board[target] = { ...cell, explosive: level };
+      }
       notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)} Lv.${level}: 宝石获得爆炸属性`
-        : `${lt(ITEM_DEFS[item].name)} Lv.${level}: Gem gained explosive property`, "info");
+        ? `${lt(ITEM_DEFS[item].name)} Lv.${level}: ${targets.length}颗宝石获得爆炸属性`
+        : `${lt(ITEM_DEFS[item].name)} Lv.${level}: ${targets.length} gems gained explosive property`, "info");
     }
 
     if (item === "lineEnchant") {
-      // 横竖强化
-      state.board[idx] = { ...state.board[idx], lineH: level, lineV: level };
+      for (const target of targets) {
+        const cell = state.board[target];
+        if (!isGem(cell)) continue;
+        state.board[target] = { ...cell, lineH: level, lineV: level };
+      }
       notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)} Lv.${level}: 宝石获得横竖属性`
-        : `${lt(ITEM_DEFS[item].name)} Lv.${level}: Gem gained line properties`, "info");
-    }
-
-    if (item === "comboEnchant") {
-      // 连击强化
-      state.board[idx] = { ...state.board[idx], combo: level };
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)} Lv.${level}: 宝石获得连击属性`
-        : `${lt(ITEM_DEFS[item].name)} Lv.${level}: Gem gained combo property`, "info");
+        ? `${lt(ITEM_DEFS[item].name)} Lv.${level}: ${targets.length}颗宝石获得横竖属性`
+        : `${lt(ITEM_DEFS[item].name)} Lv.${level}: ${targets.length} gems gained line properties`, "info");
     }
 
     renderAll();
     await sleep(200);
-  }
-
-  // 宝石触发技能处理
-  async function applyTriggerSkill(item, targets) {
-    const level = itemPower(item);
-
-    if (item === "instantTrigger") {
-      // 即时引爆 - 触发所有强化宝石的被动效果
-      const enchantedTargets = targets.filter((idx) => {
-        const cell = state.board[idx];
-        return isGem(cell) && (cell.explosive || cell.lineH || cell.lineV || cell.combo);
-      });
-      
-      const explosiveTargets = [];
-      const lineTargets = [];
-      
-      for (const idx of enchantedTargets) {
-        const cell = state.board[idx];
-        if (cell.explosive) {
-          explosiveTargets.push(idx);
-        }
-        if (cell.lineH || cell.lineV) {
-          lineTargets.push(idx);
-        }
-        // 清除强化属性
-        state.board[idx] = { ...cell, explosive: 0, lineH: 0, lineV: 0, combo: 0 };
-      }
-
-      // 触发爆炸效果
-      const allExplosive = new Set(explosiveTargets);
-      for (const idx of explosiveTargets) {
-        const r = rowOf(idx), c = colOf(idx);
-        const radius = (state.board[idx]?.explosive || level) * 2 - 1;
-        for (let rr = r - radius; rr <= r + radius; rr++) {
-          for (let cc = c - radius; cc <= c + radius; cc++) {
-            if (inside(rr, cc)) {
-              allExplosive.add(rr * boardSize + cc);
-            }
-          }
-        }
-      }
-
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: 触发${enchantedTargets.length}个强化宝石`
-        : `${lt(ITEM_DEFS[item].name)}: Triggered ${enchantedTargets.length} enchanted gems`, "info");
-
-      return [...allExplosive];
-    }
-
-    if (item === "chainTrigger") {
-      // 连锁引爆
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: 连锁触发强化宝石`
-        : `${lt(ITEM_DEFS[item].name)}: Chain triggered enchanted gems`, "info");
-      return targets.slice(0, 2 * level + 1);
-    }
-
-    if (item === "timedDetonate") {
-      // 定时爆破 - 标记延迟引爆
-      for (const idx of targets) {
-        const cell = state.board[idx];
-        if (isGem(cell)) {
-          state.board[idx] = { ...cell, timedDetonate: level, detonateDelay: 3 - Math.min(level, 2) };
-        }
-      }
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: ${targets.length}颗宝石设置延迟引爆`
-        : `${lt(ITEM_DEFS[item].name)}: ${targets.length} gems set for timed detonation`, "info");
-      return [];
-    }
-
-    if (item === "conditionalTrigger") {
-      // 条件爆破
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: 设置条件触发`
-        : `${lt(ITEM_DEFS[item].name)}: Set conditional trigger`, "info");
-      return [];
-    }
-
-    if (item === "resonanceTrigger") {
-      // 共鸣引爆 - 同色强化宝石集体触发
-      const colorGroups = {};
-      for (const idx of targets) {
-        const cell = state.board[idx];
-        if (isGem(cell)) {
-          if (!colorGroups[cell.color]) colorGroups[cell.color] = [];
-          colorGroups[cell.color].push(idx);
-        }
-      }
-
-      const triggeredCount = targets.filter((idx) => {
-        const cell = state.board[idx];
-        return isGem(cell) && (cell.explosive || cell.lineH || cell.lineV);
-      }).length;
-
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: 共鸣触发${triggeredCount}颗宝石`
-        : `${lt(ITEM_DEFS[item].name)}: Resonance triggered ${triggeredCount} gems`, "info");
-      return targets;
-    }
-
-    if (item === "priorityTrigger") {
-      // 强化优先
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: 优先触发高等级强化`
-        : `${lt(ITEM_DEFS[item].name)}: Priority trigger high-level enchantments`, "info");
-      return targets;
-    }
-
-    return [];
   }
 
   // 直接销毁技能处理
@@ -2371,56 +2027,22 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const level = itemPower(item);
 
     if (item === "meteor") {
-      // 宝石雨 - 随机掉落
-      const meteorCount = level + 1;
-      const emptySpots = collectIndices((x) => state.board[x] === null);
-      const validSpots = emptySpots.length > 0 ? emptySpots : collectIndices(isGem);
-      shuffle(validSpots);
-      const chosenSpots = validSpots.slice(0, Math.min(meteorCount, validSpots.length));
-
-      for (const spot of chosenSpots) {
-        // 每颗流星造成3x3范围伤害
-        const r = rowOf(spot), c = colOf(spot);
-        const blastRadius = 1 + Math.floor(level / 2);
-        for (let rr = r - blastRadius; rr <= r + blastRadius; rr++) {
-          for (let cc = c - blastRadius; cc <= c + blastRadius; cc++) {
-            if (inside(rr, cc)) {
-              if (!chosenSpots.includes(rr * boardSize + cc)) {
-                chosenSpots.push(rr * boardSize + cc);
-              }
-            }
-          }
-        }
-      }
+      const chosenSpots = pickRandomGemIndices(ITEM_FORMULAS.meteor(level));
 
       notify(i18n.getLanguage() === "zh-CN"
-        ? `${lt(ITEM_DEFS[item].name)}: ${meteorCount}颗宝石雨来袭`
-        : `${lt(ITEM_DEFS[item].name)}: ${meteorCount} meteors falling`, "info");
+        ? `${lt(ITEM_DEFS[item].name)}: ${chosenSpots.length}颗宝石被陨石命中`
+        : `${lt(ITEM_DEFS[item].name)}: ${chosenSpots.length} gems are hit by meteors`, "info");
       return [...new Set(chosenSpots)];
     }
 
     if (item === "splatter") {
-      // 溅射 - 概率触发额外伤害
-      const triggerProb = (30 + 10 * (level - 1)) / 100;
-      if (Math.random() < triggerProb) {
-        const splashCount = 2 * level + 1;
-        const neighbors = [];
-        const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-        for (const [dr, dc] of dirs) {
-          const nr = rowOf(idx) + dr, nc = colOf(idx) + dc;
-          if (inside(nr, nc)) {
-            neighbors.push(nr * boardSize + nc);
-          }
-        }
-        notify(i18n.getLanguage() === "zh-CN"
-          ? `${lt(ITEM_DEFS[item].name)}: 溅射触发！${splashCount}颗额外伤害`
-          : `${lt(ITEM_DEFS[item].name)}: Splatter triggered! ${splashCount} extra damage`, "info");
-        return [...neighbors];
-      }
-      return [idx];
+      const splashTargets = gatherSquareIndicesByCount(idx, ITEM_FORMULAS.splatter(level));
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `${lt(ITEM_DEFS[item].name)}: 溅射命中 ${splashTargets.length} 个目标`
+        : `${lt(ITEM_DEFS[item].name)}: splatter hits ${splashTargets.length} targets`, "info");
+      return splashTargets;
     }
 
-    // 其他销毁技能直接返回目标
     return targets;
   }
 
@@ -2437,50 +2059,12 @@ const CHAPTER_BOSS_ANIMATIONS = {
         await applyEnhancementSkill(item, idx, targets);
         return []; // 强化不直接销毁
 
-      case "trigger":
-        return await applyTriggerSkill(item, targets);
-
       case "destruction":
         return await applyDestructionSkill(item, idx, targets);
 
       default:
         return targets;
     }
-  }
-
-  async function useShuffle() {
-    beginPlayerAction();
-    audio.play("itemCast", { volume: 0.34, rate: 0.95 });
-    const power = itemPower("shuffle");
-    const gems = collectIndices(isGem).map((i) => state.board[i]);
-    shuffle(gems);
-    let k = 0;
-    for (let i = 0; i < state.board.length; i += 1) {
-      if (isGem(state.board[i])) {
-        state.board[i] = gems[k++];
-        fallAnim.add(i);
-      }
-    }
-    renderAll();
-    await sleep(220);
-    fallAnim.clear();
-    resolveAutoBoard();
-    if (power >= 2) state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 10 + power * 2);
-    if (power >= 3) {
-      for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
-    }
-    renderAll();
-    await consumePostAction();
-    inputLocked = false;
-    notify(i18n.getLanguage() === "zh-CN" ? "已使用道具：洗牌" : "Item used: Shuffle", "ok");
-  }
-
-  function applyLegendBossPressure() {
-    if (state.perks.fever_smith) {
-      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 10);
-    }
-    if (!state.perks.boss_hunter) return;
-    state.boss.charge = Math.max(0, state.boss.charge - 1);
   }
 
   function drainEncounterCharge(gemCount, chainCount = 1, source = "normal") {
@@ -2493,14 +2077,71 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return reduction;
   }
 
+  function getKineticDamageMultiplier() {
+    const level = getBlessingLevel("kineticAccumulation");
+    if (level <= 0) return 1;
+    const energy = Math.max(0, Number(state.blessingState.kineticEnergy || 0));
+    const per10 = level === 1 ? 0.04 : level === 2 ? 0.05 : level === 3 ? 0.06 : level === 4 ? 0.07 : 0.08;
+    return 1 + Math.floor(energy / 10) * per10;
+  }
+
+  function getComboManiaExtraClearCount() {
+    const level = getBlessingLevel("comboMania");
+    if (level <= 0) return 0;
+    return level === 1 ? 2 : level === 2 ? 3 : level === 3 ? 4 : level === 4 ? 5 : 6;
+  }
+
+  function tryTriggerMomentumBreaker() {
+    const level = getBlessingLevel("momentumBreaker");
+    if (level <= 0) return [];
+    const alreadyTriggeredAt = Number(state.blessingState.momentumBreakerTriggeredAt || -1);
+    if (alreadyTriggeredAt === Number(state.floor || 0)) return [];
+    const triggerProb = level === 1 ? 0.12 : level === 2 ? 0.2 : level === 3 ? 0.28 : level === 4 ? 0.36 : 0.45;
+    if (Math.random() >= triggerProb) return [];
+    const gems = collectIndices((cell) => isGem(cell));
+    if (gems.length <= 0) return [];
+    state.blessingState.momentumBreakerTriggeredAt = Number(state.floor || 0);
+    return gems;
+  }
+
+  function grantDesperateSurvivalMoves(chainCount) {
+    if (!checkDesperateMode() || chainCount <= 1) return 0;
+    const level = getBlessingLevel("desperateSurvival");
+    if (level <= 0) return 0;
+    const gainPerCombo = level >= 4 ? 2 : 1;
+    const gain = gainPerCombo * Math.max(1, chainCount - 1);
+    state.movesLeft += gain;
+    return gain;
+  }
+
+  function applyPurifierSigilMomentumBonus() {
+    const cleanseCount = getPurifierSigilCleanseCount();
+    if (cleanseCount <= 0) return [];
+    const cleaned = cleanseNegativeStates(cleanseCount, ["frozen", "locked", "poisoned", "burning", "glass", "frosted"]);
+    if (cleaned.length > 0) {
+      notify(i18n.getLanguage() === "zh-CN"
+        ? `净化印记生效：净化 ${cleaned.length} 个异常宝石。`
+        : `Purifier Sigil triggers: cleansed ${cleaned.length} afflicted gems.`, "ok");
+    }
+    return cleaned;
+  }
+
+  function rollCriticalBlessing(label = null, origin = null) {
+    const critChance = getCriticalChance();
+    if (critChance <= 0 || Math.random() >= critChance) return false;
+    spawnViewportFloatText(
+      i18n.getLanguage() === "zh-CN" ? (label ? `祝福暴击·${label}` : "祝福暴击") : (label ? `Blessing Crit · ${label}` : "Blessing Crit"),
+      origin || getEncounterPortraitCenter() || getViewportCenter(),
+      "fx-text fx-text-damage",
+    );
+    return true;
+  }
+
   function damageEncounter(amount, source = "attack") {
     let damage = Math.max(0, Math.floor(amount || 0));
     if (damage <= 0 || Number(state.boss.hp || 0) <= 0) return 0;
-    if (checkDesperateMode()) damage = Math.floor(damage * (1 + 0.1 * Math.pow(2, Math.max(0, getBlessingLevel("desperateSurvival") - 1))));
-    const critChance = getCriticalChance();
-    if (critChance > 0 && Math.random() < critChance) {
+    if (rollCriticalBlessing()) {
       damage = Math.floor(damage * getCriticalEffect());
-      spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? "祝福暴击" : "Blessing Crit", getEncounterPortraitCenter() || getViewportCenter(), "fx-text fx-text-damage");
     }
     const applied = Math.min(Number(state.boss.hp || 0), damage);
     state.boss.hp = Math.max(0, Number(state.boss.hp || 0) - applied);
@@ -2508,108 +2149,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
       spawnFloatText(i18n.getLanguage() === "zh-CN" ? `伤害 ${applied}` : `Hit ${applied}`, Math.floor((boardSize * boardSize) / 2));
     }
     return applied;
-  }
-
-  async function useLegendSkill(skill) {
-    if (skill === "screen_wipe") {
-      await playSkillShowcase(lt(ITEM_DEFS.screen_wipe.name), "screen", "screen_wipe");
-      const targets = collectIndices((x) => isGem(x) || (itemPower(skill) >= 2 && isObstacle(x)));
-      recordCodex("skillUse", "screen_wipe");
-      applyLegendBossPressure();
-      meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, targets.length);
-      saveMeta();
-      await resolveAction(targets, "legend");
-      await consumePostAction();
-      inputLocked = false;
-      return;
-    }
-
-    if (skill === "rainbow_burst") {
-      await playSkillShowcase(lt(ITEM_DEFS.rainbow_burst.name), "rainbow", "rainbow_burst");
-      const first = randColor();
-      let second = randColor();
-      if (second === first) second = nextGemColor(first);
-      const targets = collectIndices((x) => isGem(x) && (x.color === first || x.color === second));
-      const extra = collectIndices((x) => isGem(x) && x.special).slice(0, itemPower(skill) >= 2 ? 16 : 10);
-      const merged = [...new Set([...targets, ...extra])];
-      recordCodex("skillUse", "rainbow_burst");
-      applyLegendBossPressure();
-      meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, merged.length);
-      saveMeta();
-      await resolveAction(merged, "legend");
-      await consumePostAction();
-      inputLocked = false;
-      return;
-    }
-
-    if (skill === "time_freeze") {
-      await playSkillShowcase(lt(ITEM_DEFS.time_freeze.name), "screen", "time_freeze");
-      state.movesLeft += 2 + itemPower(skill);
-      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 18 + itemPower(skill) * 4 + (state.perks.fever_smith ? 8 : 0));
-      for (let i = 0; i < state.board.length; i += 1) {
-        if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
-      }
-      recordCodex("skillUse", "time_freeze");
-      applyLegendBossPressure();
-      notify(i18n.getLanguage() === "zh-CN"
-        ? `时间冻结提供 +${2 + itemPower(skill)} 步，并移除全部锁定。`
-        : `Time Freeze grants +${2 + itemPower(skill)} moves and removes all locks.`, "ok");
-      renderAll();
-      await consumePostAction();
-      inputLocked = false;
-      return;
-    }
-
-    if (skill === "boss_breaker") {
-      await playSkillShowcase(lt(ITEM_DEFS.boss_breaker.name), "rainbow", "boss_breaker");
-      const targets = collectIndices((x) => isGem(x));
-      shuffle(targets);
-      const chosen = targets.slice(0, Math.min(12 + itemPower(skill) * 3, targets.length));
-      state.boss.charge = Math.max(0, state.boss.charge - Math.ceil(state.boss.max * (0.45 + itemPower(skill) * 0.12)));
-      state.boss.hint = i18n.getLanguage() === "zh-CN" ? "Boss 粉碎者：能量已击碎" : "Boss Breaker: charge shattered";
-      recordCodex("skillUse", "boss_breaker");
-      applyLegendBossPressure();
-      meta.codex.maxSingleClear = Math.max(meta.codex.maxSingleClear, chosen.length);
-      saveMeta();
-      await resolveAction(chosen, "legend");
-      await consumePostAction();
-      inputLocked = false;
-      return;
-    }
-
-    inputLocked = false;
-  }
-
-  async function playSkillShowcase(name, theme = "screen", skillId = null) {
-    if (skillId) {
-      spawnSkillCastReveal({
-        skillId,
-        skillName: name,
-        origin: getSkillButtonCenter(skillId),
-        center: { x: window.innerWidth / 2, y: window.innerHeight * 0.34 },
-        theme,
-        duration: 980,
-        withLabel: false,
-      });
-    }
-    const fx = document.createElement("div");
-    fx.className = `skill-showcase ${theme}`;
-    fx.textContent = name;
-    fxLayerEl.appendChild(fx);
-    audio.play("itemCast", { volume: 0.38, rate: theme === "screen" ? 0.92 : 1.05 });
-
-    spawnScreenPulse(theme === "screen" ? "skill-screen" : "skill-rainbow", 520);
-    boardWrapEl.classList.add("boss-cast");
-    shakeBoard(theme === "screen" ? 1.45 : 1.35);
-    await sleep(120);
-
-    for (let i = 0; i < 6; i += 1) {
-      spawnShockwaveFX(Math.floor(Math.random() * boardSize * boardSize), true);
-    }
-    await sleep(320);
-
-    fx.remove();
-    boardWrapEl.classList.remove("boss-cast");
   }
 
   async function consumePostAction() {
@@ -3088,18 +2627,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const castThreshold = getEncounterCastThreshold(profile);
     const gain = getBossIdleChargeGain(elapsedMs);
     state.boss.lastChargeTickAt = now;
-    const absorbRate = getEnergyAbsorbRate();
-    const absorbCap = getEnergyAbsorbCap();
-    const absorbed = absorbRate > 0 ? Math.min(absorbCap - Number(state.blessingState.absorbedEnergy || 0), Math.floor(gain * absorbRate)) : 0;
-    if (absorbed > 0) {
-      state.blessingState.absorbedEnergy = Math.max(0, Number(state.blessingState.absorbedEnergy || 0) + absorbed);
-      state.momentum = Math.min(MOMENTUM_MAX, state.momentum + absorbed);
-    }
-    state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain - Math.max(0, absorbed));
-    const senseThreshold = getChargeSenseThreshold();
-    if (senseThreshold < 1 && state.boss.charge / Math.max(1, state.boss.max) >= senseThreshold) {
-      state.chainBonus = Math.max(state.chainBonus, 0.05 * Math.max(1, getBlessingLevel("chargeSense")));
-    }
+    state.boss.charge = Math.min(state.boss.max, state.boss.charge + gain);
     if (state.momentum > 0 && idleSinceAction >= 1200) {
       const decaySteps = Math.floor((now - lastDecayAt) / 900);
       if (decaySteps > 0) {
@@ -3124,10 +2652,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
     state.boss.phase = state.boss.charge >= castThreshold ? "ready" : "charging";
     if (state.boss.charge < castThreshold) {
-      if (checkBattlefieldControl() && !inputLocked) {
-        resolveAutoBoard();
-        renderAll();
-      }
       const rate = getBossChargeRatePerSecond();
       const enragedCharge = !profile.isMinion && bossCurrentHp / Math.max(1, bossMaxHp) <= 0.2;
       state.boss.hint = i18n.getLanguage() === "zh-CN"
@@ -4191,126 +3715,162 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return out;
   }
 
+  function getBoardGemIndices() {
+    return collectIndices((cell) => isGem(cell));
+  }
+
+  function pickRandomGemIndices(count, excluded = []) {
+    const excludeSet = new Set(excluded);
+    const pool = getBoardGemIndices().filter((idx) => !excludeSet.has(idx));
+    shuffle(pool);
+    return pool.slice(0, Math.min(count, pool.length));
+  }
+
+  function gatherSquareIndicesByCount(center, count) {
+    const side = Math.max(1, Math.ceil(Math.sqrt(Math.max(1, count))));
+    const radius = Math.floor((side - 1) / 2);
+    const row = rowOf(center);
+    const col = colOf(center);
+    const arr = [];
+    for (let rr = row - radius; rr <= row + radius; rr += 1) {
+      for (let cc = col - radius; cc <= col + radius; cc += 1) {
+        if (inside(rr, cc)) arr.push(rr * boardSize + cc);
+      }
+    }
+    if (arr.length >= count) return arr.slice(0, count);
+    const extra = pickRandomGemIndices(count - arr.length, arr);
+    return [...new Set([...arr, ...extra])];
+  }
+
+  function gatherStrictSquareIndices(center, count) {
+    const normalized = Math.max(1, Number(count) || 1);
+    const side = Math.max(1, Math.round(Math.sqrt(normalized)));
+    const row = rowOf(center);
+    const col = colOf(center);
+    const startRow = row - Math.floor((side - 1) / 2);
+    const startCol = col - Math.floor((side - 1) / 2);
+    const arr = [];
+
+    for (let rr = startRow; rr < startRow + side; rr += 1) {
+      for (let cc = startCol; cc < startCol + side; cc += 1) {
+        if (inside(rr, cc)) arr.push(rr * boardSize + cc);
+      }
+    }
+
+    return [...new Set(arr)];
+  }
+
+  function gatherCrossIndices(center, armLength) {
+    const r = rowOf(center);
+    const c = colOf(center);
+    const arr = [center];
+    for (let step = 1; step <= armLength; step += 1) {
+      if (inside(r - step, c)) arr.push((r - step) * boardSize + c);
+      if (inside(r + step, c)) arr.push((r + step) * boardSize + c);
+      if (inside(r, c - step)) arr.push(r * boardSize + (c - step));
+      if (inside(r, c + step)) arr.push(r * boardSize + (c + step));
+    }
+    return [...new Set(arr)];
+  }
+
+  function gatherLightningTargets(center, count) {
+    const origin = state.board[center];
+    if (!isGem(origin)) return [center];
+    const visited = new Set([center]);
+    const queue = [center];
+    while (queue.length > 0 && visited.size < count) {
+      const current = queue.shift();
+      const r = rowOf(current);
+      const c = colOf(current);
+      for (const [rr, cc] of [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]]) {
+        if (!inside(rr, cc)) continue;
+        const idx = rr * boardSize + cc;
+        const cell = state.board[idx];
+        if (!isGem(cell) || cell.color !== origin.color || visited.has(idx)) continue;
+        visited.add(idx);
+        queue.push(idx);
+        if (visited.size >= count) break;
+      }
+    }
+    if (visited.size < count) {
+      const extra = pickRandomGemIndices(count - visited.size, [...visited]);
+      for (const idx of extra) visited.add(idx);
+    }
+    return [...visited];
+  }
+
+  function gatherSameColorTargets(center, count, radius) {
+    const origin = state.board[center];
+    if (!isGem(origin)) return [center];
+    const row = rowOf(center);
+    const col = colOf(center);
+    const preferred = [];
+    for (let rr = row - radius; rr <= row + radius; rr += 1) {
+      for (let cc = col - radius; cc <= col + radius; cc += 1) {
+        if (!inside(rr, cc)) continue;
+        const idx = rr * boardSize + cc;
+        const cell = state.board[idx];
+        if (isGem(cell) && cell.color === origin.color) preferred.push(idx);
+      }
+    }
+    const unique = [...new Set(preferred)];
+    if (unique.length >= count) return unique.slice(0, count);
+    const extra = pickRandomGemIndices(count - unique.length, unique);
+    return [...new Set([...unique, ...extra])];
+  }
+
+  function gatherTransformTargets(center, count, radius) {
+    const row = rowOf(center);
+    const col = colOf(center);
+    const preferred = [];
+    for (let rr = row - radius; rr <= row + radius; rr += 1) {
+      for (let cc = col - radius; cc <= col + radius; cc += 1) {
+        if (!inside(rr, cc)) continue;
+        const idx = rr * boardSize + cc;
+        if (isGem(state.board[idx])) preferred.push(idx);
+      }
+    }
+    if (preferred.length >= count) {
+      shuffle(preferred);
+      return preferred.slice(0, count);
+    }
+    const extra = pickRandomGemIndices(count - preferred.length, preferred);
+    return [...new Set([...preferred, ...extra])];
+  }
+
+  function addEnchantTargets(count, kind) {
+    const candidates = getBoardGemIndices().filter((idx) => {
+      const cell = state.board[idx];
+      return isGem(cell) && !cell[kind];
+    });
+    shuffle(candidates);
+    return candidates.slice(0, Math.min(count, candidates.length));
+  }
+
   function buildOffensiveSkillEffects(valid, gemTargets, chain, expandedInfo) {
     const reserved = new Set(valid);
     const effects = [];
     const orderedSkills = getCarriedItems();
-    const originalTargets = [...valid];
-    let currentSourceTargets = [...valid];
-    const legacySkillIds = new Set(["hammer", "row", "cross", "color", "shuffle", "screen_wipe", "rainbow_burst", "time_freeze", "boss_breaker"]);
-
     const pushEffect = (id, indices, { allowReserved = false } = {}) => {
       const unique = [...new Set((indices || []).filter((idx) => (allowReserved || !reserved.has(idx)) && idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))];
       if (unique.length <= 0) return;
       unique.forEach((idx) => reserved.add(idx));
-      currentSourceTargets = [...unique];
       effects.push({ id, name: lt(ITEM_DEFS[id].name), indices: unique, anchor: unique[0], skillType: ITEM_DEFS[id]?.type || null });
     };
 
     for (const id of orderedSkills) {
       const def = ITEM_DEFS[id];
       if (!def) continue;
-      const triggerProb = Math.min(1, Number(ITEM_TRIGGERS[id]?.(itemPower(id)) ?? 1) + getLuckyAuraBonus());
+      const triggerProb = Math.min(1, Number(ITEM_TRIGGERS[id]?.(itemPower(id)) ?? 1));
       if (Math.random() > triggerProb) continue;
-      const sourceTargets = currentSourceTargets.length > 0 ? currentSourceTargets : originalTargets;
-      const currentGemTargets = [...new Set(sourceTargets)].filter((idx) => isGem(state.board[idx]));
-      const baseTargets = currentGemTargets.length > 0 ? currentGemTargets : sourceTargets;
+      const sourceTargets = [...valid];
+      const baseTargets = [...new Set(sourceTargets)].filter((idx) => isGem(state.board[idx]));
       const anchor = baseTargets[0];
-      const secondary = baseTargets[baseTargets.length - 1] ?? anchor;
       if (anchor == null) continue;
 
-      if (!legacySkillIds.has(id)) {
-        const indices = getItemTargets(id, anchor);
-        const fallback = indices.length > 0 ? indices : [anchor];
-        pushEffect(id, fallback, { allowReserved: true });
-        continue;
-      }
-
-      const dominantColor = getDominantGemColor(baseTargets);
-      const hpRatio = Number(state.boss.hp || 0) / Math.max(1, Number(state.boss.maxHp || 1));
-
-      switch (id) {
-        case "hammer": {
-          const anchors = baseTargets.slice(0, Math.min(itemPower(id), baseTargets.length));
-          const picks = [];
-          for (const idx of anchors) {
-            const extras = gatherAdjacentGemIndices(idx).filter((candidate) => !reserved.has(candidate));
-            picks.push(...extras.slice(0, 1));
-          }
-          pushEffect(id, picks);
-          break;
-        }
-        case "row": {
-          if (currentGemTargets.length < 4) break;
-          const indices = [...getIndicesInRow(rowOf(anchor))];
-          if (itemPower(id) >= 2) indices.push(...getIndicesInRow(rowOf(secondary)));
-          if (itemPower(id) >= 3) indices.push(...getIndicesInCol(colOf(anchor)));
-          pushEffect(id, indices);
-          break;
-        }
-        case "cross": {
-          if (!(currentGemTargets.length >= 4 || chain >= 2 || expandedInfo.chainCount > 1)) break;
-          const indices = [...gatherAreaIndices(anchor, 1)];
-          if (itemPower(id) >= 2) indices.push(...gatherAreaIndices(secondary, 1));
-          if (itemPower(id) >= 3) indices.push(...getIndicesInRow(rowOf(anchor)), ...getIndicesInCol(colOf(anchor)));
-          pushEffect(id, indices);
-          break;
-        }
-        case "color": {
-          if (!(dominantColor != null && currentGemTargets.length >= 4)) break;
-          const sameColor = collectIndices((cell) => isGem(cell) && cell.color === dominantColor).filter((idx) => !reserved.has(idx));
-          shuffle(sameColor);
-          pushEffect(id, sameColor.slice(0, 2 + itemPower(id) * 2));
-          break;
-        }
-        case "shuffle": {
-          const roam = collectIndices((cell) => isGem(cell) || isObstacle(cell)).filter((idx) => !reserved.has(idx));
-          shuffle(roam);
-          pushEffect(id, roam.slice(0, 1 + itemPower(id)));
-          break;
-        }
-        case "screen_wipe": {
-          if (!(currentGemTargets.length >= (itemPower(id) >= 2 ? 4 : 5))) break;
-          const anchors = baseTargets.slice(0, Math.min(itemPower(id), baseTargets.length));
-          const indices = [];
-          for (const sourceIdx of anchors) indices.push(...gatherAreaIndices(sourceIdx, 1));
-          pushEffect(id, indices);
-          break;
-        }
-        case "rainbow_burst": {
-          if (chain < 2) break;
-          const indices = [];
-          const uniqueColors = [...new Set(baseTargets.map((idx) => state.board[idx]?.color).filter((x) => Number.isInteger(x)))];
-          for (const color of uniqueColors) {
-            const pool = collectIndices((cell) => isGem(cell) && cell.color === color).filter((idx) => !reserved.has(idx) && !indices.includes(idx));
-            shuffle(pool);
-            indices.push(...pool.slice(0, Math.max(1, itemPower(id) - 1)));
-          }
-          pushEffect(id, indices);
-          break;
-        }
-        case "time_freeze": {
-          if (expandedInfo.chainCount <= 1) break;
-          const indices = [...gatherAreaIndices(anchor, itemPower(id) >= 3 ? 2 : 1)];
-          if (itemPower(id) >= 2) indices.push(...gatherAreaIndices(secondary, 1));
-          pushEffect(id, indices);
-          break;
-        }
-        case "boss_breaker": {
-          if (hpRatio > 0.5) break;
-          const indices = [...gatherAreaIndices(anchor, 1)];
-          if (itemPower(id) >= 2) indices.push(...gatherAreaIndices(secondary, 1));
-          if (itemPower(id) >= 3) {
-            const finishers = collectIndices((cell) => isGem(cell) || isObstacle(cell)).filter((idx) => !reserved.has(idx) && !indices.includes(idx));
-            shuffle(finishers);
-            indices.push(...finishers.slice(0, 4));
-          }
-          pushEffect(id, indices);
-          break;
-        }
-        default:
-          break;
-      }
+      const indices = getItemTargets(id, anchor);
+      const fallback = indices.length > 0 ? indices : [anchor];
+      pushEffect(id, fallback, { allowReserved: true });
     }
 
     return effects;
@@ -4322,8 +3882,23 @@ const CHAPTER_BOSS_ANIMATIONS = {
     let current = [...new Set(initialTargets)];
     let localSpawnMap = spawnMap;
     let passiveSkillTriggered = false;
+    let safetyIterations = 0;
+
+    const queuedMomentumBreaker = Array.isArray(state.blessingState.momentumBreakerPending)
+      ? [...new Set(state.blessingState.momentumBreakerPending.filter((idx) => state.board[idx] !== null))]
+      : [];
+    if (queuedMomentumBreaker.length > 0) {
+      state.blessingState.momentumBreakerPending = [];
+      current = [...new Set([...current, ...queuedMomentumBreaker])];
+      spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? "势如破竹" : "Momentum Breaker", getElementCenter(momentumBarEl) || getViewportCenter(), "fx-text fx-text-momentum");
+    }
 
     while (current.length > 0) {
+      safetyIterations += 1;
+      if (safetyIterations > 24) {
+        notify(i18n.getLanguage() === "zh-CN" ? "技能连锁已被安全中断，避免棋盘卡死。" : "Skill chain safely interrupted to prevent board lockup.", "warn");
+        break;
+      }
       clearEnemyCastFx();
       clearBossTelegraph();
       const expandedInfo = expandWithSpecialTriggers(current, MAX_SKILL_CHAIN);
@@ -4345,18 +3920,13 @@ const CHAPTER_BOSS_ANIMATIONS = {
       const skillEffects = !passiveSkillTriggered && (source === "normal" || source === "combo")
         ? buildOffensiveSkillEffects(valid, valid.filter((i) => isGem(state.board[i])), chain, expandedInfo)
         : [];
-      if ((checkChainAwakening(expandedInfo.chainCount) || getLuckyAuraBonus() > 0) && skillEffects.length > 0) {
-        for (const effect of skillEffects) {
-          if (getLuckyAuraBonus() > 0 && Math.random() < getLuckyAuraBonus()) {
-            const extra = effect.indices.filter((idx) => state.board[idx] !== null).slice(0, 1);
-            for (const idx of extra) if (!effect.indices.includes(idx)) effect.indices.push(idx);
-          }
-        }
-      }
       if (skillEffects.length > 0) {
         passiveSkillTriggered = true;
         await playPassiveSkillSequence(skillEffects);
         for (const effect of skillEffects) {
+          if (rollCriticalBlessing(lt(ITEM_DEFS[effect.id]?.name), getSkillButtonCenter(effect.id) || getViewportCenter())) {
+            effect.indices = [...new Set([...effect.indices, ...effect.indices])];
+          }
           const resolvedTargets = await applySkillEffect(effect.id, effect.anchor ?? effect.indices[0], effect.indices);
           const finalTargets = resolvedTargets.length > 0 ? resolvedTargets : (effect.skillType === "destruction" ? effect.indices : []);
           for (const idx of finalTargets) if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
@@ -4384,6 +3954,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       state.score += gain;
       updateMomentum(gemTargets.length, chain);
       const chargeReduced = drainEncounterCharge(gemTargets.length, chain, source);
+      const desperateMoveGain = grantDesperateSurvivalMoves(chain);
       spawnFloatText(`+${gain}`, gemTargets[0] ?? valid[0]);
 
       for (const idx of valid) {
@@ -4418,6 +3989,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
       if (chargeReduced > 0) {
         spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `压制 -${chargeReduced}` : `Charge -${chargeReduced}`, getElementCenter(bossMeterEl) || getEncounterPortraitCenter() || getViewportCenter(), "fx-text fx-text-warning");
       }
+      if (desperateMoveGain > 0) {
+        spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? `绝境逢生 +${desperateMoveGain} 步` : `Desperate +${desperateMoveGain} Move`, getViewportCenter(), "fx-text fx-text-momentum");
+      }
       if (inflicted > 0) {
         state.boss.hint = i18n.getLanguage() === "zh-CN"
           ? `${lt(getEncounterName(state.floorTheme))} 受到 ${inflicted} 点伤害，剩余 ${state.boss.hp}/${state.boss.maxHp}`
@@ -4446,6 +4020,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
       chain += 1;
       const next = analyzeMatches();
       current = next.clear;
+      const maniaPending = Math.max(0, Number(state.blessingState.comboManiaPending || 0));
+      if (maniaPending > 0) {
+        const bonusTargets = collectIndices((cell) => isGem(cell));
+        shuffle(bonusTargets);
+        const selected = bonusTargets.slice(0, maniaPending);
+        if (selected.length > 0) {
+          current = [...new Set([...current, ...selected])];
+        }
+        state.blessingState.comboManiaPending = 0;
+      }
       localSpawnMap = next.spawnMap;
       state.suppressSpecialSpawnOnce = false;
       source = "normal";
@@ -4596,14 +4180,37 @@ const CHAPTER_BOSS_ANIMATIONS = {
     while (queue.length > 0) {
       const { idx, depth } = queue.shift();
       const cell = state.board[idx];
-      if (!isGem(cell) || !cell.special) continue;
+      if (!isGem(cell)) continue;
 
-      if (cell.special in meta.codex.specialTrigger) recordCodex("specialTrigger", cell.special);
+      let extra = [];
+      let triggered = false;
+
+      if (cell.special) {
+        if (cell.special in meta.codex.specialTrigger) recordCodex("specialTrigger", cell.special);
+        extra = specialTargets(idx, cell.special);
+        triggered = true;
+      }
+
+      if (cell.explosive) {
+        extra.push(...gatherStrictSquareIndices(idx, ITEM_FORMULAS.blast(Math.max(1, Number(cell.explosive || 1)))));
+        cell.explosive = 0;
+        triggered = true;
+      }
+
+      if (cell.lineH || cell.lineV) {
+        extra.push(...indicesInRow(rowOf(idx)));
+        extra.push(...indicesInCol(colOf(idx)));
+        cell.lineH = 0;
+        cell.lineV = 0;
+        triggered = true;
+      }
+
+      if (!triggered) continue;
+
       spawnShockwaveFX(idx, true);
 
       if (depth >= maxDepth) continue;
 
-      const extra = specialTargets(idx, cell.special);
       let spawned = 0;
       for (const e of extra) {
         if (!set.has(e)) {
@@ -4667,10 +4274,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
     if (state.feverTurns > 0) chainMul += 0.5;
 
-    if (source === "hammer") base += 8 + itemPower("hammer") * 4;
-    if (source === "row") base += (state.feverTurns > 0 ? 26 : 18) + itemPower("row") * 5;
-    if (source === "cross") base += (state.feverTurns > 0 ? 34 : 24) + itemPower("cross") * 6;
-    if (source === "color") base += (state.feverTurns > 0 ? 40 : 28) + itemPower("color") * 6;
     if (source === "combo") base += 45;
 
     if (skillChainDepth > 1) base += skillChainDepth * 12;
@@ -4679,7 +4282,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (state.perks.score_bloom && gemCount > 0) base += gemCount * 5;
     if (state.perks.prism_heart && source === "normal") base += Math.floor(gemCount * 1.5);
 
-    base = Math.floor(base * getPerfectionistBonus(gemCount));
+    base = Math.floor(base * getKineticDamageMultiplier());
 
     return Math.max(0, Math.floor(base * chainMul));
   }
@@ -4701,8 +4304,17 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (checkComboMania(chain)) {
       state.score += 30 + chain * 12;
       spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? "连击狂热" : "Combo Mania", getElementCenter(momentumBarEl) || getViewportCenter(), "fx-text fx-text-momentum");
+      state.blessingState.comboManiaPending = Math.max(0, Number(state.blessingState.comboManiaPending || 0)) + getComboManiaExtraClearCount();
     }
     if (state.momentum >= MOMENTUM_MAX) {
+      const purifierTargets = applyPurifierSigilMomentumBonus();
+      if (purifierTargets.length > 0) {
+        clearAnim = new Set(purifierTargets);
+        renderAll();
+        clearAnim.clear();
+      }
+      const breakerTargets = tryTriggerMomentumBreaker();
+      state.blessingState.momentumBreakerPending = breakerTargets;
       state.momentum = 0;
       state.feverTurns = (state.perks.fever_loop ? 4 : 3);
       spawnFloatText("FEVER!", Math.floor((boardSize * boardSize) / 2));
@@ -4808,6 +4420,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       for (const id of pool.slice(0, 3)) {
         const def = BLESSING_DEFS[id];
         choices.push({
+          id,
           rarity: def.rarity,
           title: lt(def.title),
           desc: lt(def.desc),
@@ -4826,6 +4439,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       const def = BLESSING_DEFS[id];
       if (!def) continue;
       choices.push({
+        id,
         rarity: def.rarity,
         title: `${lt(def.title)} · ${t("itemLevel", { level: getBlessingLevel(id) + 1 })}`,
         desc: lt(def.effect || def.desc),
@@ -4851,7 +4465,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
     for (const reward of picks) {
       const btn = document.createElement("button");
       btn.className = `choice rarity-${reward.rarity}`;
-      btn.innerHTML = `<span class="choice-rarity">${t("blessing")}</span><strong>${reward.title}</strong><small>${reward.desc}</small>`;
+      const image = BLESSING_IMAGE_BY_ID[reward.id] || "";
+      const effectClass = BLESSING_EFFECT_BY_ID[reward.id] || BLESSING_DEFS[reward.id]?.category || "hybrid";
+      btn.classList.add("choice-blessing", `blessing-fx-${effectClass}`);
+      btn.innerHTML = `<div class="choice-blessing-art"><img class="choice-blessing-icon" src="${image}" alt="${reward.title}"><i class="choice-blessing-glow"></i></div><div class="choice-blessing-copy"><span class="choice-rarity">${t("blessing")}</span><strong>${reward.title}</strong><small>${reward.desc}</small></div>`;
       btn.addEventListener("click", () => {
         const blessingName = reward.apply();
         audio.play("rewardPick");
@@ -4868,6 +4485,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function showLateChapterSkillDraft(chapter, draftsRemaining) {
+    sanitizeCombatSkills();
     overlayTitleEl.textContent = t("lateChapterDraftTitle");
     overlayDescEl.textContent = t("lateChapterDraftDesc", { count: draftsRemaining });
     overlayEl?.querySelector(".modal")?.style.setProperty("--modal-enter-duration", "540ms");
@@ -4991,14 +4609,15 @@ const CHAPTER_BOSS_ANIMATIONS = {
     choiceWrapEl.innerHTML = "";
     overlayActionsEl.innerHTML = "";
 
-    const events = buildBranchRoutes();
+    const events = buildCombatSkillDraftChoices();
 
     for (const ev of events) {
       const btn = document.createElement("button");
-      btn.className = "choice";
-      btn.innerHTML = `<strong>${lt(ev.title)}</strong><small>${lt(ev.desc)}</small>`;
-      btn.addEventListener("click", () => {
-        ev.apply();
+      btn.className = `choice rarity-${ev.rarity || "common"}`;
+      btn.innerHTML = `<span class="choice-rarity">${lt(RARITY_LABELS[ev.rarity]) || t("common")}</span><strong>${lt(ev.title)}</strong><small>${lt(ev.desc)}</small>`;
+      btn.addEventListener("click", async () => {
+        const proceed = await ev.apply();
+        if (proceed === false) return;
         audio.play("rewardPick", { volume: 0.42 });
         overlayEl.classList.add("hidden");
         startFloor(state.floor + 1);
@@ -5009,58 +4628,40 @@ const CHAPTER_BOSS_ANIMATIONS = {
     overlayEl.classList.remove("hidden");
   }
 
-  function buildBranchRoutes() {
-    const theme = state.floorTheme.id;
-    const names = {
-      ember_hollows: [zhen("火星路线", "Spark Route"), zhen("贪欲路线", "Greed Route"), zhen("烈焰路线", "Blaze Route")],
-      frost_spire: [zhen("平稳路线", "Calm Route"), zhen("学者路线", "Scholar Route"), zhen("风险路线", "Risk Route")],
-      stone_grove: [zhen("地道路线", "Tunnel Route"), zhen("贪欲路线", "Greed Route"), zhen("坍塌路线", "Collapse Route")],
-      storm_peaks: [zhen("护盾路线", "Shielded Route"), zhen("收获路线", "Harvest Route"), zhen("过载路线", "Overdrive Route")],
-      venom_bloom: [zhen("净化路线", "Purge Route"), zhen("花粉路线", "Pollen Route"), zhen("腐朽路线", "Rot Route")],
-      tidal_depths: [zhen("锚定路线", "Anchor Route"), zhen("洋流路线", "Current Route"), zhen("漩涡路线", "Maelstrom Route")],
-      mirror_circus: [zhen("聚焦路线", "Focus Route"), zhen("奖赏路线", "Prize Route"), zhen("回廊路线", "Hall Route")],
-      iron_forge: [zhen("淬火路线", "Quench Route"), zhen("矿脉路线", "Ore Route"), zhen("重锤路线", "Hammer Route")],
-      eclipse_sanctum: [zhen("黎明路线", "Dawn Route"), zhen("圣环路线", "Halo Route"), zhen("夜幕路线", "Night Route")],
-      void_throne: [zhen("封印路线", "Seal Route"), zhen("裂隙路线", "Rift Route"), zhen("灾变路线", "Cataclysm Route")],
-    }[theme] || [zhen("稳妥路线", "Safe Route"), zhen("贪婪路线", "Greedy Route"), zhen("试炼路线", "Trial Route")];
+  function buildCombatSkillDraftChoices() {
+    sanitizeCombatSkills();
+    const result = [];
+    const newCandidates = ITEM_ORDER.filter((id) => !hasItemType(id));
+    const carried = getCarriedItems();
 
-    return [
-      {
-        title: names[0],
-        desc: zhen("最终 Boss 层：+2 步，目标压力更低，节奏更稳。", "Final boss floor: +2 moves, lower target pressure, calmer pacing."),
-        apply: () => {
-          state.routePlan = { id: "safe", title: lt(names[0]), floorsRemaining: 1, moveBonus: 2, movePenalty: 0, targetMulDelta: -0.08, pressureDelta: -1, dropBoost: 0, chainBonus: 0, shardBonus: 0 };
-          notify(i18n.getLanguage() === "zh-CN" ? `已选择路线：${lt(names[0])}。` : `Route chosen: ${lt(names[0])}.`, "ok");
-        },
-      },
-      {
-        title: names[1],
-        desc: zhen("最终 Boss 层：额外掉落并获得 +1 碎片，但目标略高。", "Final boss floor: extra drops and +1 shard, but targets are slightly higher."),
-        apply: () => {
-          state.routePlan = { id: "greed", title: lt(names[1]), floorsRemaining: 1, moveBonus: 0, movePenalty: 0, targetMulDelta: 0.08, pressureDelta: 0, dropBoost: 0.1, chainBonus: 0, shardBonus: 1 };
-          notify(i18n.getLanguage() === "zh-CN" ? `已选择路线：${lt(names[1])}。` : `Route chosen: ${lt(names[1])}.`, "warn");
-        },
-      },
-      {
-        title: names[2],
-        desc: zhen("最终 Boss 层：步数更少、压力更大，但连锁更强且立刻让全部作战技能 +1 级。", "Final boss floor: fewer moves and more pressure, but stronger chains and all combat skills gain +1 level immediately."),
-        apply: () => {
-          state.routePlan = { id: "trial", title: lt(names[2]), floorsRemaining: 1, moveBonus: 0, movePenalty: 1, targetMulDelta: 0.12, pressureDelta: 1, dropBoost: 0.04, chainBonus: 0.18, shardBonus: 0 };
-          refillCarriedCharges();
-          notify(i18n.getLanguage() === "zh-CN" ? `已选择路线：${lt(names[2])}。` : `Route chosen: ${lt(names[2])}.`, "warn");
-        },
-      },
-    ];
+    if (carried.length < MAX_ITEM_TYPES && newCandidates.length > 0) {
+      const pool = [...newCandidates];
+      shuffle(pool);
+      const preferred = pool.filter((id) => ITEM_DEFS[id].rarity !== "legendary");
+      const picks = (preferred.length >= 3 ? preferred : pool).slice(0, 3);
+      for (const id of picks) result.push(createNewItemReward(id, { onCancel: () => showEventNode() }));
+      return result;
+    }
+
+    const upgrades = [...carried].sort((a, b) => getItemLevel(a) - getItemLevel(b));
+    for (const id of upgrades.slice(0, 3)) result.push(createUpgradeReward(id));
+
+    while (result.length < 3) {
+      const fallback = randomPick(ITEM_ORDER);
+      result.push(hasItemType(fallback) ? createUpgradeReward(fallback) : createNewItemReward(fallback, { onCancel: () => showEventNode() }));
+    }
+
+    return result.slice(0, 3);
   }
 
   function buildEventChoices() {
     const commonEvents = [
         {
           title: zhen("诅咒契约", "Cursed Pact"),
-          desc: zhen("接下来两层会更严苛，但连锁奖励和掉落提高，并获得 +1 十字核爆。", "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Nova."),
+          desc: zhen("接下来两层会更严苛，但连锁奖励和掉落提高，并获得 +1 十字斩。", "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Strike."),
           apply: () => {
             state.eventCurseFloors = 2;
-            unlockOrUpgradeSkill("cross", 1);
+            unlockOrUpgradeSkill("crossStrike", 1);
             notify(i18n.getLanguage() === "zh-CN" ? "你签下了诅咒契约。" : "You signed the Cursed Pact.", "warn");
           },
         },
@@ -5097,10 +4698,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
       ember_hollows: [
         {
           title: zhen("引燃储备", "Kindling Cache"),
-          desc: zhen("从余烬营地获得 +1 回响溅射和 +1 裂阵直击。", "Gain +1 Ricochet Splash and +1 Line Breaker from the ember camp."),
+          desc: zhen("从余烬营地获得 +1 溅射和 +1 十字斩。", "Gain +1 Splatter and +1 Cross Strike from the ember camp."),
           apply: () => {
-            unlockOrUpgradeSkill("hammer", 1);
-            unlockOrUpgradeSkill("row", 1);
+            unlockOrUpgradeSkill("splatter", 1);
+            unlockOrUpgradeSkill("crossStrike", 1);
             notify(i18n.getLanguage() === "zh-CN" ? "引燃工具已加入你的配置。" : "Kindling tools added to your kit.", "ok");
           },
         },
@@ -5132,9 +4733,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
       storm_peaks: [
         {
           title: zhen("熔炉过载", "Forge Overdrive"),
-          desc: zhen("获得 +1 同调收割，并提高下一次诅咒楼层收益。", "Gain +1 Color Harvest and boost the next cursed floor payoff."),
+          desc: zhen("获得 +1 邻近模仿，并提高下一次诅咒楼层收益。", "Gain +1 Neighbor Mimic and boost the next cursed floor payoff."),
           apply: () => {
-            unlockOrUpgradeSkill("color", 1);
+            unlockOrUpgradeSkill("neighborMimic", 1);
             state.eventCurseFloors = Math.max(state.eventCurseFloors, 1);
             notify(i18n.getLanguage() === "zh-CN" ? "熔炉轰鸣着苏醒。" : "The forge roars to life.", "warn");
           },
@@ -5155,10 +4756,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
       tidal_depths: [
         {
           title: zhen("潮汐罗盘", "Tidal Compass"),
-          desc: zhen("下一层 +3 步，并获得 +1 追击尾流。", "Gain +3 moves next floor and +1 Cascade Tailwind."),
+          desc: zhen("下一层 +3 步，并获得 +1 连锁闪电。", "Gain +3 moves next floor and +1 Chain Lightning."),
           apply: () => {
             state.nextFloorMoveBonus += 3;
-            unlockOrUpgradeSkill("shuffle", 1);
+            unlockOrUpgradeSkill("chainLightning", 1);
             notify(i18n.getLanguage() === "zh-CN" ? "潮汐暂时与你同调。" : "The tides briefly align in your favor.", "ok");
           },
         },
@@ -5194,7 +4795,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
           title: zhen("圣环碎片", "Halo Fragment"),
           desc: zhen("获得 +1 棱镜溢流和 +25 动量。", "Gain +1 Prism Overflow and +25 momentum."),
           apply: () => {
-            unlockOrUpgradeSkill("rainbow_burst", 1);
+            unlockOrUpgradeSkill("colorAssimilation", 1);
             state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
             notify(i18n.getLanguage() === "zh-CN" ? "圣环碎片强化了你的配置。" : "A halo fragment empowers your kit.", "ok");
           },
@@ -5207,7 +4808,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
           apply: () => {
             state.score += 240;
             state.nextFloorMovePenalty += 1;
-            unlockOrUpgradeSkill("boss_breaker", 1);
+            unlockOrUpgradeSkill("lineEnchant", 1);
             notify(i18n.getLanguage() === "zh-CN" ? "裂隙以代价赐予了力量。" : "The rift grants power at a cost.", "warn");
           },
         },
@@ -5220,6 +4821,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function showRewardChoices() {
+    sanitizeCombatSkills();
     const choices = buildRewardChoices();
     overlayTitleEl.textContent = t("floorCleared", { floor: state.floor });
     overlayDescEl.textContent = t("rewardChooseDesc");
@@ -5248,6 +4850,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function buildRewardChoices() {
+    sanitizeCombatSkills();
     const result = [];
     const perkReward = buildPerkReward();
     if (perkReward) result.push(perkReward);
@@ -5269,6 +4872,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function buildItemRewards() {
+    sanitizeCombatSkills();
     const rewards = [];
     const carried = getCarriedItems();
     const newCandidates = ITEM_ORDER.filter((id) => !hasItemType(id));
@@ -5574,7 +5178,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
   }
 
-  function spawnPassiveAreaShockwave(indices, skillId = "screen_wipe", delay = 0) {
+  function spawnPassiveAreaShockwave(indices, skillId = "passiveArea", delay = 0) {
     if (!fxLayerEl || !indices || indices.length === 0) return;
     const points = indices.map(getCellCenter).filter(Boolean);
     if (points.length === 0) return;
@@ -5588,7 +5192,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     });
   }
 
-  function spawnPassiveSlash(point, skillId = "boss_breaker", delay = 0, angle = -32) {
+  function spawnPassiveSlash(point, skillId = "passiveSlash", delay = 0, angle = -32) {
     spawnTransientFx(`fx-passive-slash fx-${skillId}`, point, 760 + delay, {
       "--slash-angle": `${angle}deg`,
       "--fx-delay": `${delay}ms`,
@@ -5602,7 +5206,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     });
   }
 
-  function spawnPassiveOverclockGrid(indices, skillId = "time_freeze", delay = 0) {
+  function spawnPassiveOverclockGrid(indices, skillId = "passiveGrid", delay = 0) {
     if (!fxLayerEl || !indices || indices.length === 0) return;
     const points = indices.map(getCellCenter).filter(Boolean);
     if (points.length === 0) return;
@@ -5625,7 +5229,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       skillName: effect.name,
       origin: getSkillButtonCenter(effect.id),
       center,
-      theme: ["rainbow_burst", "boss_breaker"].includes(effect.id) ? "rainbow" : "screen",
+      theme: ITEM_DEFS[effect.id]?.type === "colorChange" ? "rainbow" : "screen",
       duration: 960,
       withLabel: true,
     });
@@ -5646,65 +5250,13 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
 
     switch (effect.id) {
-      case "chain_matrix":
-        spawnPassiveLineSweep(effect.indices.filter((idx) => rowOf(idx) === rowOf(effect.indices[0])), effect.id, 0);
-        spawnPassiveLineSweep(effect.indices.filter((idx) => colOf(idx) === colOf(effect.indices[0])), effect.id, 40);
-        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 18, 1));
-        break;
-      case "fever_engine":
-        spawnPassiveAreaShockwave(effect.indices, effect.id, 0);
-        points.slice(0, 2).forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 42, 1.12));
-        break;
-      case "purifier_sigil":
-        spawnPassiveLinkPath(points, effect.id, 0);
-        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 22, 0.9));
-        break;
-      case "boss_shunt":
-        points.forEach((point, index) => {
-          spawnPassiveSlash(point, effect.id, index * 34, index % 2 === 0 ? -20 : 20);
-          spawnPassiveSkillMarker(point, effect.id, index * 22, 1.02);
-        });
-        break;
-      case "hammer":
-        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 40, 0.82));
-        break;
-      case "row":
+      case "tacticalReserve":
         spawnPassiveLineSweep(effect.indices, effect.id, 0);
-        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 12, 0.9));
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 20, 0.92));
         break;
-      case "cross":
-        spawnPassiveLineSweep(effect.indices.filter((idx) => rowOf(idx) === rowOf(effect.indices[0])), effect.id, 0);
-        spawnPassiveLineSweep(effect.indices.filter((idx) => colOf(idx) === colOf(effect.indices[0])), effect.id, 40);
-        spawnPassiveSkillMarker(points[0], effect.id, 0, 1.2);
-        break;
-      case "color":
-        spawnPassiveLinkPath(points.slice(0, Math.min(points.length, 6)), effect.id, 0);
-        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 18, 0.8));
-        break;
-      case "shuffle":
-        points.forEach((point, index) => {
-          spawnPassiveSpiral(point, effect.id, index * 36, 0.84 + index * 0.04);
-          spawnPassiveSkillMarker(point, effect.id, index * 26, 0.76);
-        });
-        break;
-      case "screen_wipe":
-        spawnPassiveAreaShockwave(effect.indices, effect.id, 0);
-        points.slice(0, 3).forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 60, 1.08));
-        break;
-      case "rainbow_burst":
-        spawnPassiveLinkPath(points.slice(0, Math.min(points.length, 7)), effect.id, 0);
-        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 16, 0.96));
-        break;
-      case "time_freeze":
-        spawnPassiveOverclockGrid(effect.indices, effect.id, 0);
-        spawnPassiveLineSweep(effect.indices.slice(0, Math.min(effect.indices.length, 5)), effect.id, 0);
-        points.slice(0, 2).forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 60, 1.18));
-        break;
-      case "boss_breaker":
-        points.slice(0, 4).forEach((point, index) => {
-          spawnPassiveSlash(point, effect.id, index * 46, index % 2 === 0 ? -32 : 28);
-          spawnPassiveSkillMarker(point, effect.id, index * 34, 0.9);
-        });
+      case "purifierSigil":
+        spawnPassiveLinkPath(points, effect.id, 0);
+        points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 22, 0.94));
         break;
       default:
         points.forEach((point, index) => spawnPassiveSkillMarker(point, effect.id, index * 24, 1));
@@ -5714,19 +5266,8 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function getSkillAudioProfile(skillId) {
     const profiles = {
-      hammer: { sound: "skillHammer", volume: 0.34, rate: 1.1, accent: { sound: "uiClick", volume: 0.1, rate: 1.34 } },
-      row: { sound: "skillRow", volume: 0.34, rate: 0.96, accent: { sound: "swap", volume: 0.1, rate: 0.82 } },
-      cross: { sound: "skillCross", volume: 0.34, rate: 0.9, accent: { sound: "skillRow", volume: 0.08, rate: 1.18 } },
-      color: { sound: "skillColor", volume: 0.3, rate: 1.08, accent: { sound: "rewardPick", volume: 0.08, rate: 1.22 } },
-      shuffle: { sound: "skillShuffle", volume: 0.34, rate: 1.08, accent: { sound: "matchClear", volume: 0.08, rate: 1.3 } },
-      screen_wipe: { sound: "skillPulse9", volume: 0.38, rate: 0.84, accent: { sound: "fever", volume: 0.08, rate: 0.88 } },
-      rainbow_burst: { sound: "skillRainbow", volume: 0.32, rate: 1.06, accent: { sound: "skillColor", volume: 0.08, rate: 1.26 } },
-      time_freeze: { sound: "skillOverclock", volume: 0.32, rate: 0.96, accent: { sound: "uiClick", volume: 0.08, rate: 0.74 } },
-      boss_breaker: { sound: "skillExecute", volume: 0.38, rate: 0.82, accent: { sound: "enemyUltimateCast", volume: 0.08, rate: 0.72 } },
-      chain_matrix: { sound: "condChainMatrix", volume: 0.28, rate: 1, accent: { sound: "skillRow", volume: 0.08, rate: 1.1 } },
-      fever_engine: { sound: "condFeverEngine", volume: 0.28, rate: 1.08, accent: { sound: "skillPulse9", volume: 0.08, rate: 1.16 } },
-      purifier_sigil: { sound: "condPurifier", volume: 0.28, rate: 1.04, accent: { sound: "skillColor", volume: 0.06, rate: 1.32 } },
-      boss_shunt: { sound: "condBossShunt", volume: 0.24, rate: 0.96, accent: { sound: "enemyBossCast", volume: 0.08, rate: 0.84 } },
+      tacticalReserve: { sound: "condReserve", volume: 0.26, rate: 0.96, accent: { sound: "uiClick", volume: 0.08, rate: 1.08 } },
+      purifierSigil: { sound: "condPurifier", volume: 0.28, rate: 1.04, accent: { sound: "skillColor", volume: 0.06, rate: 1.32 } },
     };
     return profiles[skillId] || { sound: "itemCast", volume: 0.26, rate: 1.06 };
   }
@@ -5800,10 +5341,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
       if (audioProfile.accent) audio.play(audioProfile.accent.sound, { volume: audioProfile.accent.volume, rate: audioProfile.accent.rate });
       renderAll();
       await sleep(620);
-      if (getBlessingLevel("skillBarrage") > 0 && Math.random() < 0.05 * (1 + getBlessingLevel("skillBarrage"))) {
-        spawnViewportFloatText(i18n.getLanguage() === "zh-CN" ? "技能连发" : "Skill Barrage", getSkillButtonCenter(effect.id) || getViewportCenter(), "fx-text fx-text-momentum");
-        await sleep(180);
-      }
     }
     clearAnim.clear();
     setActiveSkillHighlight(null);

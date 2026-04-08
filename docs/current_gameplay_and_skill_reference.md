@@ -308,7 +308,7 @@
   - 关卡词缀
   - 章节主题
   - 路线加成
-  - 祝福 `chain_matrix`
+  - 动量/路线/章节等全局加成来源
   - 事件诅咒层
   等来源累加。
 
@@ -352,7 +352,7 @@
 
 - 基础时长：3 回合。
 - `fever_loop`：+1 回合。
-- `fever_engine`：+1 回合。
+- 当前正式祝福中没有旧版 `fever_engine`，Fever 延长主要由 Perk `fever_loop` 提供。
 - 两者可叠加。
 
 ### 10.3 Fever 收益
@@ -591,16 +591,22 @@
 
 ## 13. 祝福系统（章节开局三选一）
 
-祝福是**章节内持续有效**的全局被动。
+祝福是**章节内持续有效**的全局被动。当前正式系统使用 `src/config/blessings-config.js` 中的 20 个祝福，围绕：
+
+- 动量
+- 敌人蓄能压制
+- 技能触发
+- 综合容错 / 净化
+
+其中与资源和异常控制相关的新综合祝福包括：
 
 | ID | 名称 | 稀有度 | 效果 |
 |---|---|---|---|
-| `tactical_reserve` | 战术预备 | 稀有 | 每层开始 +1 步 |
-| `supply_cache` | 补给储备 | 稀有 | 每层开始所有已携带道具 +1 充能 |
-| `chain_matrix` | 连锁矩阵 | 史诗 | 本章内永久 +0.15 连锁加成 |
-| `fever_engine` | 热潮引擎 | 史诗 | Fever 额外 +1 回合 |
-| `boss_shunt` | Boss 分流 | 传说 | 后续楼层 Boss 充能增长降低 |
-| `purifier_sigil` | 净化印记 | 稀有 | 每层开始时锁定和玻璃更少 |
+| `tacticalReserve` | 战术预备 | 稀有 | 每层开始 +1~3 步 |
+| `purifierSigil` | 净化印记 | 史诗 | 开局减少部分锁定/玻璃压力，并净化 2~6 个异常状态 |
+| `restorativePulse` | 苏生脉冲 | 史诗 | 若回合后盘面异常过多，自动净化 1~3 个状态并获得动量 |
+
+> 旧文档中曾出现的 `tactical_reserve / supply_cache / chain_matrix / fever_engine / boss_shunt / purifier_sigil` 属于已废弃的旧章节祝福命名，不再作为当前正式实现依据。
 
 ## 14. Perk 技能系统（过层奖励）
 
@@ -739,7 +745,6 @@ Perk 是当前章节挑战中的构筑核心，被奖励三选一投放。
   - Boss 基础值 `baseGain`
   - 当前楼层威胁 `bossGain`
   - 精英层额外加成
-  - 祝福 `boss_shunt` 减免
   - 永久升级 `boss_dampener` 在前 6 层生效
 
 ### 18.3 Boss 出手门槛

@@ -136,6 +136,9 @@ export function renderBoardView({
       const gem = document.createElement("div");
       gem.className = `gem g-${value.color}`;
       if (value.special) gem.classList.add(`sp-${value.special}`);
+      if (value.explosive) gem.classList.add("sp-bomb");
+      if (value.lineH) gem.classList.add("sp-line_h");
+      if (value.lineV) gem.classList.add("sp-line_v");
       if (fallAnim.has(i)) gem.classList.add("fall-in");
       if (clearAnim.has(i)) gem.classList.add("clearing");
 

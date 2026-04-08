@@ -1,216 +1,123 @@
 const zhen = (zh, en) => ({ zh, en });
 
 // ============================================================
-// 玩家祝福系统 - 核心目标：动量、蓄能、技能触发率
+// 玩家祝福系统 - 当前仅保留 8 个核心祝福
 // ============================================================
 
-// 祝福升级公式
 export const BLESSING_FORMULAS = {
-  // 动量类
   kineticAccumulation: {
-    momentumCap: (level) => level === 1 ? 50 : level === 2 ? 75 : level === 3 ? 100 : level === 4 ? 150 : 200,
-    damagePer10: (level) => level === 1 ? 3 : level === 2 ? 5 : level === 3 ? 8 : level === 4 ? 12 : 20,
+    energyCap: (level) => [0, 30, 45, 60, 80, 100][Math.max(0, Math.min(5, level))],
+    damagePer10: (level) => [0, 0.04, 0.05, 0.06, 0.07, 0.08][Math.max(0, Math.min(5, level))],
   },
   comboMania: {
-    triggerProb: (level) => 15 + 15 * level,
-    extraCount: (level) => level,
+    comboThreshold: (level) => (level >= 4 ? 2 : 3),
+    triggerProb: (level) => [0, 0.18, 0.28, 0.38, 0.5, 0.62][Math.max(0, Math.min(5, level))],
+    extraClearCount: (level) => [0, 2, 3, 4, 5, 6][Math.max(0, Math.min(5, level))],
   },
   momentumBreaker: {
-    threshold: (level) => 95 - 5 * level, // %
-    range: (level) => 2 * level + 1,
-  },
-  kineticConversion: {
-    convertRate: (level) => 5 + 10 * level, // %
-    overflowCap: (level) => level === 1 ? 50 : level === 2 ? 75 : level === 3 ? 100 : level === 4 ? 150 : Infinity,
-  },
-
-  // 蓄能类
-  chargeSense: {
-    threshold: (level) => 60 - 10 * level, // %
-    momentumBonus: (level) => 5 * level,
-  },
-  chargedCounter: {
-    damageMult: (level) => 0.5 * Math.pow(2, level - 1),
-    triggerProb: (level) => 15 + 15 * level,
-  },
-  energyAbsorb: {
-    absorbRate: (level) => 3 + 7 * level,
-    energyCap: (level) => 50 * Math.pow(2, level - 1),
+    triggerProb: (level) => [0, 0.12, 0.2, 0.28, 0.36, 0.45][Math.max(0, Math.min(5, level))],
   },
   chargeWeaken: {
-    weakenRate: (level) => 8 * level + 2, // %
-  },
-
-  // 触发类
-  luckyAura: {
-    triggerBonus: (level) => 3 * level + 2, // %
-  },
-  cooldownReduction: {
-    reduction: (level) => 8 * level + 2, // %
-  },
-  chainAwakening: {
-    triggerMult: (level) => 0.8 + 0.4 * level,
-    chainBonus: (level) => 8 + 3 * level,
+    weakenRate: (level) => [0, 0.12, 0.18, 0.24, 0.3, 0.36][Math.max(0, Math.min(5, level))],
   },
   criticalBlessing: {
-    critProb: (level) => 8 + 6 * level,
-    critEffect: (level) => 1.3 + 0.4 * level,
+    critProb: (level) => [0, 0.12, 0.18, 0.24, 0.3, 0.36][Math.max(0, Math.min(5, level))],
+    critEffect: () => 2,
   },
-  skillBarrage: {
-    barrageProb: (level) => 5 + 7 * level,
-    maxBarrage: (level) => level === 1 ? 1 : level === 2 ? 2 : level === 3 ? 3 : level === 4 ? 4 : Infinity,
-  },
-
-  // 综合类
   desperateSurvival: {
-    hpThreshold: (level) => 20 + 5 * level,
-    damageBonus: (level) => 10 * Math.pow(2, level - 1),
-    triggerBonus: (level) => 8 * level,
+    moveThreshold: () => 5,
+    moveGain: (level) => (level >= 4 ? 2 : 1),
   },
-  battlefieldControl: {
-    reshuffleProb: (level) => 3 + 4 * level,
-    matchOptimize: (level) => 8 + 10 * level,
+  tacticalReserve: {
+    minMoves: () => 2,
+    maxMoves: () => 5,
   },
-  perfectionist: {
-    match4Bonus: (level) => 1.15 + 0.1 * level,
-    match5Bonus: (level) => 1.4 + 0.2 * level,
-  },
-  resourceRecovery: {
-    refundProb: (level) => 3 + 5 * level,
+  purifierSigil: {
+    cleanseCount: (level) => Math.max(0, level * 2),
   },
 };
 
-// 祝福定义
 export const BLESSING_DEFS = {
-  // ==================== 动量类 ====================
   kineticAccumulation: {
     title: zhen("动能累积", "Kinetic Accumulation"),
-    desc: zhen("每次消除增加动能，动能越高伤害越高", "Each clear builds kinetic energy - higher energy means more damage"),
+    desc: zhen("每次消除增加动能，动能越高伤害越高", "Each clear builds kinetic energy, and higher energy raises damage"),
     rarity: "common",
     category: "momentum",
-    effect: zhen("每次消除+1动能，连击时额外+0.5", "+1 kinetic per clear, +0.5 per combo hit"),
+    effect: zhen("消除会储存动能，并按当前动能提高伤害", "Clears store kinetic energy and scale damage by current energy"),
   },
   comboMania: {
     title: zhen("连击狂热", "Combo Mania"),
-    desc: zhen("连击数达到阈值时，概率触发额外消除", "Chance to trigger extra clears when combo threshold is reached"),
+    desc: zhen("连击数达到阈值时，触发额外消除", "When combo count reaches a threshold, trigger extra clears"),
     rarity: "rare",
     category: "momentum",
-    effect: zhen("连击≥3时触发，等级越高概率越高", "Triggers at combo≥3, higher levels = higher chance"),
+    effect: zhen("连击达到阈值后，概率追加随机额外消除", "After hitting the combo threshold, may add random extra clears"),
   },
   momentumBreaker: {
     title: zhen("势如破竹", "Momentum Breaker"),
     desc: zhen("动量达到顶峰时，触发一次免费的全屏消除", "When momentum peaks, trigger a free board-wide clear"),
     rarity: "epic",
     category: "momentum",
-    effect: zhen("动量达上限的90%-70%时触发", "Triggers at 90%-70% of max momentum"),
-  },
-  kineticConversion: {
-    title: zhen("动能转化", "Kinetic Conversion"),
-    desc: zhen("将多余动能转化为回复生命", "Convert excess kinetic energy into HP recovery"),
-    rarity: "rare",
-    category: "momentum",
-    effect: zhen("溢出动能10%-50%转化为生命", "Convert 10%-50% of overflow to HP"),
-  },
-
-  // ==================== 蓄能类 ====================
-  chargeSense: {
-    title: zhen("蓄能感知", "Charge Sense"),
-    desc: zhen("感知敌人蓄能进度，提前预警并提供反击机会", "Sense enemy charge progress, get early warning and counter opportunities"),
-    rarity: "rare",
-    category: "charge",
-    effect: zhen("敌人蓄能50%-5%时预警，获得动量", "Warn at 50%-5% enemy charge, gain momentum"),
-  },
-  chargedCounter: {
-    title: zhen("充能反击", "Charged Counter"),
-    desc: zhen("敌人蓄能满时，概率自动触发反击", "When enemy charge is full, chance to auto-counter"),
-    rarity: "rare",
-    category: "charge",
-    effect: zhen("蓄能满时50%-200%伤害反击", "Counter with 50%-200% damage on full charge"),
-  },
-  energyAbsorb: {
-    title: zhen("能量吸收", "Energy Absorb"),
-    desc: zhen("敌人蓄能时，玩家吸收部分能量为自己所用", "When enemy charges, absorb some energy for yourself"),
-    rarity: "epic",
-    category: "charge",
-    effect: zhen("吸收敌人5%-40%蓄能", "Absorb 5%-40% of enemy charge"),
+    effect: zhen("动量拉满时有概率直接清屏一次", "On full momentum, has a chance to clear the board once for free"),
   },
   chargeWeaken: {
     title: zhen("蓄能削弱", "Charge Weaken"),
     desc: zhen("降低敌人蓄能速度", "Slow down enemy charge rate"),
     rarity: "common",
     category: "charge",
-    effect: zhen("敌人蓄能速度-10%-60%", "Enemy charge rate reduced by 10%-60%"),
-  },
-
-  // ==================== 触发类 ====================
-  luckyAura: {
-    title: zhen("幸运光环", "Lucky Aura"),
-    desc: zhen("提高所有技能的触发概率", "Increase trigger chance of all skills"),
-    rarity: "epic",
-    category: "trigger",
-    effect: zhen("所有技能触发率+5%-30%", "All skills +5%-30% trigger rate"),
-  },
-  cooldownReduction: {
-    title: zhen("技能冷却缩减", "Cooldown Reduction"),
-    desc: zhen("减少技能冷却时间", "Reduce skill cooldown"),
-    rarity: "rare",
-    category: "trigger",
-    effect: zhen("冷却时间-10%-55%", "Cooldown reduced by 10%-55%"),
-  },
-  chainAwakening: {
-    title: zhen("连锁觉醒", "Chain Awakening"),
-    desc: zhen("连锁消除时，概率触发技能自动释放", "Chance to auto-trigger skills during chain clears"),
-    rarity: "epic",
-    category: "trigger",
-    effect: zhen("3连消起，+10%-25%/连消", "From 3-match, +10%-25% per additional match"),
+    effect: zhen("敌人被动蓄能速度持续降低", "Enemy passive charge gain is continuously reduced"),
   },
   criticalBlessing: {
     title: zhen("暴击祝福", "Critical Blessing"),
-    desc: zhen("技能触发时，概率造成双倍效果", "Chance for skills to deal double effect"),
+    desc: zhen("技能触发时，概率造成双倍效果", "Triggered skills have a chance to deal double effect"),
     rarity: "legendary",
     category: "trigger",
-    effect: zhen("10%-40%概率暴击，1.5-3倍效果", "10%-40% crit chance, 1.5-3x effect"),
+    effect: zhen("技能或特效命中时，概率直接翻倍", "Triggered skills and effects can crit for exact double effect"),
   },
-  skillBarrage: {
-    title: zhen("技能连发", "Skill Barrage"),
-    desc: zhen("技能触发后，概率继续触发其他技能", "After skill triggers, chance to trigger another"),
-    rarity: "legendary",
-    category: "trigger",
-    effect: zhen("10%-40%概率连发，最多5次", "10%-40% barrage chance, up to 5 hits"),
-  },
-
-  // ==================== 综合类 ====================
   desperateSurvival: {
     title: zhen("绝境逢生", "Desperate Survival"),
-    desc: zhen("生命值低时获得强力增益", "Gain powerful buffs when HP is low"),
+    desc: zhen("当步数少于5的时候，每次连击会增加步数", "When moves are below 5, each combo grants extra moves"),
     rarity: "epic",
     category: "hybrid",
-    effect: zhen("HP<40%时，伤害+100%，技能触发+40%", "At HP<40%, +100% damage, +40% skill trigger"),
+    effect: zhen("低步数时，每次连锁都会返还步数", "At low moves, each combo refunds moves"),
   },
-  battlefieldControl: {
-    title: zhen("战场统治", "Battlefield Control"),
-    desc: zhen("控制棋盘格局，创造有利消除条件", "Control the board, create favorable clear conditions"),
+  tacticalReserve: {
+    title: zhen("战术预备", "Tactical Reserve"),
+    desc: zhen("每层开始时获得额外步数（随机2-5），稳住节奏", "Gain 2-5 random extra moves at the start of each floor"),
     rarity: "rare",
     category: "hybrid",
-    effect: zhen("每回合5%-25%概率重排，优化三消", "5%-25% chance to reshuffle per turn, optimize match-3"),
+    effect: zhen("每层开始随机额外获得 2~5 步", "Start each floor with a random 2~5 extra moves"),
   },
-  perfectionist: {
-    title: zhen("完美主义", "Perfectionist"),
-    desc: zhen("强迫症式的精准消除，奖励完美操作", "Reward perfect operations with bonus effects"),
-    rarity: "rare",
+  purifierSigil: {
+    title: zhen("净化印记", "Purifier Sigil"),
+    desc: zhen("动量满了之后可以消耗动量点数*2的异常宝石", "When momentum fills, cleanse afflicted gems equal to level × 2"),
+    rarity: "epic",
     category: "hybrid",
-    effect: zhen("4消1.2-1.6倍，5消1.5-2.5倍", "4-match 1.2-1.6x, 5-match 1.5-2.5x"),
-  },
-  resourceRecovery: {
-    title: zhen("资源回收", "Resource Recovery"),
-    desc: zhen("未触发的技能概率返还冷却", "Chance to refund cooldown on missed skills"),
-    rarity: "common",
-    category: "hybrid",
-    effect: zhen("技能未触发时，5%-30%概率返还", "5%-30% chance to refund on miss"),
+    effect: zhen("动量拉满时自动净化 等级×2 个异常宝石", "When momentum peaks, automatically cleanse afflicted gems equal to level × 2"),
   },
 };
 
-// 祝福分类
+export const BLESSING_IMAGE_BY_ID = {
+  kineticAccumulation: "./assets/generated/blessings/unified-covers/blessing_kineticAccumulation_cover-20260407-113354-1.jpeg",
+  comboMania: "./assets/generated/blessings/unified-covers/blessing_comboMania_cover-20260407-113355-1.jpeg",
+  momentumBreaker: "./assets/generated/blessings/unified-covers/blessing_momentumBreaker_cover-20260407-113355-1.jpeg",
+  chargeWeaken: "./assets/generated/blessings/unified-covers/blessing_chargeWeaken_cover-20260407-113449-1.jpeg",
+  criticalBlessing: "./assets/generated/blessings/unified-covers/blessing_criticalBlessing_cover-20260407-113449-1.jpeg",
+  desperateSurvival: "./assets/generated/blessings/unified-covers/blessing_desperateSurvival_cover-20260407-113537-1.jpeg",
+  tacticalReserve: "./assets/generated/blessings/unified-covers/blessing_tacticalReserve_cover-20260407-113538-1.jpeg",
+  purifierSigil: "./assets/generated/blessings/unified-covers/blessing_purifierSigil_cover-20260407-113538-1.jpeg",
+};
+
+export const BLESSING_EFFECT_BY_ID = {
+  kineticAccumulation: "momentum",
+  comboMania: "combo",
+  momentumBreaker: "burst",
+  chargeWeaken: "debuff",
+  criticalBlessing: "critical",
+  desperateSurvival: "desperate",
+  tacticalReserve: "reserve",
+  purifierSigil: "purify",
+};
+
 export const BLESSING_CATEGORIES = {
   momentum: zhen("动量类", "Momentum"),
   charge: zhen("蓄能类", "Charge"),
@@ -218,19 +125,17 @@ export const BLESSING_CATEGORIES = {
   hybrid: zhen("综合类", "Hybrid"),
 };
 
-// 祝福顺序
 export const BLESSING_ORDER = [
-  // 动量类
-  "kineticAccumulation", "comboMania", "momentumBreaker", "kineticConversion",
-  // 蓄能类
-  "chargeSense", "chargedCounter", "energyAbsorb", "chargeWeaken",
-  // 触发类
-  "luckyAura", "cooldownReduction", "chainAwakening", "criticalBlessing", "skillBarrage",
-  // 综合类
-  "desperateSurvival", "battlefieldControl", "perfectionist", "resourceRecovery",
+  "kineticAccumulation",
+  "comboMania",
+  "momentumBreaker",
+  "chargeWeaken",
+  "criticalBlessing",
+  "desperateSurvival",
+  "tacticalReserve",
+  "purifierSigil",
 ];
 
-// 稀有度标签
 export const RARITY_LABELS = {
   common: zhen("普通", "Common"),
   rare: zhen("稀有", "Rare"),
@@ -238,34 +143,21 @@ export const RARITY_LABELS = {
   legendary: zhen("传说", "Legendary"),
 };
 
-// 稀有度顺序
 export const RARITY_ORDER = ["common", "rare", "epic", "legendary"];
 
-// 协同效果定义
 export const BLESSING_SYERGIES = {
   kineticSet: {
-    name: zhen("动能三件套", "Kinetic Set"),
+    name: zhen("动量三重奏", "Momentum Trio"),
     blessings: ["kineticAccumulation", "comboMania", "momentumBreaker"],
-    effect: zhen("动量溢出时，连击狂热触发率+50%", "When momentum overflows, Combo Mania trigger rate +50%"),
+    effect: zhen("高动量局面会更容易滚起连锁和清屏节奏", "High-momentum turns more easily snowball into extra clears and wipe effects"),
   },
-  chargeCounter: {
-    name: zhen("蓄能克星", "Charge Counter"),
-    blessings: ["chargeSense", "chargedCounter", "energyAbsorb"],
-    effect: zhen("打断敌人蓄能时，回复量翻倍", "When interrupting enemy charge, recovery doubled"),
-  },
-  skillStorm: {
-    name: zhen("技能狂潮", "Skill Storm"),
-    blessings: ["luckyAura", "chainAwakening", "skillBarrage"],
-    effect: zhen("连锁触发技能时，幸运光环效果翻倍", "When chain-triggering skills, Lucky Aura effect doubled"),
-  },
-  desperateReversal: {
-    name: zhen("绝境逆转", "Desperate Reversal"),
-    blessings: ["desperateSurvival", "kineticConversion", "criticalBlessing"],
-    effect: zhen("低血量时，暴击概率额外+30%", "At low HP, crit chance +30% additional"),
+  survivalLoop: {
+    name: zhen("续航回稳", "Stabilized Recovery"),
+    blessings: ["desperateSurvival", "tacticalReserve", "purifierSigil"],
+    effect: zhen("低步数与异常盘面的容错会明显提升", "Low-move and ailment-heavy situations become much safer"),
   },
 };
 
-// 升级材料需求
 export const BLESSING_UPGRADE_COSTS = {
   1: { score: 0, label: "初始" },
   2: { score: 100, label: "100评分" },
@@ -274,5 +166,4 @@ export const BLESSING_UPGRADE_COSTS = {
   5: { score: 1000, label: "1000评分" },
 };
 
-// 装备槽位
 export const MAX_BLESSING_SLOTS = 3;

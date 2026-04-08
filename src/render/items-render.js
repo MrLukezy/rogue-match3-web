@@ -1,3 +1,5 @@
+import { BLESSING_EFFECT_BY_ID, BLESSING_IMAGE_BY_ID } from "../config/blessings-config.js";
+
 export function renderItemsView({
   itemWrapEl,
   getCarriedItems,
@@ -32,6 +34,16 @@ export function renderItemsView({
   }
 }
 
+function getBlessingVisual(def, id) {
+  const image = BLESSING_IMAGE_BY_ID[id] || def?.image || "";
+  const effect = BLESSING_EFFECT_BY_ID[id] || def?.effectClass || def?.category || "hybrid";
+  return {
+    image,
+    effect,
+    alt: def?.title ? `${def.title.en || def.title.zh || id}` : id,
+  };
+}
+
 export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, RARITY_LABELS, t, lt }) {
   if (!perkWrapEl) return;
   perkWrapEl.innerHTML = "";
@@ -54,9 +66,10 @@ export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, R
 
   for (const [id, def] of blessings) {
     const el = document.createElement("div");
-    el.className = `perk-chip rarity-${def.rarity}`;
+    const visual = getBlessingVisual(def, id);
+    el.className = `perk-chip blessing-chip rarity-${def.rarity} blessing-fx-${visual.effect}`;
     const level = Number(state.blessingLevels?.[id] || 1);
-    el.innerHTML = `<span>${t("blessing")}</span><strong>${lt(def.title)} · ${t("itemLevel", { level })}</strong><small>${lt(def.desc)}</small>`;
+    el.innerHTML = `<div class="perk-chip-head"><div class="perk-chip-icon-shell"><img class="perk-chip-icon" src="${visual.image}" alt="${visual.alt}"></div><div class="perk-chip-copy"><span>${t("blessing")}</span><strong>${lt(def.title)} · ${t("itemLevel", { level })}</strong><small>${lt(def.desc)}</small></div></div>`;
     perkWrapEl.appendChild(el);
   }
 
