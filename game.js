@@ -3965,6 +3965,13 @@ const CHAPTER_BOSS_ANIMATIONS = {
     let localSpawnMap = spawnMap;
     let passiveSkillTriggered = false;
     let safetyIterations = 0;
+    let matchGroups = [];
+
+    if (source === "normal" || source === "combo") {
+      const initialAnalysis = analyzeMatches();
+      matchGroups = initialAnalysis.groups || [];
+      if (!localSpawnMap || localSpawnMap.size === 0) localSpawnMap = initialAnalysis.spawnMap;
+    }
 
     const queuedMomentumBreaker = Array.isArray(state.blessingState.momentumBreakerPending)
       ? [...new Set(state.blessingState.momentumBreakerPending.filter((idx) => state.board[idx] !== null))]
@@ -4004,18 +4011,25 @@ const CHAPTER_BOSS_ANIMATIONS = {
         passiveSkillTriggered = true;
         const orderedSkills = getCarriedItems();
         const covered = new Set(valid.filter((idx) => isGem(state.board[idx])));
-        let triggerPool = [...covered];
+        let triggerPool = source === "normal" || source === "combo"
+          ? matchGroups
+              .map((group) => [...new Set(group.indices.filter((idx) => valid.includes(idx) && isGem(state.board[idx])))] )
+              .filter((group) => group.length > 0)
+          : [];
+        if (triggerPool.length <= 0) triggerPool = [[...covered]];
 
         for (const id of orderedSkills) {
           const def = ITEM_DEFS[id];
           if (!def || triggerPool.length <= 0) continue;
           const triggerProb = Math.min(1, Number(ITEM_TRIGGERS[id]?.(itemPower(id)) ?? 1));
           const triggerCount = triggerPool.length;
+          const aggregatedEffects = [];
           const nextTriggerPool = [];
 
           for (let attempt = 0; attempt < triggerCount; attempt += 1) {
             if (Math.random() > triggerProb) continue;
-            const anchor = pickPreferredTargetAnchor(triggerPool, covered);
+            const sourceGroup = triggerPool[attempt] || [];
+            const anchor = pickPreferredTargetAnchor(sourceGroup, covered);
             if (anchor == null) continue;
             const indices = getItemTargets(id, anchor);
             const effect = {
@@ -4026,11 +4040,16 @@ const CHAPTER_BOSS_ANIMATIONS = {
               skillType: ITEM_DEFS[id]?.type || null,
             };
             if (effect.indices.length <= 0) continue;
+            aggregatedEffects.push(effect);
+          }
 
+          if (aggregatedEffects.length > 0) {
+            await playPassiveSkillSequence(aggregatedEffects);
+            passiveSkillCastCount += aggregatedEffects.length;
+          }
+
+          for (const effect of aggregatedEffects) {
             effect.indices.forEach((idx) => covered.add(idx));
-            await playPassiveSkillSequence([effect]);
-            passiveSkillCastCount += 1;
-
             const resolvedTargets = await applySkillEffect(effect.id, effect.anchor ?? effect.indices[0], effect.indices);
             const effectTargets = resolvedTargets.length > 0 ? resolvedTargets : (effect.skillType === "destruction" ? effect.indices : []);
             const freshTargets = [...new Set(effectTargets.filter((idx) => idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null && !valid.includes(idx)))];
@@ -4040,12 +4059,12 @@ const CHAPTER_BOSS_ANIMATIONS = {
               for (const idx of expandedFromSkill.targets) {
                 if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
               }
-              nextTriggerPool.push(...followupGemTargets);
+              if (followupGemTargets.length > 0) nextTriggerPool.push(followupGemTargets);
               expandedFromSkill.targets.forEach((idx) => covered.add(idx));
             }
           }
 
-          triggerPool = [...new Set(nextTriggerPool)];
+          triggerPool = nextTriggerPool.map((group) => [...new Set(group)]).filter((group) => group.length > 0);
         }
       }
       clearAnim = new Set(valid);
@@ -4137,6 +4156,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       chain += 1;
       const next = analyzeMatches();
       current = next.clear;
+      matchGroups = next.groups || [];
       const maniaPending = Math.max(0, Number(state.blessingState.comboManiaPending || 0));
       if (maniaPending > 0) {
         const bonusTargets = collectIndices((cell) => isGem(cell));
@@ -4212,7 +4232,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
       notify(i18n.getLanguage() === "zh-CN" ? `${reason}阻止了 ${preventedSpecials} 次特殊宝石生成` : `${preventedSpecials} special spawns were blocked by ${reason}`, "warn");
       state.suppressSpecialNotice = null;
     }
-    return { clear: [...clearSet], spawnMap };
+    return { clear: [...clearSet], spawnMap, groups };
   }
 
   function findMatchGroups() {
