@@ -399,6 +399,8 @@
 | `splatter` | 溅射 | 普通 | 否 | 概率触发额外溅射伤害 |
 | `shatter` | 粉碎 | 稀有 | 是 | 概率粉碎周围同色宝石 |
 
+> 注：自新的系统边界起，**作战技能只保留销毁类**。改色类与强化类能力已从作战技能池迁移为祝福方向，后续实现与平衡应以 `docs/combat_skill_and_blessing_redesign_proposal.md` 为准。
+
 #### 颜色改变类（Color Change）
 
 | ID | 名称 | 稀有度 | 目标型 | 说明 |

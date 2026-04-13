@@ -1160,9 +1160,9 @@ const CHAPTER_BOSS_ANIMATIONS = {
       [i18n.getLanguage() === "zh-CN" ? "爆破使用" : "Blast Uses", c.itemUse.blast],
       [i18n.getLanguage() === "zh-CN" ? "连锁闪电使用" : "Chain Lightning Uses", c.itemUse.chainLightning],
       [i18n.getLanguage() === "zh-CN" ? "十字斩使用" : "Cross Strike Uses", c.itemUse.crossStrike],
-      [i18n.getLanguage() === "zh-CN" ? "色彩同化使用" : "Color Assimilation Uses", c.itemUse.colorAssimilation],
-      [i18n.getLanguage() === "zh-CN" ? "爆炸强化使用" : "Explosive Enchant Uses", c.itemUse.explosiveEnchant],
-      [i18n.getLanguage() === "zh-CN" ? "横竖强化使用" : "Line Enchant Uses", c.itemUse.lineEnchant],
+      [i18n.getLanguage() === "zh-CN" ? "宝石雨使用" : "Meteor Uses", c.itemUse.meteor],
+      [i18n.getLanguage() === "zh-CN" ? "溅射使用" : "Splatter Uses", c.itemUse.splatter],
+      [i18n.getLanguage() === "zh-CN" ? "粉碎使用" : "Shatter Uses", c.itemUse.shatter],
       [i18n.getLanguage() === "zh-CN" ? "直线特效触发" : "Line Triggers", c.specialTrigger.line_h + c.specialTrigger.line_v],
       [i18n.getLanguage() === "zh-CN" ? "炸弹触发" : "Bomb Triggers", c.specialTrigger.bomb],
       [i18n.getLanguage() === "zh-CN" ? "彩虹触发" : "Rainbow Triggers", c.specialTrigger.rainbow],
@@ -1951,19 +1951,29 @@ const CHAPTER_BOSS_ANIMATIONS = {
   // 新技能系统 - 24个宝石技能的目标计算
   // ============================================================
 
-  function getItemTargets(item, idx) {
+  function filterSkillTargets(indices, excluded = []) {
+    const excludeSet = new Set(excluded || []);
+    return [...new Set((indices || []).filter((target) => target >= 0 && target < boardSize * boardSize && state.board[target] !== null && !excludeSet.has(target)))];
+  }
+
+  function getItemTargets(item, idx, options = {}) {
     const level = itemPower(item);
+    const excluded = options.excluded || [];
+    let targets = [];
 
     if (item === "blast") {
-      return gatherStrictSquareIndices(idx, ITEM_FORMULAS.blast(level));
+      targets = gatherStrictSquareIndices(idx, ITEM_FORMULAS.blast(level));
+      return filterSkillTargets(targets, excluded);
     }
 
     if (item === "chainLightning") {
-      return gatherLightningTargets(idx, ITEM_FORMULAS.chainLightning(level));
+      targets = gatherLightningTargets(idx, ITEM_FORMULAS.chainLightning(level), excluded);
+      return filterSkillTargets(targets, excluded);
     }
 
     if (item === "crossStrike") {
-      return gatherCrossIndices(idx, level);
+      targets = gatherCrossIndices(idx, level);
+      return filterSkillTargets(targets, excluded);
     }
 
     if (item === "meteor") {
@@ -1975,23 +1985,28 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
 
     if (item === "shatter") {
-      return gatherSameColorTargets(idx, ITEM_FORMULAS.shatter(level), level + 1);
+      targets = gatherSameColorTargets(idx, ITEM_FORMULAS.shatter(level), level + 1, excluded);
+      return filterSkillTargets(targets, excluded);
     }
 
     if (item === "colorAssimilation") {
-      return gatherTransformTargets(idx, ITEM_FORMULAS.colorAssimilation(level), level + 1);
+      targets = gatherTransformTargets(idx, ITEM_FORMULAS.colorAssimilation(level), level + 1, excluded);
+      return filterSkillTargets(targets, excluded);
     }
 
     if (item === "neighborMimic") {
-      return gatherTransformTargets(idx, ITEM_FORMULAS.neighborMimic(level), level + 1);
+      targets = gatherTransformTargets(idx, ITEM_FORMULAS.neighborMimic(level), level + 1, excluded);
+      return filterSkillTargets(targets, excluded);
     }
 
     if (item === "explosiveEnchant") {
-      return addEnchantTargets(ITEM_FORMULAS.explosiveEnchant(level), "explosive");
+      targets = addEnchantTargets(ITEM_FORMULAS.explosiveEnchant(level), "explosive", excluded);
+      return filterSkillTargets(targets, excluded);
     }
 
     if (item === "lineEnchant") {
-      return addEnchantTargets(ITEM_FORMULAS.lineEnchant(level), "lineH");
+      targets = addEnchantTargets(ITEM_FORMULAS.lineEnchant(level), "lineH", excluded);
+      return filterSkillTargets(targets, excluded);
     }
 
     return [];
@@ -2087,11 +2102,12 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   // 直接销毁技能处理
-  async function applyDestructionSkill(item, idx, targets) {
+  async function applyDestructionSkill(item, idx, targets, options = {}) {
     const level = itemPower(item);
+    const excluded = options.excluded || [];
 
     if (item === "meteor") {
-      const chosenSpots = pickRandomGemIndices(ITEM_FORMULAS.meteor(level));
+      const chosenSpots = pickRandomGemIndices(ITEM_FORMULAS.meteor(level), excluded);
 
       notify(i18n.getLanguage() === "zh-CN"
         ? `${lt(ITEM_DEFS[item].name)}: ${chosenSpots.length}颗宝石被陨石命中`
@@ -2100,7 +2116,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     }
 
     if (item === "splatter") {
-      const splashTargets = gatherSquareIndicesByCount(idx, ITEM_FORMULAS.splatter(level));
+      const splashTargets = filterSkillTargets(gatherSquareIndicesByCount(idx, ITEM_FORMULAS.splatter(level)), excluded);
       notify(i18n.getLanguage() === "zh-CN"
         ? `${lt(ITEM_DEFS[item].name)}: 溅射命中 ${splashTargets.length} 个目标`
         : `${lt(ITEM_DEFS[item].name)}: splatter hits ${splashTargets.length} targets`, "info");
@@ -2111,7 +2127,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   // 统一技能处理入口
-  async function applySkillEffect(item, idx, targets) {
+  async function applySkillEffect(item, idx, targets, options = {}) {
     const skillType = getSkillType(item);
 
     switch (skillType) {
@@ -2124,7 +2140,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
         return []; // 强化不直接销毁
 
       case "destruction":
-        return await applyDestructionSkill(item, idx, targets);
+        return await applyDestructionSkill(item, idx, targets, options);
 
       default:
         return targets;
@@ -3842,10 +3858,11 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return [...new Set(arr)];
   }
 
-  function gatherLightningTargets(center, count) {
+  function gatherLightningTargets(center, count, excluded = []) {
     const origin = state.board[center];
     if (!isGem(origin)) return [center];
-    const visited = new Set([center]);
+    const excludeSet = new Set(excluded || []);
+    const visited = new Set(excludeSet.has(center) ? [] : [center]);
     const queue = [center];
     while (queue.length > 0 && visited.size < count) {
       const current = queue.shift();
@@ -3855,22 +3872,23 @@ const CHAPTER_BOSS_ANIMATIONS = {
         if (!inside(rr, cc)) continue;
         const idx = rr * boardSize + cc;
         const cell = state.board[idx];
-        if (!isGem(cell) || cell.color !== origin.color || visited.has(idx)) continue;
+        if (!isGem(cell) || cell.color !== origin.color || visited.has(idx) || excludeSet.has(idx)) continue;
         visited.add(idx);
         queue.push(idx);
         if (visited.size >= count) break;
       }
     }
     if (visited.size < count) {
-      const extra = pickRandomGemIndices(count - visited.size, [...visited]);
+      const extra = pickRandomGemIndices(count - visited.size, [...visited, ...excludeSet]);
       for (const idx of extra) visited.add(idx);
     }
     return [...visited];
   }
 
-  function gatherSameColorTargets(center, count, radius) {
+  function gatherSameColorTargets(center, count, radius, excluded = []) {
     const origin = state.board[center];
     if (!isGem(origin)) return [center];
+    const excludeSet = new Set(excluded || []);
     const row = rowOf(center);
     const col = colOf(center);
     const preferred = [];
@@ -3879,16 +3897,17 @@ const CHAPTER_BOSS_ANIMATIONS = {
         if (!inside(rr, cc)) continue;
         const idx = rr * boardSize + cc;
         const cell = state.board[idx];
-        if (isGem(cell) && cell.color === origin.color) preferred.push(idx);
+        if (isGem(cell) && cell.color === origin.color && !excludeSet.has(idx)) preferred.push(idx);
       }
     }
     const unique = [...new Set(preferred)];
     if (unique.length >= count) return unique.slice(0, count);
-    const extra = pickRandomGemIndices(count - unique.length, unique);
+    const extra = pickRandomGemIndices(count - unique.length, [...unique, ...excludeSet]);
     return [...new Set([...unique, ...extra])];
   }
 
-  function gatherTransformTargets(center, count, radius) {
+  function gatherTransformTargets(center, count, radius, excluded = []) {
+    const excludeSet = new Set(excluded || []);
     const row = rowOf(center);
     const col = colOf(center);
     const preferred = [];
@@ -3896,21 +3915,22 @@ const CHAPTER_BOSS_ANIMATIONS = {
       for (let cc = col - radius; cc <= col + radius; cc += 1) {
         if (!inside(rr, cc)) continue;
         const idx = rr * boardSize + cc;
-        if (isGem(state.board[idx])) preferred.push(idx);
+        if (isGem(state.board[idx]) && !excludeSet.has(idx)) preferred.push(idx);
       }
     }
     if (preferred.length >= count) {
       shuffle(preferred);
       return preferred.slice(0, count);
     }
-    const extra = pickRandomGemIndices(count - preferred.length, preferred);
+    const extra = pickRandomGemIndices(count - preferred.length, [...preferred, ...excludeSet]);
     return [...new Set([...preferred, ...extra])];
   }
 
-  function addEnchantTargets(count, kind) {
+  function addEnchantTargets(count, kind, excluded = []) {
+    const excludeSet = new Set(excluded || []);
     const candidates = getBoardGemIndices().filter((idx) => {
       const cell = state.board[idx];
-      return isGem(cell) && !cell[kind];
+      return isGem(cell) && !cell[kind] && !excludeSet.has(idx);
     });
     shuffle(candidates);
     return candidates.slice(0, Math.min(count, candidates.length));
@@ -3925,6 +3945,30 @@ const CHAPTER_BOSS_ANIMATIONS = {
     if (fallback.length > 0) return randomPick(fallback);
     const all = getBoardGemIndices();
     return all.length > 0 ? randomPick(all) : null;
+  }
+
+  function pickChainAnchor(sourceGroup) {
+    const unique = [...new Set((sourceGroup || []).filter((idx) => isGem(state.board[idx])))];
+    if (unique.length > 0) return randomPick(unique);
+    return null;
+  }
+
+  function splitTriggerSources(indices) {
+    return [...new Set((indices || []).filter((idx) => isGem(state.board[idx])))].map((idx) => [idx]);
+  }
+
+  function mergeSkillEffects(effects) {
+    if (!effects || effects.length === 0) return null;
+    const first = effects[0];
+    return {
+      id: first.id,
+      name: first.name,
+      anchor: first.anchor,
+      skillType: first.skillType,
+      indices: [...new Set(effects.flatMap((effect) => effect.indices || []))],
+      sourceGroup: [...new Set(effects.flatMap((effect) => effect.sourceGroup || []))],
+      excludedTargets: [...new Set(effects.flatMap((effect) => effect.excludedTargets || []))],
+    };
   }
 
   function buildOffensiveSkillEffects(seedGemTargets) {
@@ -3966,11 +4010,15 @@ const CHAPTER_BOSS_ANIMATIONS = {
     let passiveSkillTriggered = false;
     let safetyIterations = 0;
     let matchGroups = [];
+    let initialSkillSource = null;
 
     if (source === "normal" || source === "combo") {
       const initialAnalysis = analyzeMatches();
       matchGroups = initialAnalysis.groups || [];
       if (!localSpawnMap || localSpawnMap.size === 0) localSpawnMap = initialAnalysis.spawnMap;
+      if (preferSpawnIndex != null && initialAnalysis.clear.includes(preferSpawnIndex) && isGem(state.board[preferSpawnIndex])) {
+        initialSkillSource = preferSpawnIndex;
+      }
     }
 
     const queuedMomentumBreaker = Array.isArray(state.blessingState.momentumBreakerPending)
@@ -4012,11 +4060,14 @@ const CHAPTER_BOSS_ANIMATIONS = {
         const orderedSkills = getCarriedItems();
         const covered = new Set(valid.filter((idx) => isGem(state.board[idx])));
         let triggerPool = source === "normal" || source === "combo"
-          ? matchGroups
-              .map((group) => [...new Set(group.indices.filter((idx) => valid.includes(idx) && isGem(state.board[idx])))] )
-              .filter((group) => group.length > 0)
+          ? (initialSkillSource != null
+              ? [[initialSkillSource].filter((idx) => valid.includes(idx) && isGem(state.board[idx]))]
+              : matchGroups
+                  .map((group) => [...new Set(group.indices.filter((idx) => valid.includes(idx) && isGem(state.board[idx])))] )
+                  .filter((group) => group.length > 0))
           : [];
         if (triggerPool.length <= 0) triggerPool = [[...covered]];
+        initialSkillSource = null;
 
         for (const id of orderedSkills) {
           const def = ITEM_DEFS[id];
@@ -4029,37 +4080,41 @@ const CHAPTER_BOSS_ANIMATIONS = {
           for (let attempt = 0; attempt < triggerCount; attempt += 1) {
             if (Math.random() > triggerProb) continue;
             const sourceGroup = triggerPool[attempt] || [];
-            const anchor = pickPreferredTargetAnchor(sourceGroup, covered);
+            const anchor = pickChainAnchor(sourceGroup);
             if (anchor == null) continue;
-            const indices = getItemTargets(id, anchor);
+            const excludedTargets = [...new Set([...(sourceGroup || []), ...covered])];
+            const indices = getItemTargets(id, anchor, { excluded: excludedTargets });
+            const displayIndices = indices.length > 0 ? indices : ((id === "meteor" || id === "splatter") ? [anchor] : []);
             const effect = {
               id,
               name: lt(ITEM_DEFS[id].name),
-              indices: [...new Set((indices.length > 0 ? indices : [anchor]).filter((idx) => idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))],
+              indices: [...new Set(displayIndices.filter((idx) => idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null))],
               anchor,
+              sourceGroup: [...sourceGroup],
+              excludedTargets,
               skillType: ITEM_DEFS[id]?.type || null,
             };
             if (effect.indices.length <= 0) continue;
             aggregatedEffects.push(effect);
           }
 
-          if (aggregatedEffects.length > 0) {
-            await playPassiveSkillSequence(aggregatedEffects);
-            passiveSkillCastCount += aggregatedEffects.length;
-          }
+          const mergedEffect = mergeSkillEffects(aggregatedEffects);
+          if (mergedEffect) {
+            await playPassiveSkillSequence([mergedEffect]);
+            passiveSkillCastCount += 1;
 
-          for (const effect of aggregatedEffects) {
-            effect.indices.forEach((idx) => covered.add(idx));
-            const resolvedTargets = await applySkillEffect(effect.id, effect.anchor ?? effect.indices[0], effect.indices);
-            const effectTargets = resolvedTargets.length > 0 ? resolvedTargets : (effect.skillType === "destruction" ? effect.indices : []);
+            mergedEffect.indices.forEach((idx) => covered.add(idx));
+            const resolvedTargets = await applySkillEffect(mergedEffect.id, mergedEffect.anchor ?? mergedEffect.indices[0], mergedEffect.indices, { excluded: mergedEffect.excludedTargets || mergedEffect.sourceGroup || [] });
+            const effectTargets = resolvedTargets.length > 0 ? resolvedTargets : (mergedEffect.skillType === "destruction" ? mergedEffect.indices : []);
             const freshTargets = [...new Set(effectTargets.filter((idx) => idx >= 0 && idx < boardSize * boardSize && state.board[idx] !== null && !valid.includes(idx)))];
             if (freshTargets.length > 0) {
               const expandedFromSkill = expandWithSpecialTriggers(freshTargets, MAX_SKILL_CHAIN);
-              const followupGemTargets = expandedFromSkill.targets.filter((idx) => isGem(state.board[idx]) && !covered.has(idx));
+              const sourceExcluded = new Set(mergedEffect.excludedTargets || mergedEffect.sourceGroup || []);
+              const followupGemTargets = expandedFromSkill.targets.filter((idx) => isGem(state.board[idx]) && !sourceExcluded.has(idx));
               for (const idx of expandedFromSkill.targets) {
                 if (!valid.includes(idx) && state.board[idx] !== null) valid.push(idx);
               }
-              if (followupGemTargets.length > 0) nextTriggerPool.push(followupGemTargets);
+              if (followupGemTargets.length > 0) nextTriggerPool.push(...splitTriggerSources(followupGemTargets));
               expandedFromSkill.targets.forEach((idx) => covered.add(idx));
             }
           }
@@ -4870,9 +4925,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
       storm_peaks: [
         {
           title: zhen("熔炉过载", "Forge Overdrive"),
-          desc: zhen("获得 +1 邻近模仿，并提高下一次诅咒楼层收益。", "Gain +1 Neighbor Mimic and boost the next cursed floor payoff."),
+          desc: zhen("获得 1 级邻近模仿祝福，并提高下一次诅咒楼层收益。", "Gain Lv.1 Neighbor Mimic blessing and boost the next cursed floor payoff."),
           apply: () => {
-            unlockOrUpgradeSkill("neighborMimic", 1);
+            if (!hasBlessingEquipped("neighborMimicBlessing")) equipBlessing("neighborMimicBlessing", 1);
+            else upgradeBlessing("neighborMimicBlessing", 1);
             state.eventCurseFloors = Math.max(state.eventCurseFloors, 1);
             notify(i18n.getLanguage() === "zh-CN" ? "熔炉轰鸣着苏醒。" : "The forge roars to life.", "warn");
           },
@@ -4930,9 +4986,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
       eclipse_sanctum: [
         {
           title: zhen("圣环碎片", "Halo Fragment"),
-          desc: zhen("获得 +1 棱镜溢流和 +25 动量。", "Gain +1 Prism Overflow and +25 momentum."),
+          desc: zhen("获得 1 级色彩同化祝福和 +25 动量。", "Gain Lv.1 Color Assimilation blessing and +25 momentum."),
           apply: () => {
-            unlockOrUpgradeSkill("colorAssimilation", 1);
+            if (!hasBlessingEquipped("colorAssimilationBlessing")) equipBlessing("colorAssimilationBlessing", 1);
+            else upgradeBlessing("colorAssimilationBlessing", 1);
             state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
             notify(i18n.getLanguage() === "zh-CN" ? "圣环碎片强化了你的配置。" : "A halo fragment empowers your kit.", "ok");
           },
@@ -4941,11 +4998,12 @@ const CHAPTER_BOSS_ANIMATIONS = {
       void_throne: [
         {
           title: zhen("虚空交易", "Void Bargain"),
-          desc: zhen("获得 +240 分和 +1 处决矩阵，但下一层 -1 步。", "Gain +240 score and +1 Execution Matrix, but suffer -1 move next floor."),
+          desc: zhen("获得 +240 分和 1 级横竖刻印祝福，但下一层 -1 步。", "Gain +240 score and Lv.1 Line Sigil blessing, but suffer -1 move next floor."),
           apply: () => {
             state.score += 240;
             state.nextFloorMovePenalty += 1;
-            unlockOrUpgradeSkill("lineEnchant", 1);
+            if (!hasBlessingEquipped("lineSigil")) equipBlessing("lineSigil", 1);
+            else upgradeBlessing("lineSigil", 1);
             notify(i18n.getLanguage() === "zh-CN" ? "裂隙以代价赐予了力量。" : "The rift grants power at a cost.", "warn");
           },
         },
@@ -5374,16 +5432,45 @@ const CHAPTER_BOSS_ANIMATIONS = {
     return center;
   }
 
+  function buildPassiveSkillLinks(effect, fallbackOrigin = null) {
+    const sourceIndices = [...new Set((effect.sourceGroup || []).filter((idx) => Number.isInteger(idx)))];
+    const sourcePoints = sourceIndices.map((idx) => ({ idx, point: getCellCenter(idx) })).filter((entry) => Boolean(entry.point));
+    const targetIndices = [...new Set((effect.indices || []).filter((idx) => Number.isInteger(idx)))];
+    const targets = targetIndices.map((idx) => ({ idx, point: getCellCenter(idx) })).filter((entry) => Boolean(entry.point));
+    if (targets.length <= 0) return [];
+
+    if (sourcePoints.length <= 0) {
+      const origin = fallbackOrigin || getSkillButtonCenter(effect.id);
+      if (!origin) return [];
+      return targets.map((target) => ({ start: origin, target }));
+    }
+
+    return targets.map((target, index) => {
+      let chosen = sourcePoints[index % sourcePoints.length];
+      let minDist = Infinity;
+      for (const source of sourcePoints) {
+        const dx = source.point.x - target.point.x;
+        const dy = source.point.y - target.point.y;
+        const dist = dx * dx + dy * dy;
+        if (dist < minDist) {
+          minDist = dist;
+          chosen = source;
+        }
+      }
+      return { start: chosen.point, target };
+    });
+  }
+
   function spawnPassiveSkillFX(effect, originOverride = null) {
-    const skillOrigin = originOverride || getSkillButtonCenter(effect.id);
     const orderedIndices = [effect.anchor, ...(effect.indices || []).filter((idx) => idx !== effect.anchor)].filter((idx) => Number.isInteger(idx));
     const targets = orderedIndices.map((idx) => ({ idx, point: getCellCenter(idx) })).filter((entry) => Boolean(entry.point));
     const points = targets.map((entry) => entry.point);
     if (points.length === 0) return;
-    if (skillOrigin) {
-      for (const entry of targets.slice(0, Math.min(6, targets.length))) {
-        const gemColor = state.board[entry.idx]?.color;
-        spawnEncounterBolt(skillOrigin, entry.point, "player", 980, getGemBoltPalette(gemColor));
+    const links = buildPassiveSkillLinks(effect, originOverride);
+    if (links.length > 0) {
+      for (const link of links.slice(0, Math.min(8, links.length))) {
+        const gemColor = state.board[link.target.idx]?.color;
+        spawnEncounterBolt(link.start, link.target.point, "player", 980, getGemBoltPalette(gemColor));
       }
     }
 

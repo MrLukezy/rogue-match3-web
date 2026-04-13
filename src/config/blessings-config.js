@@ -35,6 +35,18 @@ export const BLESSING_FORMULAS = {
   purifierSigil: {
     cleanseCount: (level) => Math.max(0, level * 2),
   },
+  colorAssimilationBlessing: {
+    affectedCount: (level) => Math.pow(2, Math.max(1, level - 1)),
+  },
+  neighborMimicBlessing: {
+    affectedCount: (level) => Math.pow(2, Math.max(1, level - 1)),
+  },
+  explosiveInfusion: {
+    affectedCount: (level) => Math.max(1, level),
+  },
+  lineSigil: {
+    affectedCount: (level) => Math.max(1, level),
+  },
 };
 
 export const BLESSING_DEFS = {
@@ -94,6 +106,34 @@ export const BLESSING_DEFS = {
     category: "hybrid",
     effect: zhen("动量拉满时自动净化 等级×2 个异常宝石", "When momentum peaks, automatically cleanse afflicted gems equal to level × 2"),
   },
+  colorAssimilationBlessing: {
+    title: zhen("色彩同化", "Color Assimilation"),
+    desc: zhen("作战技能结算后自动改色，帮助下一轮形成匹配。", "Recolors gems after combat skill resolution to help create the next match."),
+    rarity: "rare",
+    category: "trigger",
+    effect: zhen("由旧作战技能迁移而来，现作为祝福修饰后续棋盘。", "Migrated from the old combat skill and now modifies the board as a blessing."),
+  },
+  neighborMimicBlessing: {
+    title: zhen("邻近模仿", "Neighbor Mimic"),
+    desc: zhen("作战技能结算后，让部分宝石模仿邻居主色，提升潜在三消率。", "After combat skills resolve, some gems mimic surrounding dominant colors to increase future match potential."),
+    rarity: "common",
+    category: "trigger",
+    effect: zhen("由旧作战技能迁移而来，现负责局后校色与铺垫。", "Migrated from the old combat skill and now adjusts local colors after resolution."),
+  },
+  explosiveInfusion: {
+    title: zhen("爆裂灌注", "Explosive Infusion"),
+    desc: zhen("作战技能命中的若干宝石会获得爆炸强化。", "Several gems hit by combat skills gain explosive infusion."),
+    rarity: "common",
+    category: "trigger",
+    effect: zhen("由旧爆炸强化迁移而来，现作为祝福修饰作战技能命中结果。", "Migrated from the old explosive enchant and now modifies combat skill hits as a blessing."),
+  },
+  lineSigil: {
+    title: zhen("横竖刻印", "Line Sigil"),
+    desc: zhen("作战技能命中的若干宝石会获得横竖强化。", "Several gems hit by combat skills gain line sigils."),
+    rarity: "rare",
+    category: "trigger",
+    effect: zhen("由旧横竖强化迁移而来，现作为祝福持续修饰后续连锁。", "Migrated from the old line enchant and now persistently modifies later chains as a blessing."),
+  },
 };
 
 export const BLESSING_IMAGE_BY_ID = {
@@ -105,6 +145,10 @@ export const BLESSING_IMAGE_BY_ID = {
   desperateSurvival: "./assets/generated/blessings/unified-covers/blessing_desperateSurvival_cover-20260407-113537-1.jpeg",
   tacticalReserve: "./assets/generated/blessings/unified-covers/blessing_tacticalReserve_cover-20260407-113538-1.jpeg",
   purifierSigil: "./assets/generated/blessings/unified-covers/blessing_purifierSigil_cover-20260407-113538-1.jpeg",
+  colorAssimilationBlessing: "./assets/generated/items/colorAssimilation-20260403-120628-1_rgba.png",
+  neighborMimicBlessing: "./assets/generated/items/neighborMimic-20260403-120747-1_rgba.png",
+  explosiveInfusion: "./assets/generated/items/explosiveEnchant-20260403-120823-1_rgba.png",
+  lineSigil: "./assets/generated/items/lineEnchant-20260403-120840-1_rgba.png",
 };
 
 export const BLESSING_EFFECT_BY_ID = {
@@ -116,6 +160,10 @@ export const BLESSING_EFFECT_BY_ID = {
   desperateSurvival: "desperate",
   tacticalReserve: "reserve",
   purifierSigil: "purify",
+  colorAssimilationBlessing: "recolor",
+  neighborMimicBlessing: "mimic",
+  explosiveInfusion: "explosive",
+  lineSigil: "line",
 };
 
 export const BLESSING_CATEGORIES = {
@@ -123,6 +171,10 @@ export const BLESSING_CATEGORIES = {
   charge: zhen("蓄能类", "Charge"),
   trigger: zhen("触发类", "Trigger"),
   hybrid: zhen("综合类", "Hybrid"),
+  recolor: zhen("改色类", "Recolor"),
+  mimic: zhen("模仿类", "Mimic"),
+  explosive: zhen("爆裂类", "Explosive"),
+  line: zhen("横竖类", "Line"),
 };
 
 export const BLESSING_ORDER = [
@@ -134,6 +186,10 @@ export const BLESSING_ORDER = [
   "desperateSurvival",
   "tacticalReserve",
   "purifierSigil",
+  "colorAssimilationBlessing",
+  "neighborMimicBlessing",
+  "explosiveInfusion",
+  "lineSigil",
 ];
 
 export const RARITY_LABELS = {

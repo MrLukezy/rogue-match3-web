@@ -3,7 +3,7 @@ export const MAX_ITEM_TYPES = 5;
 const zhen = (zh, en) => ({ zh, en });
 
 // ============================================================
-// 玩家作战技能（按最新规格收缩为 10 个）
+// 玩家作战技能（当前只保留纯销毁类）
 // ============================================================
 
 export const ITEM_FORMULAS = {
@@ -18,13 +18,6 @@ export const ITEM_FORMULAS = {
   splatter: (level) => Math.pow(2, level),
   shatter: (level) => Math.pow(2, level),
 
-  // 颜色改变类
-  colorAssimilation: (level) => Math.pow(2, level),
-  neighborMimic: (level) => Math.pow(2, level),
-
-  // 宝石强化类
-  explosiveEnchant: (level) => level,
-  lineEnchant: (level) => level,
 };
 
 export const ITEM_TRIGGERS = {
@@ -34,10 +27,6 @@ export const ITEM_TRIGGERS = {
   meteor: () => 1.0,
   splatter: () => 1.0,
   shatter: () => 1.0,
-  colorAssimilation: () => 1.0,
-  neighborMimic: () => 1.0,
-  explosiveEnchant: () => 1.0,
-  lineEnchant: () => 1.0,
 };
 
 export const ITEM_DEFS = {
@@ -89,44 +78,10 @@ export const ITEM_DEFS = {
     rarity: "rare",
     type: "destruction",
   },
-  colorAssimilation: {
-    name: zhen("色彩同化", "Color Assimilation"),
-    image: "./assets/generated/items/colorAssimilation-20260403-120628-1_rgba.png",
-    desc: zhen("将若干宝石变为主目标颜色来创造三消机会。Lv1~Lv5 影响 2、4、8、16、32 个目标，范围逐步增大。", "Changes gems to the target color to create match opportunities. Lv1~Lv5 affect 2, 4, 8, 16, and 32 targets with a growing range."),
-    target: true,
-    rarity: "rare",
-    type: "colorChange",
-  },
-  neighborMimic: {
-    name: zhen("邻近模仿", "Neighbor Mimic"),
-    image: "./assets/generated/items/neighborMimic-20260403-120747-1_rgba.png",
-    desc: zhen("让若干宝石变为上下左右邻居中出现最多的颜色。Lv1~Lv5 影响 2、4、8、16、32 个目标，范围逐步增大。", "Turns gems into the most common color among their orthogonal neighbors. Lv1~Lv5 affect 2, 4, 8, 16, and 32 targets with a growing range."),
-    target: true,
-    rarity: "common",
-    type: "colorChange",
-  },
-  explosiveEnchant: {
-    name: zhen("爆炸强化", "Explosive Enchant"),
-    image: "./assets/generated/items/explosiveEnchant-20260403-120823-1_rgba.png",
-    desc: zhen("随机给宝石添加爆炸属性。Lv1~Lv5 分别强化 1、2、3、4、5 颗宝石，被消除时会造成范围爆炸伤害。", "Randomly enchants gems with explosive power. Lv1~Lv5 affect 1, 2, 3, 4, and 5 gems, which explode when cleared."),
-    target: false,
-    rarity: "common",
-    type: "enhancement",
-  },
-  lineEnchant: {
-    name: zhen("横竖强化", "Line Enchant"),
-    image: "./assets/generated/items/lineEnchant-20260403-120840-1_rgba.png",
-    desc: zhen("随机给宝石添加横竖属性。Lv1~Lv5 分别强化 1、2、3、4、5 颗宝石，被消除时会清除整行或整列。", "Randomly enchants gems with line power. Lv1~Lv5 affect 1, 2, 3, 4, and 5 gems, which clear an entire row or column when cleared."),
-    target: false,
-    rarity: "rare",
-    type: "enhancement",
-  },
 };
 
 export const ITEM_ORDER = [
   "blast", "chainLightning", "crossStrike", "meteor", "splatter", "shatter",
-  "colorAssimilation", "neighborMimic",
-  "explosiveEnchant", "lineEnchant",
 ];
 
 export const ITEM_BASE_COUNTS = Object.fromEntries(ITEM_ORDER.map((id) => [id, 0]));
@@ -143,8 +98,6 @@ export const RARITY_ORDER = ["common", "rare", "epic", "legendary"];
 
 export const TYPE_LABELS = {
   destruction: zhen("直接销毁", "Destruction"),
-  colorChange: zhen("颜色改变", "Color Change"),
-  enhancement: zhen("宝石强化", "Enhancement"),
 };
 
 export const ITEM_ANIM_FRAMES = {
@@ -154,8 +107,4 @@ export const ITEM_ANIM_FRAMES = {
   meteor: ["./assets/generated/items/meteor-20260403-120536-1_rgba.png"],
   splatter: ["./assets/generated/items/splatter-20260403-120553-1_rgba.png"],
   shatter: ["./assets/generated/items/shatter-20260403-120610-1_rgba.png"],
-  colorAssimilation: ["./assets/generated/items/colorAssimilation-20260403-120628-1_rgba.png"],
-  neighborMimic: ["./assets/generated/items/neighborMimic-20260403-120747-1_rgba.png"],
-  explosiveEnchant: ["./assets/generated/items/explosiveEnchant-20260403-120823-1_rgba.png"],
-  lineEnchant: ["./assets/generated/items/lineEnchant-20260403-120840-1_rgba.png"],
 };
