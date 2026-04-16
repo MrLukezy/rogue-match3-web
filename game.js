@@ -32,6 +32,24 @@ import {
   BLESSING_IMAGE_BY_ID,
   BLESSING_ORDER,
 } from "./src/config/blessings-config.js";
+import {
+  REWARD_CATEGORY_WEIGHTS,
+  SUPPORT_REWARD_DEFS,
+} from "./src/config/reward-config.js";
+import {
+  CHAPTER_MINION_ANIMATIONS,
+  CHAPTER_BOSS_ANIMATIONS,
+  SKILL_AUDIO_PROFILES,
+  ENEMY_CAST_AUDIO_MAP,
+  ENEMY_CAST_AUDIO_ULTIMATE,
+  CHAPTER_BOARD_TONES,
+} from "./src/config/presentation-config.js";
+import {
+  MODIFIER_DEFS,
+  PERK_DEFS,
+  COMMON_EVENT_DEFS,
+  CHAPTER_EVENT_DEFS,
+} from "./src/config/content-config.js";
 import { renderItemsView, renderPerksView } from "./src/render/items-render.js";
 import { renderBoardView } from "./src/render/board-render.js";
 import {
@@ -105,65 +123,9 @@ import { getDomRefs, bindCoreEvents } from "./src/bootstrap/dom.js";
 import { createAudioManager } from "./src/audio/audio-manager.js";
 import { createI18n } from "./src/ui/i18n.js";
 
-const buildIdleFrames = (basePath) => Array.from({ length: 8 }, (_, i) => `${basePath}/idle_f${i + 1}.png`);
-
-const CHAPTER_MINION_ANIMATIONS = {
-  ember_hollows: { idle: buildIdleFrames("./assets/generated/chapters/chapter01/minion/anim/idle") },
-  frost_spire: { idle: buildIdleFrames("./assets/generated/chapters/chapter02/minion/anim/idle") },
-  stone_grove: { idle: buildIdleFrames("./assets/generated/chapters/chapter03/minion/anim/idle") },
-  storm_peaks: { idle: buildIdleFrames("./assets/generated/chapters/chapter04/minion/anim/idle") },
-  venom_bloom: { idle: buildIdleFrames("./assets/generated/chapters/chapter05/minion/anim/idle") },
-  tidal_depths: { idle: buildIdleFrames("./assets/generated/chapters/chapter06/minion/anim/idle") },
-  mirror_circus: { idle: buildIdleFrames("./assets/generated/chapters/chapter07/minion/anim/idle") },
-  iron_forge: { idle: buildIdleFrames("./assets/generated/chapters/chapter08/minion/anim/idle") },
-  eclipse_sanctum: { idle: buildIdleFrames("./assets/generated/chapters/chapter09/minion/anim/idle") },
-  void_throne: { idle: buildIdleFrames("./assets/generated/chapters/chapter10/minion/anim/idle") },
-};
-
-const CHAPTER_BOSS_ANIMATIONS = {
-  ember_hollows: { idle: buildIdleFrames("./assets/generated/chapters/chapter01/boss/anim/idle") },
-  frost_spire: { idle: buildIdleFrames("./assets/generated/chapters/chapter02/boss/anim/idle") },
-  stone_grove: { idle: buildIdleFrames("./assets/generated/chapters/chapter03/boss/anim/idle") },
-  storm_peaks: { idle: buildIdleFrames("./assets/generated/chapters/chapter04/boss/anim/idle") },
-  venom_bloom: { idle: buildIdleFrames("./assets/generated/chapters/chapter05/boss/anim/idle") },
-  tidal_depths: { idle: buildIdleFrames("./assets/generated/chapters/chapter06/boss/anim/idle") },
-  mirror_circus: { idle: buildIdleFrames("./assets/generated/chapters/chapter07/boss/anim/idle") },
-  iron_forge: { idle: buildIdleFrames("./assets/generated/chapters/chapter08/boss/anim/idle") },
-  eclipse_sanctum: { idle: buildIdleFrames("./assets/generated/chapters/chapter09/boss/anim/idle") },
-  void_throne: { idle: buildIdleFrames("./assets/generated/chapters/chapter10/boss/anim/idle") },
-};
-
 (() => {
   const TEST_UNLOCK_ALL_CHAPTERS = true;
   const zhen = (zh, en) => ({ zh, en });
-  const MODIFIERS = [
-    { id: "glass", name: zhen("玻璃蔓延", "Glass"), desc: zhen("开局附带更多玻璃层", "Start with extra glass layers"), apply: (s) => (s.modGlass = 8) },
-    { id: "heavy", name: zhen("重压", "Heavy"), desc: zhen("失去 2 步，但连锁更强", "Lose 2 moves, gain stronger chains"), apply: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 2); s.chainBonus += 0.2; } },
-    { id: "color_tax", name: zhen("颜色税", "Color Tax"), desc: zhen("一种颜色得分降低", "One color scores less"), apply: (s) => { s.taxColor = randColor(); } },
-    { id: "lucky", name: zhen("幸运掉落", "Lucky Drop"), desc: zhen("道具掉落概率更高", "Item drop chance is higher"), apply: (s) => { s.dropBoost += 0.12; } },
-    { id: "frost_seal", name: zhen("霜封", "Frost Seal"), desc: zhen("若干宝石开局被锁定", "Several gems begin locked"), apply: (s) => { s.modLocks = 4; } },
-    { id: "stormfront", name: zhen("风暴前线", "Stormfront"), desc: zhen("动量更快积累，但少 1 步", "Builds momentum faster but trims one move"), apply: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 1); s.chainBonus += 0.12; s.dropBoost += 0.04; } },
-    { id: "rich_vein", name: zhen("丰矿脉", "Rich Vein"), desc: zhen("本层额外得分并提高工具密度", "Gain score and extra tool density on this floor"), apply: (s) => { s.score += 80; s.dropBoost += 0.08; } },
-  ];
-
-  const PERK_DEFS = {
-    combo_forge: { title: zhen("连锁熔炉", "Combo Forge"), desc: zhen("4 连消可升级为炸弹宝石", "4-matches can upgrade into bomb gems"), rarity: "common", apply: (s) => { s.perks.combo_forge = true; } },
-    fever_loop: { title: zhen("热潮回路", "Fever Loop"), desc: zhen("热潮持续 +1 回合", "Fever lasts +1 turn"), rarity: "common", apply: (s) => { s.perks.fever_loop = true; } },
-    relic_magnet: { title: zhen("遗物磁引", "Relic Magnet"), desc: zhen("道具掉落概率更高", "Item drop chance is higher"), rarity: "common", apply: (s) => { s.perks.relic_magnet = true; } },
-    glass_breaker: { title: zhen("碎玻者", "Glass Breaker"), desc: zhen("打碎玻璃可获得额外分数", "Breaking glass grants bonus points"), rarity: "common", apply: (s) => { s.perks.glass_breaker = true; } },
-    overcharge: { title: zhen("过载启动", "Overcharge"), desc: zhen("每层开始时获得额外动量", "Each floor begins with bonus momentum"), rarity: "common", apply: (s) => { s.perks.overcharge = true; } },
-    pressure_valve: { title: zhen("压力阀", "Pressure Valve"), desc: zhen("Boss 压力带来的减步更少", "Boss pressure removes fewer moves"), rarity: "common", apply: (s) => { s.perks.pressure_valve = true; } },
-    blast_core: { title: zhen("爆破核心", "Blast Core"), desc: zhen("特殊宝石和爆炸得分更高", "Specials and blasts score more"), rarity: "rare", apply: (s) => { s.perks.blast_core = true; } },
-    score_bloom: { title: zhen("分数绽放", "Score Bloom"), desc: zhen("每次清除宝石都获得额外分数", "Every gem cleared grants bonus score"), rarity: "rare", apply: (s) => { s.perks.score_bloom = true; } },
-    quick_hands: { title: zhen("迅捷之手", "Quick Hands"), desc: zhen("目标型道具升级时获得额外充能", "Target items gain bonus charge when upgraded"), rarity: "rare", apply: (s) => { s.perks.quick_hands = true; } },
-    fever_smith: { title: zhen("热潮锻匠", "Fever Smith"), desc: zhen("传说道具会提供更多动量", "Legend skills grant extra momentum"), rarity: "rare", apply: (s) => { s.perks.fever_smith = true; } },
-    arcane_stockpile: { title: zhen("奥术储藏", "Arcane Stockpile"), desc: zhen("道具掉落可包含传说技能", "Item drops can include legendary skills"), rarity: "epic", apply: (s) => { s.perks.arcane_stockpile = true; } },
-    boss_hunter: { title: zhen("Boss 猎手", "Boss Hunter"), desc: zhen("每次使用传说道具都会额外打击 Boss 充能", "Damage the boss charge more whenever you use a legend skill"), rarity: "epic", apply: (s) => { s.perks.boss_hunter = true; } },
-    vault_expander: { title: zhen("仓库扩展", "Vault Expander"), desc: zhen("新道具类型会附带额外充能", "New item types arrive with bonus charges"), rarity: "epic", apply: (s) => { s.perks.vault_expander = true; } },
-    prism_heart: { title: zhen("棱镜之心", "Prism Heart"), desc: zhen("彩虹宝石得分更高且更常出现", "Rainbow gems score more and spawn more often"), rarity: "epic", apply: (s) => { s.perks.prism_heart = true; } },
-    sovereign_circuit: { title: zhen("王权回路", "Sovereign Circuit"), desc: zhen("所有装备道具立刻 +1 等级", "All equipped items gain +1 level instantly"), rarity: "legendary", apply: (s) => { s.perks.sovereign_circuit = true; boostAllItemLevels(s); } },
-    dragon_hoard: { title: zhen("龙之宝藏", "Dragon Hoard"), desc: zhen("你最高等级的道具每层都会获得充能", "Your highest-level item gains charges every floor"), rarity: "legendary", apply: (s) => { s.perks.dragon_hoard = true; } },
-  };
 
   const {
     appRootEl,
@@ -217,6 +179,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
     guideBtn,
     itemWrapEl,
     perkWrapEl,
+    blessingTooltipEl,
     overlayEl,
     overlaySettingsBtn,
     overlayTitleEl,
@@ -286,6 +249,45 @@ const CHAPTER_BOSS_ANIMATIONS = {
     seedStartingItems(initial, { ITEM_BASE_LEVEL, ITEM_BASE_COUNTS });
     return initial;
   }
+
+  const MODIFIER_HANDLERS = {
+    glass: (s) => (s.modGlass = 8),
+    heavy: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 2); s.chainBonus += 0.2; },
+    color_tax: (s) => { s.taxColor = randColor(); },
+    lucky: (s) => { s.dropBoost += 0.12; },
+    frost_seal: (s) => { s.modLocks = 4; },
+    stormfront: (s) => { s.movesLeft = Math.max(8, s.movesLeft - 1); s.chainBonus += 0.12; s.dropBoost += 0.04; },
+    rich_vein: (s) => { s.score += 80; s.dropBoost += 0.08; },
+  };
+
+  const MODIFIERS = MODIFIER_DEFS.map((entry) => ({
+    ...entry,
+    apply: MODIFIER_HANDLERS[entry.handler],
+  })).filter((entry) => typeof entry.apply === "function");
+
+  const PERK_APPLY_HANDLERS = {
+    combo_forge: (s) => { s.perks.combo_forge = true; },
+    fever_loop: (s) => { s.perks.fever_loop = true; },
+    relic_magnet: (s) => { s.perks.relic_magnet = true; },
+    glass_breaker: (s) => { s.perks.glass_breaker = true; },
+    overcharge: (s) => { s.perks.overcharge = true; },
+    pressure_valve: (s) => { s.perks.pressure_valve = true; },
+    blast_core: (s) => { s.perks.blast_core = true; },
+    score_bloom: (s) => { s.perks.score_bloom = true; },
+    quick_hands: (s) => { s.perks.quick_hands = true; },
+    fever_smith: (s) => { s.perks.fever_smith = true; },
+    arcane_stockpile: (s) => { s.perks.arcane_stockpile = true; },
+    boss_hunter: (s) => { s.perks.boss_hunter = true; },
+    vault_expander: (s) => { s.perks.vault_expander = true; },
+    prism_heart: (s) => { s.perks.prism_heart = true; },
+    sovereign_circuit: (s) => { s.perks.sovereign_circuit = true; boostAllItemLevels(s); },
+    dragon_hoard: (s) => { s.perks.dragon_hoard = true; },
+  };
+
+  const PERK_RUNTIME_DEFS = Object.fromEntries(Object.entries(PERK_DEFS).map(([id, def]) => [id, {
+    ...def,
+    apply: PERK_APPLY_HANDLERS[def.handler],
+  }]));
 
   sanitizeCombatSkills();
 
@@ -682,6 +684,10 @@ const CHAPTER_BOSS_ANIMATIONS = {
         if (btn) btn.classList.remove("drag-over");
       });
     }
+    if (perkWrapEl) {
+      perkWrapEl.addEventListener("mouseover", onBlessingHover);
+      perkWrapEl.addEventListener("mouseout", onBlessingHoverOut);
+    }
 
     window.addEventListener("resize", updateResponsiveScale);
     window.addEventListener("orientationchange", updateResponsiveScale);
@@ -791,8 +797,6 @@ const CHAPTER_BOSS_ANIMATIONS = {
     setTextBySelector(".momentum > span", t("momentum"));
     setTextBySelector(".left-summary-title", t("currentGoal"));
     setTextBySelector(".chapter-panel-title", t("currentChapter"));
-    setTextBySelector(".build-panel-title", t("rogueSkills"));
-    setTextBySelector(".build-panel .panel-note", t("raritySummary"));
     if (logToggleBtn) logToggleBtn.textContent = t("logToggle");
     if (guideBtn) guideBtn.textContent = t("openGuide");
     if (restartBtn) restartBtn.textContent = t("restartRun");
@@ -1763,7 +1767,38 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const item = btn.dataset.item;
     if (!item || !ITEM_DEFS[item]) return;
     itemTooltipEl.innerHTML = `<strong>${lt(ITEM_DEFS[item].name)} ${t("itemLevel", { level: getItemLevel(item) })}</strong><small>${lt(ITEM_DEFS[item].desc)}</small>`;
+    itemTooltipEl.style.left = "50%";
+    itemTooltipEl.style.top = "";
+    itemTooltipEl.style.bottom = "28px";
+    itemTooltipEl.style.transform = "translateX(-50%)";
     itemTooltipEl.classList.remove("hidden");
+  }
+
+  function positionBlessingTooltip(targetEl, gap = 6) {
+    if (!targetEl || !blessingTooltipEl || !perkWrapEl) return;
+    const anchorEl = targetEl.querySelector?.(".blessing-icon-image, .blessing-icon-shell") || targetEl;
+    const rect = anchorEl.getBoundingClientRect();
+    const wrapRect = perkWrapEl.getBoundingClientRect();
+    const appScale = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--app-scale")) || 1;
+
+    blessingTooltipEl.style.left = `0px`;
+    blessingTooltipEl.style.top = `0px`;
+    blessingTooltipEl.style.transform = "none";
+
+    const tipRect = blessingTooltipEl.getBoundingClientRect();
+    const tipWidth = tipRect.width / appScale;
+    const tipHeight = tipRect.height / appScale;
+
+    let left = (rect.left - wrapRect.left) / appScale + rect.width / appScale / 2 - tipWidth / 2;
+    if (left < 0) left = 0;
+    const maxLeft = Math.max(0, wrapRect.width / appScale - tipWidth);
+    if (left > maxLeft) left = maxLeft;
+
+    let top = (rect.top - wrapRect.top) / appScale - tipHeight - gap;
+    if (top < 0) top = (rect.bottom - wrapRect.top) / appScale + gap;
+
+    blessingTooltipEl.style.left = `${left}px`;
+    blessingTooltipEl.style.top = `${top}px`;
   }
 
   function onItemHoverOut(event) {
@@ -1771,6 +1806,25 @@ const CHAPTER_BOSS_ANIMATIONS = {
     const related = event.relatedTarget;
     if (related && related.closest && related.closest("#itemWrap")) return;
     itemTooltipEl.classList.add("hidden");
+  }
+
+  function onBlessingHover(event) {
+    const chip = event.target.closest("[data-blessing]");
+    if (!chip || !blessingTooltipEl) return;
+    const blessingId = chip.dataset.blessing;
+    const def = BLESSING_DEFS[blessingId];
+    if (!blessingId || !def) return;
+    const level = getBlessingLevel(blessingId);
+    blessingTooltipEl.innerHTML = `<strong>${lt(def.title)} ${t("itemLevel", { level })}</strong><small>${lt(def.effect || def.desc)}</small>`;
+    blessingTooltipEl.classList.remove("hidden");
+    positionBlessingTooltip(chip, 6);
+  }
+
+  function onBlessingHoverOut(event) {
+    if (!blessingTooltipEl) return;
+    const related = event.relatedTarget;
+    if (related && related.closest && related.closest("#perkWrap")) return;
+    blessingTooltipEl.classList.add("hidden");
   }
 
   function onSkillDragStart(event) {
@@ -4847,170 +4901,97 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function buildEventChoices() {
-    const commonEvents = [
-        {
-          title: zhen("诅咒契约", "Cursed Pact"),
-          desc: zhen("接下来两层会更严苛，但连锁奖励和掉落提高，并获得 +1 十字斩。", "The next two floors are harsher, but chain rewards and drops increase and you gain +1 Cross Strike."),
-          apply: () => {
-            state.eventCurseFloors = 2;
-            unlockOrUpgradeSkill("crossStrike", 1);
-            notify(i18n.getLanguage() === "zh-CN" ? "你签下了诅咒契约。" : "You signed the Cursed Pact.", "warn");
-          },
-        },
-      {
-        title: zhen("修复熔炉", "Repair Forge"),
-        desc: zhen("下一层 +2 步，并重置 Boss 充能。", "Gain +2 moves next floor and reset the boss charge."),
-        apply: () => {
-          state.nextFloorMoveBonus += 2;
-          state.boss.charge = 0;
-          notify(i18n.getLanguage() === "zh-CN" ? "熔炉稳定了下一层局势。" : "The forge stabilizes the next floor.", "ok");
-        },
+    const eventHandlers = {
+      cursedPact: () => {
+        state.eventCurseFloors = 2;
+        unlockOrUpgradeSkill("crossStrike", 1);
+        notify(i18n.getLanguage() === "zh-CN" ? "你签下了诅咒契约。" : "You signed the Cursed Pact.", "warn");
       },
-      {
-        title: zhen("贪欲祭坛", "Greed Altar"),
-        desc: zhen("立即获得 +180 分，但下一层失去 2 步。", "Gain +180 score now, but lose 2 moves next floor."),
-        apply: () => {
-          state.score += 180;
-          state.nextFloorMovePenalty += 2;
-          notify(i18n.getLanguage() === "zh-CN" ? "贪欲祭坛启动：高收益，高压力。" : "Greed Altar activated: high reward, high pressure.", "warn");
-        },
+      repairForge: () => {
+        state.nextFloorMoveBonus += 2;
+        state.boss.charge = 0;
+        notify(i18n.getLanguage() === "zh-CN" ? "熔炉稳定了下一层局势。" : "The forge stabilizes the next floor.", "ok");
       },
-      {
-        title: zhen("战术地图", "Tactical Map"),
-        desc: zhen("侦察下一层，获得 +3 步和 +20 动量。", "Scout the next floor to gain +3 moves and +20 momentum."),
-        apply: () => {
-          state.nextFloorMoveBonus += 3;
-          state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 20);
-          notify(i18n.getLanguage() === "zh-CN" ? "你规划出了一条更安全的路线。" : "You charted a safer route.", "ok");
-        },
+      greedAltar: () => {
+        state.score += 180;
+        state.nextFloorMovePenalty += 2;
+        notify(i18n.getLanguage() === "zh-CN" ? "贪欲祭坛启动：高收益，高压力。" : "Greed Altar activated: high reward, high pressure.", "warn");
       },
-    ];
-
-    const chapterEvents = {
-      ember_hollows: [
-        {
-          title: zhen("引燃储备", "Kindling Cache"),
-          desc: zhen("从余烬营地获得 +1 溅射和 +1 十字斩。", "Gain +1 Splatter and +1 Cross Strike from the ember camp."),
-          apply: () => {
-            unlockOrUpgradeSkill("splatter", 1);
-            unlockOrUpgradeSkill("crossStrike", 1);
-            notify(i18n.getLanguage() === "zh-CN" ? "引燃工具已加入你的配置。" : "Kindling tools added to your kit.", "ok");
-          },
-        },
-      ],
-      frost_spire: [
-        {
-          title: zhen("寒霜提灯", "Frozen Lantern"),
-          desc: zhen("稳定档案馆：移除当前所有锁定并获得 +25 动量。", "Stabilize the archive: remove all current locks and gain +25 momentum."),
-          apply: () => {
-            for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
-            state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
-            notify(i18n.getLanguage() === "zh-CN" ? "提灯安抚了冻结的档案馆。" : "The lantern calms the frozen archive.", "ok");
-          },
-        },
-      ],
-      stone_grove: [
-        {
-          title: zhen("地穴地图", "Burrow Map"),
-          desc: zhen("下一层 +2 步，并立刻移除 2 个随机障碍。", "Gain +2 moves next floor and remove 2 random obstacles now."),
-          apply: () => {
-            state.nextFloorMoveBonus += 2;
-            const obstacles = collectIndices((x) => isObstacle(x));
-            shuffle(obstacles);
-            for (const idx of obstacles.slice(0, 2)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, poisonedTurns: 0, frostedTurns: 0, frozen: false, lockedTurns: 0, holyMarked: false, voidMarked: false, slippery: false };
-            notify(i18n.getLanguage() === "zh-CN" ? "地穴地图揭示了岩层薄弱点。" : "The burrow map reveals weak stone sections.", "ok");
-          },
-        },
-      ],
-      storm_peaks: [
-        {
-          title: zhen("熔炉过载", "Forge Overdrive"),
-          desc: zhen("获得 1 级邻近模仿祝福，并提高下一次诅咒楼层收益。", "Gain Lv.1 Neighbor Mimic blessing and boost the next cursed floor payoff."),
-          apply: () => {
-            if (!hasBlessingEquipped("neighborMimicBlessing")) equipBlessing("neighborMimicBlessing", 1);
-            else upgradeBlessing("neighborMimicBlessing", 1);
-            state.eventCurseFloors = Math.max(state.eventCurseFloors, 1);
-            notify(i18n.getLanguage() === "zh-CN" ? "熔炉轰鸣着苏醒。" : "The forge roars to life.", "warn");
-          },
-        },
-      ],
-      venom_bloom: [
-        {
-          title: zhen("净化花蜜", "Purifier Nectar"),
-          desc: zhen("移除当前所有锁定，并清除本层颜色税。", "Remove all current locks and clear your taxed color for the floor."),
-          apply: () => {
-            for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
-            state.taxColor = null;
-            state.taxColorTurns = 0;
-            notify(i18n.getLanguage() === "zh-CN" ? "净化花蜜净化了花域。" : "Purifier Nectar cleanses the bloom.", "ok");
-          },
-        },
-      ],
-      tidal_depths: [
-        {
-          title: zhen("潮汐罗盘", "Tidal Compass"),
-          desc: zhen("下一层 +3 步，并获得 +1 连锁闪电。", "Gain +3 moves next floor and +1 Chain Lightning."),
-          apply: () => {
-            state.nextFloorMoveBonus += 3;
-            unlockOrUpgradeSkill("chainLightning", 1);
-            notify(i18n.getLanguage() === "zh-CN" ? "潮汐暂时与你同调。" : "The tides briefly align in your favor.", "ok");
-          },
-        },
-      ],
-      mirror_circus: [
-        {
-          title: zhen("真实透镜", "True Lens"),
-          desc: zhen("获得 +30 动量，并将 3 个随机玻璃宝石变为普通宝石。", "Gain +30 momentum and convert 3 random glass gems into normal gems."),
-          apply: () => {
-            state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 30);
-            const glass = collectIndices((x) => isGem(x) && x.glass);
-            shuffle(glass);
-            for (const idx of glass.slice(0, 3)) state.board[idx].glass = false;
-            notify(i18n.getLanguage() === "zh-CN" ? "真实透镜刺穿了幻象。" : "The true lens cuts through illusion.", "ok");
-          },
-        },
-      ],
-      iron_forge: [
-        {
-          title: zhen("冷却阀门", "Cooling Valve"),
-          desc: zhen("立刻移除 3 个障碍，并让下一层 Boss 从 0 能量开始。", "Remove 3 obstacles now and start next floor with the boss at 0 energy."),
-          apply: () => {
-            const obstacles = collectIndices((x) => isObstacle(x));
-            shuffle(obstacles);
-            for (const idx of obstacles.slice(0, 3)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, poisonedTurns: 0, frostedTurns: 0, frozen: false, lockedTurns: 0, holyMarked: false, voidMarked: false, slippery: false };
-            state.boss.charge = 0;
-            notify(i18n.getLanguage() === "zh-CN" ? "冷却阀门释放了熔炉压力。" : "Cooling valves release the furnace pressure.", "ok");
-          },
-        },
-      ],
-      eclipse_sanctum: [
-        {
-          title: zhen("圣环碎片", "Halo Fragment"),
-          desc: zhen("获得 1 级色彩同化祝福和 +25 动量。", "Gain Lv.1 Color Assimilation blessing and +25 momentum."),
-          apply: () => {
-            if (!hasBlessingEquipped("colorAssimilationBlessing")) equipBlessing("colorAssimilationBlessing", 1);
-            else upgradeBlessing("colorAssimilationBlessing", 1);
-            state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
-            notify(i18n.getLanguage() === "zh-CN" ? "圣环碎片强化了你的配置。" : "A halo fragment empowers your kit.", "ok");
-          },
-        },
-      ],
-      void_throne: [
-        {
-          title: zhen("虚空交易", "Void Bargain"),
-          desc: zhen("获得 +240 分和 1 级横竖刻印祝福，但下一层 -1 步。", "Gain +240 score and Lv.1 Line Sigil blessing, but suffer -1 move next floor."),
-          apply: () => {
-            state.score += 240;
-            state.nextFloorMovePenalty += 1;
-            if (!hasBlessingEquipped("lineSigil")) equipBlessing("lineSigil", 1);
-            else upgradeBlessing("lineSigil", 1);
-            notify(i18n.getLanguage() === "zh-CN" ? "裂隙以代价赐予了力量。" : "The rift grants power at a cost.", "warn");
-          },
-        },
-      ],
+      tacticalMap: () => {
+        state.nextFloorMoveBonus += 3;
+        state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 20);
+        notify(i18n.getLanguage() === "zh-CN" ? "你规划出了一条更安全的路线。" : "You charted a safer route.", "ok");
+      },
+      kindlingCache: () => {
+        unlockOrUpgradeSkill("splatter", 1);
+        unlockOrUpgradeSkill("crossStrike", 1);
+        notify(i18n.getLanguage() === "zh-CN" ? "引燃工具已加入你的配置。" : "Kindling tools added to your kit.", "ok");
+      },
+      frozenLantern: () => {
+        for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
+        state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
+        notify(i18n.getLanguage() === "zh-CN" ? "提灯安抚了冻结的档案馆。" : "The lantern calms the frozen archive.", "ok");
+      },
+      burrowMap: () => {
+        state.nextFloorMoveBonus += 2;
+        const obstacles = collectIndices((x) => isObstacle(x));
+        shuffle(obstacles);
+        for (const idx of obstacles.slice(0, 2)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, poisonedTurns: 0, frostedTurns: 0, frozen: false, lockedTurns: 0, holyMarked: false, voidMarked: false, slippery: false };
+        notify(i18n.getLanguage() === "zh-CN" ? "地穴地图揭示了岩层薄弱点。" : "The burrow map reveals weak stone sections.", "ok");
+      },
+      forgeOverdrive: () => {
+        if (!hasBlessingEquipped("neighborMimicBlessing")) equipBlessing("neighborMimicBlessing", 1);
+        else upgradeBlessing("neighborMimicBlessing", 1);
+        state.eventCurseFloors = Math.max(state.eventCurseFloors, 1);
+        notify(i18n.getLanguage() === "zh-CN" ? "熔炉轰鸣着苏醒。" : "The forge roars to life.", "warn");
+      },
+      purifierNectar: () => {
+        for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; }
+        state.taxColor = null;
+        state.taxColorTurns = 0;
+        notify(i18n.getLanguage() === "zh-CN" ? "净化花蜜净化了花域。" : "Purifier Nectar cleanses the bloom.", "ok");
+      },
+      tidalCompass: () => {
+        state.nextFloorMoveBonus += 3;
+        unlockOrUpgradeSkill("chainLightning", 1);
+        notify(i18n.getLanguage() === "zh-CN" ? "潮汐暂时与你同调。" : "The tides briefly align in your favor.", "ok");
+      },
+      trueLens: () => {
+        state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 30);
+        const glass = collectIndices((x) => isGem(x) && x.glass);
+        shuffle(glass);
+        for (const idx of glass.slice(0, 3)) state.board[idx].glass = false;
+        notify(i18n.getLanguage() === "zh-CN" ? "真实透镜刺穿了幻象。" : "The true lens cuts through illusion.", "ok");
+      },
+      coolingValve: () => {
+        const obstacles = collectIndices((x) => isObstacle(x));
+        shuffle(obstacles);
+        for (const idx of obstacles.slice(0, 3)) state.board[idx] = { kind: "gem", color: randColor(), special: null, glass: false, burning: false, poisonedTurns: 0, frostedTurns: 0, frozen: false, lockedTurns: 0, holyMarked: false, voidMarked: false, slippery: false };
+        state.boss.charge = 0;
+        notify(i18n.getLanguage() === "zh-CN" ? "冷却阀门释放了熔炉压力。" : "Cooling valves release the furnace pressure.", "ok");
+      },
+      haloFragment: () => {
+        if (!hasBlessingEquipped("colorAssimilationBlessing")) equipBlessing("colorAssimilationBlessing", 1);
+        else upgradeBlessing("colorAssimilationBlessing", 1);
+        state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 25);
+        notify(i18n.getLanguage() === "zh-CN" ? "圣环碎片强化了你的配置。" : "A halo fragment empowers your kit.", "ok");
+      },
+      voidBargain: () => {
+        state.score += 240;
+        state.nextFloorMovePenalty += 1;
+        if (!hasBlessingEquipped("lineSigil")) equipBlessing("lineSigil", 1);
+        else upgradeBlessing("lineSigil", 1);
+        notify(i18n.getLanguage() === "zh-CN" ? "裂隙以代价赐予了力量。" : "The rift grants power at a cost.", "warn");
+      },
     };
 
-    const pool = [...commonEvents, ...(chapterEvents[state.floorTheme.id] || [])];
+    const inflateEvents = (defs) => defs.map((entry) => ({
+      title: entry.title,
+      desc: entry.desc,
+      apply: eventHandlers[entry.handler],
+    })).filter((entry) => typeof entry.apply === "function");
+
+    const pool = [...inflateEvents(COMMON_EVENT_DEFS), ...inflateEvents(CHAPTER_EVENT_DEFS[state.floorTheme.id] || [])];
     shuffle(pool);
     return pool.slice(0, 3);
   }
@@ -5032,6 +5013,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
         const proceed = await reward.apply();
         if (proceed === false) return;
         audio.play("rewardPick");
+        if (reward.type === "blessing") notify(t("blessingAcquired", { name: proceed || reward.title }), "ok");
         overlayEl.classList.add("hidden");
         startFloor(state.floor + 1);
       });
@@ -5046,24 +5028,95 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function buildRewardChoices() {
     sanitizeCombatSkills();
-    const result = [];
-    const perkReward = buildPerkReward();
-    if (perkReward) result.push(perkReward);
-
     const itemRewards = buildItemRewards();
+    const blessingRewards = buildBlessingRewards();
     const supportRewards = buildSupportRewards();
-    const combined = [...itemRewards, ...supportRewards];
-    shuffle(combined);
+    const result = [];
 
-    for (const reward of combined) {
-      if (result.length >= 3) break;
-      if (!result.some((x) => x.title === reward.title)) result.push(reward);
+    const pullUnique = (pool) => {
+      for (const reward of pool) {
+        if (!result.some((x) => x.title === reward.title)) return reward;
+      }
+      return null;
+    };
+
+    const itemPool = [...itemRewards];
+    const blessingPool = [...blessingRewards];
+    const supportPool = [...supportRewards];
+    shuffle(itemPool);
+    shuffle(blessingPool);
+    shuffle(supportPool);
+
+    const totalWeight = Object.values(REWARD_CATEGORY_WEIGHTS).reduce((sum, value) => sum + value, 0) || 1;
+    const pickRewardCategory = () => {
+      let cursor = Math.random() * totalWeight;
+      for (const [key, weight] of Object.entries(REWARD_CATEGORY_WEIGHTS)) {
+        cursor -= weight;
+        if (cursor <= 0) return key;
+      }
+      return "support";
+    };
+
+    while (result.length < 3) {
+      const category = pickRewardCategory();
+      const preferredPool = category === "combatSkill" ? itemPool : category === "blessing" ? blessingPool : supportPool;
+      let reward = pullUnique(preferredPool);
+      if (!reward) reward = pullUnique(supportPool) || pullUnique(itemPool) || pullUnique(blessingPool);
+      if (!reward) break;
+      result.push(reward);
     }
+
     return result.slice(0, 3);
   }
 
   function buildPerkReward() {
     return null;
+  }
+
+  function buildBlessingRewards() {
+    const rewards = [];
+    const equipped = getEquippedBlessings();
+    const unequipped = BLESSING_ORDER.filter((id) => !hasBlessingEquipped(id) && BLESSING_DEFS[id]);
+
+    if (blessingSlotAvailable() && unequipped.length > 0) {
+      const pool = [...unequipped];
+      shuffle(pool);
+      for (const id of pool.slice(0, 3)) {
+        const def = BLESSING_DEFS[id];
+        rewards.push({
+          type: "blessing",
+          id,
+          rarity: def.rarity,
+          title: lt(def.title),
+          desc: lt(def.desc),
+          apply: () => {
+            equipBlessing(id, 1);
+            return lt(def.title);
+          },
+        });
+      }
+      return rewards;
+    }
+
+    const upgradePool = (equipped.length > 0 ? [...equipped] : [...BLESSING_ORDER.filter((id) => BLESSING_DEFS[id])])
+      .sort((a, b) => getBlessingLevel(a) - getBlessingLevel(b));
+    for (const id of [...new Set(upgradePool)].slice(0, 2)) {
+      const def = BLESSING_DEFS[id];
+      if (!def) continue;
+      rewards.push({
+        type: "blessing",
+        id,
+        rarity: def.rarity,
+        title: `${lt(def.title)} · ${t("itemLevel", { level: getBlessingLevel(id) + 1 })}`,
+        desc: lt(def.effect || def.desc),
+        apply: () => {
+          if (!hasBlessingEquipped(id)) equipBlessing(id, 1);
+          else upgradeBlessing(id, 1);
+          return lt(def.title);
+        },
+      });
+    }
+    return rewards;
   }
 
   function buildItemRewards() {
@@ -5102,16 +5155,45 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function buildSupportRewards() {
-    return [
-      { type: "support", rarity: "common", title: zhen("额外步数 +2", "Extra Moves +2"), desc: zhen("降低下一层压力", "Reduce next-floor pressure"), apply: () => (state.nextFloorMoveBonus += 2) },
-      { type: "support", rarity: "common", title: zhen("动量激增", "Momentum Surge"), desc: zhen("+40 动量", "+40 momentum"), apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40)) },
-      { type: "support", rarity: "rare", title: zhen("战术加装", "Tactical Retrofit"), desc: zhen("随机提升一个已携带技能 1 级", "Upgrade one random carried skill by 1 level"), apply: upgradeRandomCarriedItem },
-      { type: "support", rarity: "common", title: zhen("战斗手册", "Combat Manual"), desc: zhen("所有已携带技能获得 +1 等级", "All carried skills gain +1 level"), apply: refillCarriedCharges },
-      { type: "support", rarity: "rare", title: zhen("过载校准", "Overload Tuning"), desc: zhen("随机解锁一个新技能；若已满则改为升级最低等级技能", "Unlock a new skill, or upgrade your lowest-level one if all slots are full"), apply: grantHighTierCharge },
-      { type: "support", rarity: "rare", title: zhen("Boss 抑制", "Boss Suppressant"), desc: zhen("下一层开始时 +2 步，并完全重置 Boss 能量槽", "Start the next floor with +2 moves and a fully reset boss gauge"), apply: () => { state.nextFloorMoveBonus += 2; state.boss.charge = 0; } },
-      { type: "support", rarity: "epic", title: zhen("热潮电池", "Fever Battery"), desc: zhen("获得 +70 动量，为下一次爆发蓄力", "Gain +70 momentum to prime your next power spike"), apply: () => (state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 70)) },
-      { type: "support", rarity: "epic", title: zhen("裂隙演算", "Rift Computation"), desc: zhen("随机获得 1 个史诗或传说技能；若已拥有则再升 1 级", "Gain a random epic or legendary skill, or level it up if already owned"), apply: grantHighTierCharge },
-    ];
+    const handlers = {
+      extraMoves2: () => { state.nextFloorMoveBonus += 2; },
+      extraMoves3: () => { state.nextFloorMoveBonus += 3; },
+      cleanseFrost: () => { for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].lockedTurns = 0; state.board[i].frozen = false; state.board[i].frostedTurns = 0; } },
+      cleanseToxins: () => { for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) { state.board[i].poisonedTurns = 0; state.board[i].burning = false; } },
+      shatterGlass: () => { for (let i = 0; i < state.board.length; i += 1) if (isGem(state.board[i])) state.board[i].glass = false; },
+      momentumSurge: () => { state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 40); },
+      tacticalRetrofit: upgradeRandomCarriedItem,
+      bossSuppressant: () => { state.nextFloorMoveBonus += 2; state.boss.charge = 0; },
+      feverBattery: () => { state.momentum = Math.min(MOMENTUM_MAX, state.momentum + 70); },
+    };
+
+    const weightedPool = [];
+    for (const def of SUPPORT_REWARD_DEFS) {
+      const count = Math.max(1, Number(def.weight) || 1);
+      for (let i = 0; i < count; i += 1) weightedPool.push(def);
+    }
+
+    const rewards = [];
+    const used = new Set();
+    while (weightedPool.length > 0 && rewards.length < Math.min(6, SUPPORT_REWARD_DEFS.length)) {
+      const def = randomPick(weightedPool);
+      if (!def || used.has(def.id)) {
+        if (!def) break;
+        for (let i = weightedPool.length - 1; i >= 0; i -= 1) if (weightedPool[i]?.id === def.id) weightedPool.splice(i, 1);
+        continue;
+      }
+      used.add(def.id);
+      rewards.push({
+        type: "support",
+        id: def.id,
+        rarity: def.rarity,
+        title: def.title,
+        desc: def.desc,
+        apply: handlers[def.id],
+      });
+      for (let i = weightedPool.length - 1; i >= 0; i -= 1) if (weightedPool[i]?.id === def.id) weightedPool.splice(i, 1);
+    }
+    return rewards;
   }
 
   function showSkillReplacementChoices({ newId, levelGain = 1, onCancel = null }) {
@@ -5490,11 +5572,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
   }
 
   function getSkillAudioProfile(skillId) {
-    const profiles = {
-      tacticalReserve: { sound: "condReserve", volume: 0.26, rate: 0.96, accent: { sound: "uiClick", volume: 0.08, rate: 1.08 } },
-      purifierSigil: { sound: "condPurifier", volume: 0.28, rate: 1.04, accent: { sound: "skillColor", volume: 0.06, rate: 1.32 } },
-    };
-    return profiles[skillId] || { sound: "itemCast", volume: 0.26, rate: 1.06 };
+    return SKILL_AUDIO_PROFILES[skillId] || { sound: "itemCast", volume: 0.26, rate: 1.06 };
   }
 
   function getEnemyCastAudioProfile(skillId, isMinion = false, isUltimate = false) {
@@ -5502,39 +5580,14 @@ const CHAPTER_BOSS_ANIMATIONS = {
       ? { sound: "enemyMinionVoice", volume: 0.2, rate: 1.04 }
       : { sound: "enemyBossVoice", volume: 0.24, rate: 0.94 };
 
-    if (isUltimate) {
-      return {
-        sound: "enemyUltimateCast",
-        volume: 0.34,
-        rate: 0.9,
-        accent: { sound: "enemyBossRoar", volume: 0.24, rate: 0.82 },
-        layer: { sound: "enemyArcaneCast", volume: 0.18, rate: 0.9 },
-      };
-    }
+    if (isUltimate) return ENEMY_CAST_AUDIO_ULTIMATE;
 
-    const map = {
-      ember_spark: { sound: "enemyFireCast", volume: 0.34, rate: 1.04, accent: voiceLayer },
-      tail_scorch: { sound: "enemyFireCast", volume: 0.36, rate: 0.92, accent: { sound: "enemyBossVoice", volume: 0.18, rate: 0.84 } },
-      chill_script: { sound: "enemyIceCast", volume: 0.28, rate: 0.92, accent: voiceLayer },
-      frost_page: { sound: "enemyIceCast", volume: 0.3, rate: 0.78, accent: { sound: "enemyBossVoice", volume: 0.16, rate: 0.8 } },
-      pebble_drop: { sound: "enemyStoneCast", volume: 0.34, rate: 0.84, accent: voiceLayer },
-      bark_armor: { sound: "enemyStoneCast", volume: 0.28, rate: 0.76, accent: { sound: "enemyMinionVoice", volume: 0.16, rate: 0.9 } },
-      static_pin: { sound: "enemyLightningCast", volume: 0.3, rate: 1.18, accent: voiceLayer },
-      thunder_lance: { sound: "enemyLightningCast", volume: 0.36, rate: 1.08, accent: { sound: "enemyBossVoice", volume: 0.2, rate: 0.88 } },
-      toxin_dust: { sound: "enemyPoisonCast", volume: 0.3, rate: 1.08, accent: voiceLayer },
-      thorn_bind: { sound: "enemyPoisonCast", volume: 0.28, rate: 0.9, accent: { sound: "enemyMinionVoice", volume: 0.18, rate: 0.96 } },
-      splash_shift: { sound: "enemyWaterCast", volume: 0.28, rate: 0.94, accent: voiceLayer },
-      undertow_pull: { sound: "enemyWaterCast", volume: 0.34, rate: 0.78, accent: { sound: "enemyBossVoice", volume: 0.18, rate: 0.82 } },
-      mirror_glint: { sound: "enemyArcaneCast", volume: 0.28, rate: 1.2, accent: voiceLayer },
-      false_match: { sound: "enemyArcaneCast", volume: 0.3, rate: 1.08, accent: { sound: "enemyBossVoice", volume: 0.16, rate: 1.04 } },
-      iron_slag: { sound: "enemyStoneCast", volume: 0.34, rate: 0.72, accent: { sound: "enemyBossVoice", volume: 0.18, rate: 0.74 } },
-      anvil_slam: { sound: "enemyStoneCast", volume: 0.38, rate: 0.82, accent: { sound: "enemyBossRoar", volume: 0.14, rate: 1.04 } },
-      radiance_mark: { sound: "enemyArcaneCast", volume: 0.26, rate: 1.22, accent: voiceLayer },
-      eclipse_wing: { sound: "enemyArcaneCast", volume: 0.3, rate: 0.9, accent: { sound: "enemyBossVoice", volume: 0.18, rate: 0.76 } },
-      void_scale: { sound: "enemyArcaneCast", volume: 0.34, rate: 0.68, accent: { sound: "enemyBossRoar", volume: 0.16, rate: 0.62 } },
-      dragon_breath: { sound: "enemyFireCast", volume: 0.38, rate: 0.98, accent: { sound: "enemyBossRoar", volume: 0.24, rate: 0.9 } },
+    const cfg = ENEMY_CAST_AUDIO_MAP[skillId];
+    if (!cfg) return { sound: isMinion ? "enemyArcaneCast" : "enemyBossCast", volume: 0.28, rate: 1.02, accent: voiceLayer };
+    return {
+      ...cfg,
+      accent: cfg.accentMode === "voiceLayer" ? voiceLayer : cfg.accent,
     };
-    return map[skillId] || { sound: isMinion ? "enemyArcaneCast" : "enemyBossCast", volume: 0.28, rate: 1.02, accent: voiceLayer };
   }
 
   function playMatchDestructionAudio(valid, expandedInfo, chain) {
@@ -5844,23 +5897,7 @@ const CHAPTER_BOSS_ANIMATIONS = {
 
   function getChapterBoardTone() {
     const themeId = state.floorTheme?.id || "ember_hollows";
-    const tones = {
-      crystal_mines: "hue-rotate(12deg) saturate(1.06) brightness(1.02)",
-      frozen_archive: "hue-rotate(-18deg) saturate(1.08) brightness(1.04)",
-      storm_forge: "hue-rotate(18deg) saturate(1.14) brightness(1.04)",
-      void_rift: "hue-rotate(48deg) saturate(1.12) brightness(0.98)",
-      ember_hollows: "hue-rotate(6deg) saturate(1.14) brightness(1.02)",
-      frost_spire: "hue-rotate(-20deg) saturate(1.1) brightness(1.05)",
-      stone_grove: "hue-rotate(26deg) saturate(1.02) brightness(0.98)",
-      storm_peaks: "hue-rotate(-12deg) saturate(1.18) brightness(1.04)",
-      venom_bloom: "hue-rotate(72deg) saturate(1.18) brightness(0.98)",
-      tidal_depths: "hue-rotate(-34deg) saturate(1.12) brightness(1.03)",
-      mirror_circus: "hue-rotate(118deg) saturate(1.08) brightness(1.04)",
-      iron_forge: "hue-rotate(14deg) saturate(1.22) brightness(1.01)",
-      eclipse_sanctum: "hue-rotate(152deg) saturate(1.08) brightness(1.02)",
-      void_throne: "hue-rotate(190deg) saturate(1.14) brightness(0.96)",
-    };
-    return tones[themeId] || "hue-rotate(0deg) saturate(1.04) brightness(1.01)";
+    return CHAPTER_BOARD_TONES[themeId] || "hue-rotate(0deg) saturate(1.04) brightness(1.01)";
   }
 
   function renderHUD() {

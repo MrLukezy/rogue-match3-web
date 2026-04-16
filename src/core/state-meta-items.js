@@ -319,7 +319,7 @@ export function recordCodex(meta, group, key, delta = 1) {
 // 祝福系统辅助函数
 // ============================================================
 
-export const MAX_BLESSING_SLOTS = 3;
+export const MAX_BLESSING_SLOTS = 5;
 
 export const getBlessingLevel = (state, id) => Number(state.blessingLevels[id] || 0);
 

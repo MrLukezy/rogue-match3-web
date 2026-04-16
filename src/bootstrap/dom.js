@@ -51,6 +51,7 @@ export function getDomRefs(doc = document) {
     guideBtn: doc.getElementById("guideBtn"),
     itemWrapEl: doc.getElementById("itemWrap"),
     perkWrapEl: doc.getElementById("perkWrap"),
+    blessingTooltipEl: doc.getElementById("blessingTooltip"),
     overlayEl: doc.getElementById("overlay"),
     overlaySettingsBtn: doc.getElementById("overlaySettingsBtn"),
     overlayTitleEl: doc.getElementById("overlayTitle"),

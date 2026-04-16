@@ -66,13 +66,21 @@ export function renderPerksView({ perkWrapEl, state, PERK_DEFS, BLESSING_DEFS, R
     return;
   }
 
-  for (const [id, def] of blessings) {
-    const el = document.createElement("div");
-    const visual = getBlessingVisual(def, id);
-    el.className = `perk-chip blessing-chip rarity-${def.rarity} blessing-fx-${visual.effect}`;
-    const level = Number(state.blessingLevels?.[id] || 1);
-    el.innerHTML = `<div class="perk-chip-head"><div class="perk-chip-icon-shell"><img class="perk-chip-icon" src="${visual.image}" alt="${visual.alt}"></div><div class="perk-chip-copy"><span>${t("blessing")}</span><strong>${lt(def.title)} · ${t("itemLevel", { level })}</strong><small>${lt(def.desc)}</small></div></div>`;
-    perkWrapEl.appendChild(el);
+  if (blessings.length > 0) {
+    const blessingList = document.createElement("div");
+    blessingList.className = "blessing-icon-list";
+    for (const [id, def] of blessings) {
+      const el = document.createElement("div");
+      const visual = getBlessingVisual(def, id);
+      const level = Number(state.blessingLevels?.[id] || 1);
+      el.className = `blessing-icon-chip rarity-${def.rarity} blessing-fx-${visual.effect}`;
+      el.dataset.blessing = id;
+      el.title = `${lt(def.title)} · ${t("itemLevel", { level })}\n${lt(def.desc)}`;
+      el.setAttribute("aria-label", `${lt(def.title)} ${t("itemLevel", { level })}`);
+      el.innerHTML = `<div class="blessing-icon-shell"><img class="blessing-icon-image" src="${visual.image}" alt="${visual.alt}"></div><i class="blessing-icon-level">${level}</i>`;
+      blessingList.appendChild(el);
+    }
+    perkWrapEl.appendChild(blessingList);
   }
 
   for (const [, def] of owned) {

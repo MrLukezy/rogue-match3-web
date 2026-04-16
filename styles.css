@@ -646,7 +646,7 @@ h1 { margin: 0; font-size: 28px; letter-spacing: 0.015em; }
 .compact-stats,
 .build-panel {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   padding: 12px 14px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(8, 18, 26, 0.14), rgba(8, 18, 26, 0.07));
@@ -1050,6 +1050,16 @@ h1 { margin: 0; font-size: 28px; letter-spacing: 0.015em; }
   padding: 2px 4px 0 0;
 }
 
+.build-panel {
+  padding-top: 4px;
+  position: relative;
+}
+
+.build-panel .perk-list {
+  margin-top: 0;
+  padding-top: 0;
+}
+
 .perk-empty {
   color: var(--muted);
   line-height: 1.5;
@@ -1067,6 +1077,83 @@ h1 { margin: 0; font-size: 28px; letter-spacing: 0.015em; }
 .blessing-chip {
   position: relative;
   overflow: hidden;
+}
+
+.blessing-icon-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.blessing-icon-chip {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, rgba(21, 43, 50, 0.8), rgba(15, 31, 36, 0.92));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 6px 14px rgba(3, 10, 20, 0.22);
+  overflow: hidden;
+}
+
+.blessing-icon-shell {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blessing-icon-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.06) drop-shadow(0 0 8px rgba(255,255,255,0.14));
+}
+
+.blessing-icon-level {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: rgba(6, 16, 28, 0.82);
+  color: #f3fbff;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.blessing-tooltip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 220px;
+  max-width: 240px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 165, 220, 0.32);
+  background: rgba(11, 19, 33, 0.96);
+  box-shadow: 0 14px 28px rgba(4, 11, 20, 0.34);
+  pointer-events: none;
+  z-index: 30;
+  backdrop-filter: blur(8px);
+}
+
+.blessing-tooltip strong,
+.blessing-tooltip small {
+  display: block;
+}
+
+.blessing-tooltip small {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .blessing-chip::after,

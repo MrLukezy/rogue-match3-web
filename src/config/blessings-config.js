@@ -222,4 +222,4 @@ export const BLESSING_UPGRADE_COSTS = {
   5: { score: 1000, label: "1000评分" },
 };
 
-export const MAX_BLESSING_SLOTS = 3;
+export const MAX_BLESSING_SLOTS = 5;
